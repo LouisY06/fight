@@ -8,7 +8,8 @@ import { ArenaPlatform } from './ArenaPlatform';
 import { ArenaLighting } from './ArenaLighting';
 import { ArenaEffects } from './ArenaEffects';
 import { ArenaProps } from './ArenaProps';
-import { useArenaReady } from '../game/GameEngine';
+import { EnemyRimLight } from './EnemyRimLight';
+import { useGameStore } from '../game/GameState';
 import type { ArenaTheme } from './arenaThemes';
 
 interface ArenaComponentProps {
@@ -16,18 +17,24 @@ interface ArenaComponentProps {
 }
 
 function ArenaInner({ theme }: ArenaComponentProps) {
-  const onArenaReady = useArenaReady();
+  const phase = useGameStore((s) => s.phase);
+  const setPhase = useGameStore((s) => s.setPhase);
 
-  // Signal that the arena has loaded
+  // Arena loaded → start intro (Glambot circles mech, visor power-on), then countdown
   useEffect(() => {
-    onArenaReady();
-  }, [onArenaReady]);
+    if (phase === 'arenaLoading') {
+      setPhase('intro');
+    }
+  }, [phase, setPhase]);
 
   return (
     <group>
       <ArenaEnvironment skyboxPath={theme.skybox} fogColor={theme.fog.color} />
       <ArenaPlatform edgeColor={theme.particleColor} />
       <ArenaLighting theme={theme} />
+      {(phase === 'playing' || phase === 'countdown' || phase === 'roundEnd') && (
+        <EnemyRimLight />
+      )}
       <ArenaEffects theme={theme} />
       <ArenaProps accentColor={theme.particleColor} />
     </group>

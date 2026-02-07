@@ -8,7 +8,7 @@
 import { useRef, useMemo } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
-import { useCVContext } from '../cv/CVProvider';
+import { cvBridge } from '../cv/cvBridge';
 import { useGameStore } from '../game/GameState';
 import { fireSwing } from '../combat/SwingEvent';
 import { updateSwordTransform } from '../combat/SwordState';
@@ -92,7 +92,9 @@ const _tRHand = new THREE.Vector3();
 export function MechaArms() {
   const { camera } = useThree();
   const phase = useGameStore((s) => s.phase);
-  const { cvEnabled, cvInputRef, worldLandmarksRef } = useCVContext();
+  const cvEnabled = cvBridge.cvEnabled;
+  const cvInputRef = cvBridge.cvInputRef;
+  const worldLandmarksRef = cvBridge.worldLandmarksRef;
 
   // Build detailed geometry once
   const upperArm = useMemo(() => makeUpperArm(), []);

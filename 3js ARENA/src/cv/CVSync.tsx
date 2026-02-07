@@ -6,7 +6,7 @@
 // =============================================================================
 
 import { useFrame } from '@react-three/fiber';
-import { useCVContext } from './CVProvider';
+import { cvBridge } from './cvBridge';
 import { poseTracker } from './PoseTracker';
 
 /**
@@ -15,10 +15,13 @@ import { poseTracker } from './PoseTracker';
  * No React state, no re-renders, zero latency.
  */
 export function CVSync() {
-  const { cvEnabled, cvInputRef, worldLandmarksRef, mapperRef } = useCVContext();
+  const cvEnabled = cvBridge.cvEnabled;
+  const cvInputRef = cvBridge.cvInputRef;
+  const worldLandmarksRef = cvBridge.worldLandmarksRef;
+  const mapperRef = cvBridge.mapperRef;
 
   useFrame(() => {
-    if (!cvEnabled) return;
+    if (!cvEnabled || !mapperRef) return;
 
     const data = poseTracker.detect();
     if (data) {

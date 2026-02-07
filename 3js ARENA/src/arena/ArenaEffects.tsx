@@ -1,11 +1,13 @@
 // =============================================================================
 // ArenaEffects.tsx — Fog, ambient particles, post-processing
+// Bloom intensity spikes during countdown for impact; MotionBlur not in package.
 // =============================================================================
 
 import { useRef, useMemo } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
+import { useGameStore } from '../game/GameState';
 import type { ArenaTheme } from './arenaThemes';
 
 interface ArenaEffectsProps {
@@ -112,15 +114,20 @@ function FogSetup({
 }
 
 // ---------------------------------------------------------------------------
-// Post-processing: Bloom + Vignette
+// Post-processing: Bloom + Vignette (Bloom spikes during intro/countdown)
 // ---------------------------------------------------------------------------
 
 function PostProcessing() {
+  const phase = useGameStore((s) => s.phase);
+  const isIntroOrCountdown = phase === 'intro' || phase === 'countdown';
+  const bloomIntensity = isIntroOrCountdown ? 1.5 : 0.7;
+  const luminanceThreshold = isIntroOrCountdown ? 1 : 0.4;
+
   return (
     <EffectComposer>
       <Bloom
-        intensity={0.4}
-        luminanceThreshold={0.6}
+        intensity={bloomIntensity}
+        luminanceThreshold={luminanceThreshold}
         luminanceSmoothing={0.9}
         mipmapBlur
       />

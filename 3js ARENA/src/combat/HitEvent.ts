@@ -8,8 +8,10 @@ import type * as THREE from 'three';
 export interface HitEventData {
   /** World position of the hit impact */
   point: THREE.Vector3;
-  /** Damage dealt */
+  /** Damage dealt (effective after block reduction) */
   amount: number;
+  /** Whether the hit was blocked */
+  isBlocked?: boolean;
 }
 
 type HitCallback = (data: HitEventData) => void;

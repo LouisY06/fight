@@ -1,6 +1,6 @@
 // =============================================================================
 // BotOpponent.tsx — AI bot for local practice: moves toward player, attacks
-// Uses SimpleCharacterModel (procedural, no GLB). Can deal damage to the player.
+// Uses AnimatedAvatarModel (biped_robot.glb) with walk + sword animations.
 // =============================================================================
 
 import { useRef, useState, useEffect } from 'react';
@@ -11,7 +11,7 @@ import { DeathEffect } from './DeathEffect';
 import { useGameStore } from '../game/GameState';
 import { GAME_CONFIG } from '../game/GameConfig';
 import { OpponentHitbox } from './OpponentHitbox';
-import { SimpleCharacterModel } from './SimpleCharacterModel';
+import { MechaEntity } from './MechaEntity';
 import { Weapon } from './Weapon';
 import { setBotSwordState } from '../combat/OpponentSwordState';
 
@@ -148,13 +148,8 @@ export function BotOpponent({ color = '#ff4444' }: BotOpponentProps) {
             <RigidBody type="kinematicPosition" colliders={false}>
               <CapsuleCollider args={[0.5, 0.3]} position={[0, 1, 0]} />
 
-              {/* Procedural character model (no GLB) */}
-              <SimpleCharacterModel
-                color={color}
-                targetHeight={2}
-                isWalkingRef={isMovingRef}
-                isSwinging={isSwinging || swingProgressRef.current < 0.9}
-              />
+              {/* Procedural mecha (no GLB) */}
+              <MechaEntity color={color} />
 
               <OpponentHitbox />
             </RigidBody>

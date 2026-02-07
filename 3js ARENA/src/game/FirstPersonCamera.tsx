@@ -9,7 +9,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from './GameState';
 import { GAME_CONFIG } from './GameConfig';
-import { useCVContext } from '../cv/CVProvider';
+import { cvBridge } from '../cv/cvBridge';
 import {
   useScreenShakeStore,
   computeShakeOffset,
@@ -27,13 +27,15 @@ export function FirstPersonCamera() {
   const phase = useGameStore((s) => s.phase);
   const playerSlot = useGameStore((s) => s.playerSlot);
   const isMultiplayer = useGameStore((s) => s.isMultiplayer);
-  const { cvEnabled, cvInputRef, onCalibrate } = useCVContext();
+  const cvEnabled = cvBridge.cvEnabled;
+  const cvInputRef = cvBridge.cvInputRef;
 
   const initialized = useRef(false);
   const keys = useRef<Set<string>>(new Set());
   const euler = useRef(new THREE.Euler(0, 0, 0, 'YXZ'));
   const isLocked = useRef(false);
-  
+  const prevPhaseRef = useRef(useGameStore.getState().phase);
+
   // Jump physics
   const verticalVelocity = useRef(0);
   const isGrounded = useRef(true);
@@ -49,6 +51,7 @@ export function FirstPersonCamera() {
   const facingYaw = isP2 ? 0 : Math.PI;
 
   const spawnPos = useRef(new THREE.Vector3(0, EYE_HEIGHT, spawnZ));
+  const walkBobPhase = useRef(0);
 
   // Re-usable objects to avoid per-frame allocation
   const _forward = new THREE.Vector3();
@@ -81,11 +84,11 @@ export function FirstPersonCamera() {
 
   // ---- Reset camera facing on calibrate ----
   useEffect(() => {
-    const unsub = onCalibrate(() => {
+    const unsub = cvBridge.onCalibrate(() => {
       euler.current.set(0, facingYaw, 0);
     });
     return unsub;
-  }, [onCalibrate, facingYaw]);
+  }, [facingYaw]);
 
   // ---- Pointer lock for mouse look (keyboard mode) ----
   useEffect(() => {
@@ -97,6 +100,18 @@ export function FirstPersonCamera() {
         canvas.requestPointerLock();
       }
     };
+
+    // Auto-request pointer lock when round starts so player can move/look without clicking
+    const unsubPhase = useGameStore.subscribe(() => {
+      const next = useGameStore.getState().phase;
+      if (prevPhaseRef.current !== 'playing' && next === 'playing') {
+        const el = gl.domElement;
+        if (document.pointerLockElement !== el) {
+          setTimeout(() => el.requestPointerLock(), 100);
+        }
+      }
+      prevPhaseRef.current = next;
+    });
 
     const onLockChange = () => {
       isLocked.current = document.pointerLockElement === canvas;
@@ -117,6 +132,7 @@ export function FirstPersonCamera() {
     document.addEventListener('mousemove', onMouseMove);
 
     return () => {
+      unsubPhase();
       canvas.removeEventListener('click', onClick);
       document.removeEventListener('pointerlockchange', onLockChange);
       document.removeEventListener('mousemove', onMouseMove);
@@ -125,6 +141,12 @@ export function FirstPersonCamera() {
 
   // ---- Per-frame update ----
   useFrame((_, delta) => {
+    // Intro: camera driven by IntroSequencer (orbit + Power On)
+    if (phase === 'intro') {
+      initialized.current = false; // so countdown will re-apply spawn position
+      return;
+    }
+
     const isGameplay =
       phase === 'playing' ||
       phase === 'countdown' ||
@@ -169,10 +191,17 @@ export function FirstPersonCamera() {
       if (k.has('KeyD')) move.add(_right);
       if (k.has('KeyA')) move.sub(_right);
 
-      if (move.lengthSq() > 0) {
+      const isMoving = move.lengthSq() > 0;
+      if (isMoving) {
         move.normalize().multiplyScalar(MOVE_SPEED * delta);
         camera.position.add(move);
       }
+      // Head bob when moving (subtle vertical + lateral)
+      walkBobPhase.current = isMoving ? walkBobPhase.current + delta * 12 : walkBobPhase.current * 0.9;
+      const bob = Math.sin(walkBobPhase.current) * 0.015;
+      const bobLateral = Math.sin(walkBobPhase.current * 2) * 0.008;
+      camera.position.y += bob;
+      camera.position.addScaledVector(_right, bobLateral);
 
       // ---- Jump Physics ----
       // Check if on ground

@@ -12,6 +12,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from '../game/GameState';
 import { GAME_CONFIG } from '../game/GameConfig';
+import { cvBridge } from '../cv/cvBridge';
 import { swordHilt, swordTip, swordSpeed, keyboardSwingActive } from './SwordState';
 import { botSwordHilt, botSwordTip, botSwordActive } from './OpponentSwordState';
 import { fireHitEvent } from './HitEvent';
@@ -101,6 +102,7 @@ function closestDistSegmentSegment(
 
 export function MeleeCombat() {
   const { camera, scene } = useThree();
+  const cvEnabled = cvBridge.cvEnabled;
   const lastHitTime = useRef(0);
 
   useFrame(() => {
@@ -109,8 +111,11 @@ export function MeleeCombat() {
 
     const now = Date.now();
 
-    // Player sword vs opponents
-    const isActive = keyboardSwingActive || swordSpeed > MIN_SWING_SPEED;
+    // Player sword vs opponents — only active when swinging, not when running into them
+    // Keyboard mode: require click (keyboardSwingActive)
+    // CV mode: sword speed from arm swing (swordSpeed)
+    const isActive =
+      keyboardSwingActive || (cvEnabled && swordSpeed > MIN_SWING_SPEED);
     if (isActive && now - lastHitTime.current >= GAME_CONFIG.attackCooldownMs) {
       // Check against all opponents
     scene.traverse((obj) => {
@@ -139,13 +144,18 @@ export function MeleeCombat() {
 
         _hitPoint.addVectors(_closestOnSword, _closestOnCapsule).multiplyScalar(0.5);
 
-        const { playerSlot, isMultiplayer, dealDamage } = useGameStore.getState();
+        const { playerSlot, isMultiplayer, dealDamage, player1, player2 } = useGameStore.getState();
         const opponentSlot: 'player1' | 'player2' =
           playerSlot === 'player2' ? 'player1' : 'player2';
         const amount = GAME_CONFIG.damage.swordSlash;
+        const opponent = opponentSlot === 'player1' ? player1 : player2;
+        const isBlocked = opponent.isBlocking;
+        const effectiveAmount = isBlocked
+          ? amount * (1 - GAME_CONFIG.blockDamageReduction)
+          : amount;
 
         dealDamage(opponentSlot, amount);
-        fireHitEvent({ point: _hitPoint.clone(), amount });
+        fireHitEvent({ point: _hitPoint.clone(), amount: effectiveAmount, isBlocked });
         useScreenShakeStore.getState().trigger(0.25, 120); // attack landed feedback
 
         if (isMultiplayer) {
@@ -179,9 +189,14 @@ export function MeleeCombat() {
         lastHitTime.current = now;
         _hitPoint.addVectors(_closestOnSword, _closestOnCapsule).multiplyScalar(0.5);
 
-        const { dealDamage } = useGameStore.getState();
-        dealDamage('player1', GAME_CONFIG.damage.swordSlash);
-        fireHitEvent({ point: _hitPoint.clone(), amount: GAME_CONFIG.damage.swordSlash });
+        const { player1, dealDamage } = useGameStore.getState();
+        const isBlocked = player1.isBlocking;
+        const amount = GAME_CONFIG.damage.swordSlash;
+        const effectiveAmount = isBlocked
+          ? amount * (1 - GAME_CONFIG.blockDamageReduction)
+          : amount;
+        dealDamage('player1', amount);
+        fireHitEvent({ point: _hitPoint.clone(), amount: effectiveAmount, isBlocked });
         useScreenShakeStore.getState().trigger(0.5, 200);
       }
     }

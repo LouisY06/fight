@@ -8,7 +8,7 @@ import { useRef, useEffect, useState } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from '../game/GameState';
-import { useCVContext } from '../cv/CVProvider';
+import { cvBridge } from '../cv/cvBridge';
 import { fireSwing } from '../combat/SwingEvent';
 import { updateSwordTransform, setKeyboardSwingActive } from '../combat/SwordState';
 
@@ -21,7 +21,8 @@ export function ViewmodelSword() {
   const { camera } = useThree();
   const groupRef = useRef<THREE.Group>(null!);
   const phase = useGameStore((s) => s.phase);
-  const { cvEnabled, cvInputRef } = useCVContext();
+  const cvEnabled = cvBridge.cvEnabled;
+  const cvInputRef = cvBridge.cvInputRef;
 
   // Keyboard mode swing state
   const swingTime = useRef(-1);

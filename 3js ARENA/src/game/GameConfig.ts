@@ -26,6 +26,8 @@ export const GAME_CONFIG = {
   attackCooldownMs: 500, // ms between hits from same attack (raised from 200)
   countdownDuration: 3, // seconds for pre-round countdown
   roundEndDelay: 3000, // ms to show round result before next round
+  /** Glambot intro: orbit around mech + visor power-on (seconds). */
+  introDuration: 3,
 } as const;
 
 export type WeaponType = 'sword' | 'gun' | 'knife';
