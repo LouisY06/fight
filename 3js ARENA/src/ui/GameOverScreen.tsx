@@ -10,15 +10,26 @@ export function GameOverScreen() {
   const phase = useGameStore((s) => s.phase);
   const player1 = useGameStore((s) => s.player1);
   const player2 = useGameStore((s) => s.player2);
+  const username = useGameStore((s) => s.username);
+  const opponentName = useGameStore((s) => s.opponentName);
+  const playerSlot = useGameStore((s) => s.playerSlot);
   const startGame = useGameStore((s) => s.startGame);
   const resetToMenu = useGameStore((s) => s.resetToMenu);
 
   if (phase !== 'gameOver') return null;
 
-  const winner =
-    player1.roundsWon > player2.roundsWon ? 'Player 1' : 'Player 2';
-  const winnerColor =
-    player1.roundsWon > player2.roundsWon ? '#4488ff' : '#ff4444';
+  // Determine winner name based on which player won more rounds
+  const player1Won = player1.roundsWon > player2.roundsWon;
+  let winnerName = player1Won ? 'Player 1' : 'Player 2';
+  
+  // Use actual names if available
+  if (playerSlot === 'player1') {
+    winnerName = player1Won ? username : opponentName;
+  } else if (playerSlot === 'player2') {
+    winnerName = player1Won ? opponentName : username;
+  }
+  
+  const winnerColor = player1Won ? '#4488ff' : '#ff4444';
 
   const handleRematch = () => {
     const theme = randomPick(ARENA_THEMES);
@@ -52,7 +63,7 @@ export function GameOverScreen() {
           marginBottom: '8px',
         }}
       >
-        {winner} WINS!
+        {winnerName} WINS!
       </h2>
 
       <div

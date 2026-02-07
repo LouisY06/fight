@@ -50,9 +50,12 @@ export function WebcamView() {
     phase === 'playing' ||
     phase === 'countdown' ||
     phase === 'paused' ||
-    phase === 'roundEnd';
+    phase === 'roundEnd' ||
+    phase === 'gameOver';
 
   if (!cvEnabled || !showHUD) return null;
+
+  console.log('[WebcamView] Rendering - cvEnabled:', cvEnabled, 'isTracking:', isTracking, 'phase:', phase);
 
   return (
     <div
@@ -61,7 +64,7 @@ export function WebcamView() {
         bottom: '16px',
         left: '16px',
         width: `${PIP_WIDTH}px`,
-        zIndex: 60,
+        zIndex: 200, // High z-index to stay visible above game elements but below pause menu (250)
         pointerEvents: 'auto',
       }}
     >

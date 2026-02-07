@@ -28,10 +28,10 @@ export function Player({ playerId, input, color, spawnPosition }: PlayerProps) {
   const [deathPosition, setDeathPosition] = useState<[number, number, number]>([0, 0, 0]);
   const previousHealthRef = useRef(playerState.health);
 
-  // Detect when player dies
+  // Detect when player dies or respawns
   useEffect(() => {
-    if (previousHealthRef.current > 0 && playerState.health <= 0) {
-      // Player just died
+    // Check if player just died
+    if (playerState.health <= 0 && !isDead) {
       setIsDead(true);
       if (groupRef.current) {
         setDeathPosition([
@@ -40,12 +40,20 @@ export function Player({ playerId, input, color, spawnPosition }: PlayerProps) {
           groupRef.current.position.z,
         ]);
       }
-    } else if (playerState.health > 0 && isDead) {
-      // Player respawned
+    }
+    // Check if player respawned (health restored)
+    else if (playerState.health > 0 && isDead) {
       setIsDead(false);
     }
     previousHealthRef.current = playerState.health;
   }, [playerState.health, isDead]);
+
+  // Reset death state when new round starts
+  useEffect(() => {
+    if (phase === 'countdown' && isDead) {
+      setIsDead(false);
+    }
+  }, [phase, isDead]);
 
   // Move player based on input during gameplay
   useFrame(() => {

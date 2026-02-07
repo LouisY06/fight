@@ -27,10 +27,10 @@ export function NetworkOpponent({ color = '#ff4444' }: NetworkOpponentProps) {
   const [deathPosition, setDeathPosition] = useState<[number, number, number]>([0, 0, 0]);
   const previousHealthRef = useRef(player2.health);
 
-  // Detect when opponent dies
+  // Detect when opponent dies or respawns
   useEffect(() => {
-    if (previousHealthRef.current > 0 && player2.health <= 0) {
-      // Opponent just died
+    // Check if opponent just died
+    if (player2.health <= 0 && !isDead) {
       setIsDead(true);
       if (groupRef.current) {
         setDeathPosition([
@@ -39,12 +39,20 @@ export function NetworkOpponent({ color = '#ff4444' }: NetworkOpponentProps) {
           groupRef.current.position.z,
         ]);
       }
-    } else if (player2.health > 0 && isDead) {
-      // Opponent respawned
+    }
+    // Check if opponent respawned (health restored)
+    else if (player2.health > 0 && isDead) {
       setIsDead(false);
     }
     previousHealthRef.current = player2.health;
   }, [player2.health, isDead]);
+
+  // Reset death state when new round starts
+  useEffect(() => {
+    if (phase === 'countdown' && isDead) {
+      setIsDead(false);
+    }
+  }, [phase, isDead]);
 
   // Smoothly interpolate opponent position/rotation
   // The opponent's position comes directly from network (their camera position).
