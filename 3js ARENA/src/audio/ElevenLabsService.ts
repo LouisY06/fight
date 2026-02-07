@@ -193,7 +193,7 @@ export const ElevenLabs = {
   },
 
   async announceKO(): Promise<void> {
-    const audio = await getOrGenerate('announce-ko', () => generateTTS('Knockout!'));
+    const audio = await getOrGenerate('announce-ko', () => generateTTS('Kay, O!'));
     playVoice(audio, Priority.CRITICAL, 1.0);
   },
 
@@ -276,7 +276,7 @@ export const ElevenLabs = {
     const lines: [string, string][] = [
       ['announce-round-1', 'Round One!'],
       ['announce-fight', 'Fight!'],
-      ['announce-ko', 'Knockout!'],
+      ['announce-ko', 'Kay, O!'],
       ['announce-round-2', 'Round Two!'],
       ['announce-round-3', 'Round Three!'],
       ['announce-draw', 'Draw!'],
