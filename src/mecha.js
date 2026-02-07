@@ -68,14 +68,14 @@ const DEPTH_SCALE = 5.0; // extra amplification for punching forward
 
 /**
  * Get the delta of a landmark relative to its shoulder in MediaPipe space.
- * MediaPipe: x-right(subject), y-down, z-toward-camera
- * We flip X for first-person mirror and negate Y/Z for Three.js.
+ * MediaPipe: x-left(subject), y-down, z-toward-camera
+ * We swap left/right landmarks below, so X stays as-is.
  */
 function getDelta(lm, shoulderLm) {
   return new THREE.Vector3(
-    -(lm.x - shoulderLm.x) * ARM_SCALE,       // mirror X
-    -(lm.y - shoulderLm.y) * ARM_SCALE,        // flip Y (up)
-    -(lm.z - shoulderLm.z) * DEPTH_SCALE       // flip Z (forward = -Z)
+    -(lm.x - shoulderLm.x) * ARM_SCALE,         // X: flip side-to-side
+    -(lm.y - shoulderLm.y) * ARM_SCALE,         // flip Y (up)
+    (lm.z - shoulderLm.z) * DEPTH_SCALE           // Z: punch forward = extend forward
   );
 }
 
@@ -112,16 +112,17 @@ export function updateMecha(parts, worldLandmarks) {
   const wlLS = worldLandmarks[11]; // left shoulder
   const wlRS = worldLandmarks[12]; // right shoulder
 
-  // Fixed cockpit shoulder positions
   const lShoulder = LEFT_SHOULDER_ANCHOR.clone();
   const rShoulder = RIGHT_SHOULDER_ANCHOR.clone();
 
-  // Elbow, wrist, hand = anchor + delta from shoulder
+  // Screen LEFT arm ← subject's LEFT landmarks (11,13,15,19)
   const lElbow = lShoulder.clone().add(getDelta(worldLandmarks[13], wlLS));
-  const rElbow = rShoulder.clone().add(getDelta(worldLandmarks[14], wlRS));
   const lWrist = lShoulder.clone().add(getDelta(worldLandmarks[15], wlLS));
-  const rWrist = rShoulder.clone().add(getDelta(worldLandmarks[16], wlRS));
   const lHand  = lShoulder.clone().add(getDelta(worldLandmarks[19], wlLS));
+
+  // Screen RIGHT arm ← subject's RIGHT landmarks (12,14,16,20)
+  const rElbow = rShoulder.clone().add(getDelta(worldLandmarks[14], wlRS));
+  const rWrist = rShoulder.clone().add(getDelta(worldLandmarks[16], wlRS));
   const rHand  = rShoulder.clone().add(getDelta(worldLandmarks[20], wlRS));
 
   // Joints
