@@ -20,7 +20,7 @@ function MenuMech() {
   });
 
   return (
-    <group ref={groupRef} position={[0, 0, 0]} scale={0.9}>
+    <group ref={groupRef} position={[0, -1.0, 0]} scale={0.9}>
       <MechaEntity
         color={accentColor}
         scaleHead={segmentScales.head}
@@ -55,8 +55,8 @@ export function MenuCharacterPreview() {
     >
       <Canvas
         camera={{
-          position: [3.2, 1.1, 3.2],
-          fov: 38,
+          position: [0, 0.6, 4.2],
+          fov: 40,
           near: 0.1,
           far: 100,
         }}
@@ -68,7 +68,6 @@ export function MenuCharacterPreview() {
         style={{ width: '100%', height: '100%' }}
         dpr={[1, 2]}
       >
-        <color attach="background" args={['transparent']} />
         <MenuLighting />
         <MenuMech />
       </Canvas>
