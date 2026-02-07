@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 
-// Materials
+// ── Materials ──────────────────────────────────────────────
+
 const bodyMat = new THREE.MeshStandardMaterial({
   color: 0x333340,
   metalness: 0.85,
@@ -35,57 +36,46 @@ const gunMat = new THREE.MeshStandardMaterial({
   roughness: 0.2,
 });
 
+// Opponent uses orange/yellow accent instead of red/cyan
+const opponentBodyMat = new THREE.MeshStandardMaterial({
+  color: 0x3a3332,
+  metalness: 0.85,
+  roughness: 0.25,
+});
+
+const opponentAccentMat = new THREE.MeshStandardMaterial({
+  color: 0xff6600,
+  metalness: 0.7,
+  roughness: 0.3,
+  emissive: 0xff6600,
+  emissiveIntensity: 0.3,
+});
+
+const opponentEyeMat = new THREE.MeshStandardMaterial({
+  color: 0xff3300,
+  emissive: 0xff3300,
+  emissiveIntensity: 2.0,
+});
+
+// ── Helpers ────────────────────────────────────────────────
+
 function makePart(geo, mat) {
-  const mesh = new THREE.Mesh(geo, mat);
-  return mesh;
+  return new THREE.Mesh(geo, mat);
 }
 
-/**
- * Creates the mecha as a collection of independently positionable body parts.
- * Each part is placed/oriented per-frame based on MediaPipe landmarks.
- */
-export function createMecha(scene) {
-  const parts = {};
+function makeWeapons(isOpponent) {
+  const accent = isOpponent ? opponentAccentMat : accentMat;
+  const eye = isOpponent ? opponentEyeMat : eyeMat;
 
-  // Torso (chest + abdomen)
-  parts.torso = makePart(new THREE.BoxGeometry(0.7, 0.85, 0.35), bodyMat);
-  // Shoulder pads
-  parts.shoulderL = makePart(new THREE.BoxGeometry(0.3, 0.15, 0.3), accentMat);
-  parts.shoulderR = makePart(new THREE.BoxGeometry(0.3, 0.15, 0.3), accentMat);
-  // Head
-  parts.head = makePart(new THREE.BoxGeometry(0.3, 0.3, 0.3), bodyMat);
-  // Eyes
-  parts.eyeL = makePart(new THREE.SphereGeometry(0.04, 8, 8), eyeMat);
-  parts.eyeR = makePart(new THREE.SphereGeometry(0.04, 8, 8), eyeMat);
-  // Upper arms
-  parts.upperArmL = makePart(new THREE.CylinderGeometry(0.08, 0.07, 1, 8), bodyMat);
-  parts.upperArmR = makePart(new THREE.CylinderGeometry(0.08, 0.07, 1, 8), bodyMat);
-  // Lower arms
-  parts.lowerArmL = makePart(new THREE.CylinderGeometry(0.07, 0.06, 1, 8), bodyMat);
-  parts.lowerArmR = makePart(new THREE.CylinderGeometry(0.07, 0.06, 1, 8), bodyMat);
-  // Hands
-  parts.handL = makePart(new THREE.BoxGeometry(0.1, 0.12, 0.08), accentMat);
-  parts.handR = makePart(new THREE.BoxGeometry(0.1, 0.12, 0.08), accentMat);
-  // Hips
-  parts.hips = makePart(new THREE.BoxGeometry(0.55, 0.25, 0.3), bodyMat);
-  // Upper legs
-  parts.upperLegL = makePart(new THREE.CylinderGeometry(0.09, 0.08, 1, 8), bodyMat);
-  parts.upperLegR = makePart(new THREE.CylinderGeometry(0.09, 0.08, 1, 8), bodyMat);
-  // Lower legs
-  parts.lowerLegL = makePart(new THREE.CylinderGeometry(0.08, 0.06, 1, 8), bodyMat);
-  parts.lowerLegR = makePart(new THREE.CylinderGeometry(0.08, 0.06, 1, 8), bodyMat);
-
-  // Weapons (hidden by default)
   // Sword
   const swordGroup = new THREE.Group();
   const hilt = makePart(new THREE.CylinderGeometry(0.025, 0.025, 0.2, 8), gunMat);
   const blade = makePart(new THREE.BoxGeometry(0.04, 0.9, 0.01), swordBladeMat);
   blade.position.y = 0.55;
-  const guard = makePart(new THREE.BoxGeometry(0.15, 0.03, 0.03), accentMat);
+  const guard = makePart(new THREE.BoxGeometry(0.15, 0.03, 0.03), accent);
   guard.position.y = 0.1;
   swordGroup.add(hilt, blade, guard);
   swordGroup.visible = false;
-  parts.sword = swordGroup;
 
   // Gun
   const gunGroup = new THREE.Group();
@@ -93,13 +83,45 @@ export function createMecha(scene) {
   const barrel = makePart(new THREE.CylinderGeometry(0.02, 0.02, 0.35, 8), gunMat);
   barrel.rotation.x = Math.PI / 2;
   barrel.position.z = -0.3;
-  const muzzle = makePart(new THREE.SphereGeometry(0.025, 8, 8), eyeMat);
+  const muzzle = makePart(new THREE.SphereGeometry(0.025, 8, 8), eye);
   muzzle.position.z = -0.47;
   gunGroup.add(gunBody, barrel, muzzle);
   gunGroup.visible = false;
-  parts.gun = gunGroup;
 
-  // Add all to scene
+  return { sword: swordGroup, gun: gunGroup };
+}
+
+// ── Mecha Creation ─────────────────────────────────────────
+
+function buildMechaParts(scene, isOpponent) {
+  const body = isOpponent ? opponentBodyMat : bodyMat;
+  const accent = isOpponent ? opponentAccentMat : accentMat;
+  const eye = isOpponent ? opponentEyeMat : eyeMat;
+
+  const parts = {};
+
+  parts.torso = makePart(new THREE.BoxGeometry(0.7, 0.85, 0.35), body);
+  parts.shoulderL = makePart(new THREE.BoxGeometry(0.3, 0.15, 0.3), accent);
+  parts.shoulderR = makePart(new THREE.BoxGeometry(0.3, 0.15, 0.3), accent);
+  parts.head = makePart(new THREE.BoxGeometry(0.3, 0.3, 0.3), body);
+  parts.eyeL = makePart(new THREE.SphereGeometry(0.04, 8, 8), eye);
+  parts.eyeR = makePart(new THREE.SphereGeometry(0.04, 8, 8), eye);
+  parts.upperArmL = makePart(new THREE.CylinderGeometry(0.08, 0.07, 1, 8), body);
+  parts.upperArmR = makePart(new THREE.CylinderGeometry(0.08, 0.07, 1, 8), body);
+  parts.lowerArmL = makePart(new THREE.CylinderGeometry(0.07, 0.06, 1, 8), body);
+  parts.lowerArmR = makePart(new THREE.CylinderGeometry(0.07, 0.06, 1, 8), body);
+  parts.handL = makePart(new THREE.BoxGeometry(0.1, 0.12, 0.08), accent);
+  parts.handR = makePart(new THREE.BoxGeometry(0.1, 0.12, 0.08), accent);
+  parts.hips = makePart(new THREE.BoxGeometry(0.55, 0.25, 0.3), body);
+  parts.upperLegL = makePart(new THREE.CylinderGeometry(0.09, 0.08, 1, 8), body);
+  parts.upperLegR = makePart(new THREE.CylinderGeometry(0.09, 0.08, 1, 8), body);
+  parts.lowerLegL = makePart(new THREE.CylinderGeometry(0.08, 0.06, 1, 8), body);
+  parts.lowerLegR = makePart(new THREE.CylinderGeometry(0.08, 0.06, 1, 8), body);
+
+  const weapons = makeWeapons(isOpponent);
+  parts.sword = weapons.sword;
+  parts.gun = weapons.gun;
+
   for (const part of Object.values(parts)) {
     scene.add(part);
   }
@@ -107,7 +129,53 @@ export function createMecha(scene) {
   return parts;
 }
 
-// MediaPipe landmark indices
+/**
+ * Create the local player's mecha (first-person — only arms/hands/weapon visible).
+ */
+export function createLocalMecha(scene) {
+  const parts = buildMechaParts(scene, false);
+  setFirstPerson(parts, true);
+  return parts;
+}
+
+/**
+ * Create the opponent's mecha (full body visible).
+ */
+export function createOpponentMecha(scene) {
+  const parts = buildMechaParts(scene, true);
+  // Start hidden until opponent connects
+  setVisible(parts, false);
+  return parts;
+}
+
+// Hide body parts not visible in first-person (head, torso, hips, legs)
+const FIRST_PERSON_HIDDEN = [
+  'torso', 'head', 'eyeL', 'eyeR', 'shoulderL', 'shoulderR',
+  'hips', 'upperLegL', 'upperLegR', 'lowerLegL', 'lowerLegR',
+];
+
+function setFirstPerson(parts, fp) {
+  for (const name of FIRST_PERSON_HIDDEN) {
+    if (parts[name]) parts[name].visible = !fp;
+  }
+}
+
+function setVisible(parts, visible) {
+  for (const part of Object.values(parts)) {
+    part.visible = visible;
+  }
+}
+
+export function showOpponent(parts) {
+  setVisible(parts, true);
+}
+
+export function hideOpponent(parts) {
+  setVisible(parts, false);
+}
+
+// ── Landmark Mapping ───────────────────────────────────────
+
 const LM = {
   NOSE: 0,
   LEFT_SHOULDER: 11,
@@ -126,100 +194,116 @@ const LM = {
   RIGHT_INDEX: 20,
 };
 
-const SCALE = 3.5; // Scale landmarks to scene units
+export { LM };
+
+const SCALE = 3.5;
 const _up = new THREE.Vector3(0, 1, 0);
-const _tmpV = new THREE.Vector3();
 const _tmpQ = new THREE.Quaternion();
 
-function toScene(lm) {
-  // MediaPipe world landmarks: X right, Y down, Z toward camera
-  // Three.js: X right, Y up, Z toward viewer
+/**
+ * Convert a MediaPipe world landmark to scene coordinates.
+ * @param {Object} lm - {x, y, z}
+ * @param {THREE.Vector3} offset - world-space offset for this player
+ * @param {boolean} mirror - if true, flip X (for opponent facing us)
+ */
+export function toScene(lm, offset = _zeroVec, mirror = false) {
   return new THREE.Vector3(
-    lm.x * SCALE,
-    -lm.y * SCALE + 1.5, // flip Y, offset so mecha stands on grid
-    -lm.z * SCALE
+    (mirror ? -lm.x : lm.x) * SCALE + offset.x,
+    -lm.y * SCALE + 1.5 + offset.y,
+    -lm.z * SCALE + offset.z
   );
 }
 
-function orientBetween(mesh, a, b) {
-  const start = toScene(a);
-  const end = toScene(b);
-  const mid = start.clone().add(end).multiplyScalar(0.5);
-  mesh.position.copy(mid);
+const _zeroVec = new THREE.Vector3(0, 0, 0);
+
+function orientBetween(mesh, a, b, offset, mirror) {
+  const start = toScene(a, offset, mirror);
+  const end = toScene(b, offset, mirror);
+  const midPt = start.clone().add(end).multiplyScalar(0.5);
+  mesh.position.copy(midPt);
 
   const dir = end.clone().sub(start);
   const len = dir.length();
-  // Scale the cylinder/box along Y to match limb length
   mesh.scale.y = Math.max(len, 0.01);
 
   dir.normalize();
   _tmpQ.setFromUnitVectors(_up, dir);
-  mesh.quaternion.slerp(_tmpQ, 0.4); // Smoothing
+  mesh.quaternion.slerp(_tmpQ, 0.4);
 }
 
-function positionAt(mesh, lm) {
-  const p = toScene(lm);
+function positionAt(mesh, lm, offset, mirror) {
+  const p = toScene(lm, offset, mirror);
   mesh.position.lerp(p, 0.4);
 }
 
+function mid(a, b) {
+  return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, z: (a.z + b.z) / 2 };
+}
+
+// ── Update Functions ───────────────────────────────────────
+
 /**
  * Update mecha body parts from world landmarks.
- * @param {Object} parts - Mecha parts from createMecha()
- * @param {Array} wl - MediaPipe worldLandmarks array (33 points)
- * @param {string} weapon - Current weapon: 'none' | 'sword' | 'gun'
+ * @param {Object} parts - Mecha parts
+ * @param {Array} wl - worldLandmarks (33 points)
+ * @param {string} weapon - 'none' | 'sword' | 'gun'
+ * @param {THREE.Vector3} offset - world offset for this player
+ * @param {boolean} mirror - flip X for opponent
  */
-export function updateMecha(parts, wl, weapon) {
+export function updateMecha(parts, wl, weapon, offset = _zeroVec, mirror = false) {
   if (!wl || wl.length < 33) return;
 
-  // Torso: between shoulders midpoint and hips midpoint
+  const o = offset;
+  const m = mirror;
+
+  // Torso
   const shoulderMid = mid(wl[LM.LEFT_SHOULDER], wl[LM.RIGHT_SHOULDER]);
   const hipMid = mid(wl[LM.LEFT_HIP], wl[LM.RIGHT_HIP]);
-  orientBetween(parts.torso, hipMid, shoulderMid);
+  orientBetween(parts.torso, hipMid, shoulderMid, o, m);
 
   // Hips
-  orientBetween(parts.hips, wl[LM.LEFT_HIP], wl[LM.RIGHT_HIP]);
-  parts.hips.scale.y = 1; // Don't stretch hips
+  orientBetween(parts.hips, wl[LM.LEFT_HIP], wl[LM.RIGHT_HIP], o, m);
+  parts.hips.scale.y = 1;
 
-  // Head: at nose, slightly above
-  const headPos = toScene(wl[LM.NOSE]);
+  // Head
+  const headPos = toScene(wl[LM.NOSE], o, m);
   headPos.y += 0.15;
   parts.head.position.lerp(headPos, 0.4);
-  // Eyes on the head
   parts.eyeL.position.copy(parts.head.position);
-  parts.eyeL.position.x -= 0.08;
-  parts.eyeL.position.z += 0.16;
+  parts.eyeL.position.x -= mirror ? -0.08 : 0.08;
+  parts.eyeL.position.z += mirror ? -0.16 : 0.16;
   parts.eyeR.position.copy(parts.head.position);
-  parts.eyeR.position.x += 0.08;
-  parts.eyeR.position.z += 0.16;
+  parts.eyeR.position.x += mirror ? -0.08 : 0.08;
+  parts.eyeR.position.z += mirror ? -0.16 : 0.16;
 
   // Shoulder pads
-  positionAt(parts.shoulderL, wl[LM.LEFT_SHOULDER]);
+  positionAt(parts.shoulderL, wl[LM.LEFT_SHOULDER], o, m);
   parts.shoulderL.position.y += 0.1;
-  positionAt(parts.shoulderR, wl[LM.RIGHT_SHOULDER]);
+  positionAt(parts.shoulderR, wl[LM.RIGHT_SHOULDER], o, m);
   parts.shoulderR.position.y += 0.1;
 
   // Arms
-  orientBetween(parts.upperArmL, wl[LM.LEFT_SHOULDER], wl[LM.LEFT_ELBOW]);
-  orientBetween(parts.lowerArmL, wl[LM.LEFT_ELBOW], wl[LM.LEFT_WRIST]);
-  orientBetween(parts.upperArmR, wl[LM.RIGHT_SHOULDER], wl[LM.RIGHT_ELBOW]);
-  orientBetween(parts.lowerArmR, wl[LM.RIGHT_ELBOW], wl[LM.RIGHT_WRIST]);
+  orientBetween(parts.upperArmL, wl[LM.LEFT_SHOULDER], wl[LM.LEFT_ELBOW], o, m);
+  orientBetween(parts.lowerArmL, wl[LM.LEFT_ELBOW], wl[LM.LEFT_WRIST], o, m);
+  orientBetween(parts.upperArmR, wl[LM.RIGHT_SHOULDER], wl[LM.RIGHT_ELBOW], o, m);
+  orientBetween(parts.lowerArmR, wl[LM.RIGHT_ELBOW], wl[LM.RIGHT_WRIST], o, m);
 
   // Hands
-  positionAt(parts.handL, wl[LM.LEFT_WRIST]);
-  positionAt(parts.handR, wl[LM.RIGHT_WRIST]);
+  positionAt(parts.handL, wl[LM.LEFT_WRIST], o, m);
+  positionAt(parts.handR, wl[LM.RIGHT_WRIST], o, m);
 
   // Legs
-  orientBetween(parts.upperLegL, wl[LM.LEFT_HIP], wl[LM.LEFT_KNEE]);
-  orientBetween(parts.lowerLegL, wl[LM.LEFT_KNEE], wl[LM.LEFT_ANKLE]);
-  orientBetween(parts.upperLegR, wl[LM.RIGHT_HIP], wl[LM.RIGHT_KNEE]);
-  orientBetween(parts.lowerLegR, wl[LM.RIGHT_KNEE], wl[LM.RIGHT_ANKLE]);
+  orientBetween(parts.upperLegL, wl[LM.LEFT_HIP], wl[LM.LEFT_KNEE], o, m);
+  orientBetween(parts.lowerLegL, wl[LM.LEFT_KNEE], wl[LM.LEFT_ANKLE], o, m);
+  orientBetween(parts.upperLegR, wl[LM.RIGHT_HIP], wl[LM.RIGHT_KNEE], o, m);
+  orientBetween(parts.lowerLegR, wl[LM.RIGHT_KNEE], wl[LM.RIGHT_ANKLE], o, m);
 
-  // Weapon placement — attach to right hand
+  // Weapon placement
   parts.sword.visible = weapon === 'sword';
   parts.gun.visible = weapon === 'gun';
 
-  const rightHandPos = toScene(wl[LM.RIGHT_WRIST]);
-  const rightIndexPos = toScene(wl[LM.RIGHT_INDEX]);
+  const rightHandPos = toScene(wl[LM.RIGHT_WRIST], o, m);
+  const rightIndexPos = toScene(wl[LM.RIGHT_INDEX], o, m);
   const weaponDir = rightIndexPos.clone().sub(rightHandPos).normalize();
 
   if (weapon === 'sword') {
@@ -238,14 +322,18 @@ export function updateMecha(parts, wl, weapon) {
 /**
  * Get the weapon muzzle position and direction for raycasting.
  */
-export function getWeaponRay(parts, wl) {
+export function getWeaponRay(parts, wl, offset = _zeroVec, mirror = false) {
   if (!wl || wl.length < 33) return null;
-  const origin = toScene(wl[LM.RIGHT_WRIST]);
-  const target = toScene(wl[LM.RIGHT_INDEX]);
+  const origin = toScene(wl[LM.RIGHT_WRIST], offset, mirror);
+  const target = toScene(wl[LM.RIGHT_INDEX], offset, mirror);
   const dir = target.clone().sub(origin).normalize();
   return { origin, direction: dir };
 }
 
-function mid(a, b) {
-  return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, z: (a.z + b.z) / 2 };
+/**
+ * Get the head (camera) position from landmarks.
+ */
+export function getHeadPosition(wl, offset = _zeroVec, mirror = false) {
+  if (!wl || wl.length < 33) return null;
+  return toScene(wl[LM.NOSE], offset, mirror);
 }

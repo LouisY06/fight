@@ -1,18 +1,33 @@
+import * as THREE from 'three';
 import { createScene } from './scene.js';
-import { createMecha, updateMecha, getWeaponRay } from './mecha.js';
+import {
+  createLocalMecha,
+  createOpponentMecha,
+  updateMecha,
+  getWeaponRay,
+  getHeadPosition,
+  showOpponent,
+  hideOpponent,
+} from './mecha.js';
 import { initTracking, detectPose } from './tracking.js';
 import { checkOpenCV, detectWeaponColor, detectLED } from './vision.js';
 import { CombatSystem } from './combat.js';
+import { NetworkClient } from './network.js';
 
-// --- State ---
-let currentWeapon = 'none'; // 'none' | 'gun' | 'sword'
+// ── State ──────────────────────────────────────────────────
+
+let currentWeapon = 'none';
 let isFiring = false;
 let fireCooldown = 0;
-const FIRE_COOLDOWN = 0.3; // seconds between shots
+const FIRE_COOLDOWN = 0.3;
 let energy = 100;
 let lastPoseResult = null;
 
-// --- DOM refs ---
+// Opponent is placed 6 units in front, mirrored to face the player
+const OPPONENT_OFFSET = new THREE.Vector3(0, 0, -6);
+
+// ── DOM refs ───────────────────────────────────────────────
+
 const videoEl = document.getElementById('webcam');
 const webcamCanvas = document.getElementById('webcam-canvas');
 const webcamCtx = webcamCanvas.getContext('2d', { willReadFrequently: true });
@@ -24,14 +39,20 @@ const hudTarget = document.getElementById('hud-target');
 const hudEnergyFill = document.getElementById('hud-energy-fill');
 const killCountEl = document.getElementById('kill-count');
 
-// --- Init ---
+// ── Init ───────────────────────────────────────────────────
+
 async function init() {
   updateLoading(10, 'Setting up 3D scene...');
   const { scene, camera, renderer, composer } = createScene();
 
-  updateLoading(25, 'Building mecha...');
-  const mechaParts = createMecha(scene);
+  // Local mecha (first-person: only arms visible)
+  updateLoading(20, 'Building mecha...');
+  const localParts = createLocalMecha(scene);
 
+  // Opponent mecha (full body, hidden until connected)
+  const opponentParts = createOpponentMecha(scene);
+
+  // Pose tracking
   updateLoading(40, 'Loading pose tracker...');
   let trackingReady = false;
   try {
@@ -43,22 +64,43 @@ async function init() {
     hudStatus.style.color = '#f00';
   }
 
-  updateLoading(80, 'Initializing combat systems...');
+  // Combat system
+  updateLoading(65, 'Initializing combat systems...');
   const combat = new CombatSystem(scene);
-  // Spawn a few initial enemies
   combat.spawnEnemy();
   combat.spawnEnemy();
+
+  // Networking
+  updateLoading(80, 'Connecting to relay server...');
+  const network = new NetworkClient();
+  const networkConnected = await network.connect();
+
+  if (networkConnected) {
+    console.log(`Connected as Player ${network.playerId} (${network.side})`);
+  } else {
+    console.log('Running in solo mode (no relay server)');
+  }
+
+  network.onStatusChange = (status) => {
+    if (status === 'opponent_joined') {
+      showOpponent(opponentParts);
+    }
+    if (status === 'opponent_left') {
+      hideOpponent(opponentParts);
+    }
+  };
 
   updateLoading(100, 'SYSTEMS ONLINE');
   setTimeout(() => loadingEl.classList.add('done'), 500);
 
-  // Set webcam canvas size to match video
+  // Webcam canvas sizing
   videoEl.addEventListener('loadeddata', () => {
     webcamCanvas.width = videoEl.videoWidth;
     webcamCanvas.height = videoEl.videoHeight;
   });
 
-  // --- Keyboard fallbacks for testing without props ---
+  // ── Keyboard fallbacks ─────────────────────────────────
+
   document.addEventListener('keydown', (e) => {
     if (e.key === '1') currentWeapon = 'none';
     if (e.key === '2') currentWeapon = 'gun';
@@ -69,9 +111,16 @@ async function init() {
     }
   });
 
-  // --- Game loop ---
+  // ── Camera state for first-person ──────────────────────
+
+  const cameraTarget = new THREE.Vector3(0, 1.6, 0);
+  const cameraLookAt = new THREE.Vector3(0, 1.6, -6);
+
+  // ── Game loop ──────────────────────────────────────────
+
   let lastTime = performance.now();
   let visionFrameCounter = 0;
+  let networkSendCounter = 0;
 
   function gameLoop() {
     requestAnimationFrame(gameLoop);
@@ -79,12 +128,12 @@ async function init() {
     const dt = Math.min((now - lastTime) / 1000, 0.1);
     lastTime = now;
 
-    // 1. Draw webcam to canvas for vision processing
+    // 1. Draw webcam to canvas
     if (videoEl.readyState >= 2) {
       webcamCtx.drawImage(videoEl, 0, 0);
     }
 
-    // 2. Detect pose
+    // 2. Detect local pose
     if (trackingReady) {
       const poseResult = detectPose(videoEl);
       if (poseResult) {
@@ -92,21 +141,28 @@ async function init() {
       }
     }
 
-    // 3. Update mecha from pose
+    // 3. Update local mecha (first-person arms)
     if (lastPoseResult) {
-      updateMecha(mechaParts, lastPoseResult.worldLandmarks, currentWeapon);
+      updateMecha(localParts, lastPoseResult.worldLandmarks, currentWeapon);
 
-      // Draw landmarks on webcam canvas (debug overlay)
+      // First-person camera: follow head position
+      const headPos = getHeadPosition(lastPoseResult.worldLandmarks);
+      if (headPos) {
+        cameraTarget.copy(headPos);
+        cameraLookAt.set(headPos.x, headPos.y, headPos.z - 10);
+      }
+
+      // Draw landmarks on webcam canvas
       drawLandmarks(lastPoseResult.landmarks);
 
-      // 4. Vision detection (run every 5th frame for perf)
+      // 4. Vision detection (every 5th frame)
       visionFrameCounter++;
       if (visionFrameCounter % 5 === 0) {
         checkOpenCV();
 
         const detectedWeapon = detectWeaponColor(
           webcamCanvas,
-          lastPoseResult.landmarks[16], // right wrist (2D)
+          lastPoseResult.landmarks[16],
           webcamCanvas.width,
           webcamCanvas.height
         );
@@ -116,7 +172,7 @@ async function init() {
 
         const ledDetected = detectLED(
           webcamCanvas,
-          lastPoseResult.landmarks[20], // right index (2D)
+          lastPoseResult.landmarks[20],
           webcamCanvas.width,
           webcamCanvas.height
         );
@@ -125,15 +181,39 @@ async function init() {
           setTimeout(() => (isFiring = false), 100);
         }
       }
+
+      // 5. Send pose to opponent (every 3rd frame to save bandwidth)
+      networkSendCounter++;
+      if (networkSendCounter % 3 === 0 && networkConnected) {
+        network.sendPose(lastPoseResult.worldLandmarks, currentWeapon);
+      }
     }
 
-    // 5. Fire weapon
+    // 6. Update opponent mecha from network data
+    if (network.opponentPose) {
+      if (!opponentParts.torso.visible) {
+        showOpponent(opponentParts);
+      }
+      updateMecha(
+        opponentParts,
+        network.opponentPose,
+        network.opponentWeapon,
+        OPPONENT_OFFSET,
+        true // mirror so they face us
+      );
+    }
+
+    // 7. Smoothly move camera to target
+    camera.position.lerp(cameraTarget, 0.3);
+    camera.lookAt(cameraLookAt);
+
+    // 8. Fire weapon
     fireCooldown -= dt;
     if (isFiring && fireCooldown <= 0 && currentWeapon !== 'none' && energy > 0) {
       fireCooldown = FIRE_COOLDOWN;
       energy = Math.max(0, energy - 5);
 
-      const ray = getWeaponRay(mechaParts, lastPoseResult?.worldLandmarks);
+      const ray = getWeaponRay(localParts, lastPoseResult?.worldLandmarks);
       if (ray) {
         const hit = combat.fireWeapon(ray.origin, ray.direction, currentWeapon);
         if (hit) {
@@ -142,32 +222,48 @@ async function init() {
         }
       }
 
-      // Recoil flash
       triggerRecoil();
       // Camera shake
-      camera.position.z += 0.05;
-      setTimeout(() => (camera.position.z = 5), 80);
+      camera.position.z += 0.04;
     }
 
-    // 6. Recharge energy
+    // 9. Recharge energy
     energy = Math.min(100, energy + dt * 8);
 
-    // 7. Update combat (enemy spawning, animation, particles)
+    // 10. Update combat
     combat.update(dt);
 
-    // 8. Update HUD
+    // 11. Update HUD
     hudWeapon.textContent = currentWeapon === 'none' ? 'FISTS' : currentWeapon.toUpperCase();
     hudEnergyFill.style.width = energy + '%';
     killCountEl.textContent = combat.kills;
-    hudStatus.textContent = lastPoseResult ? 'TRACKING' : 'NO SIGNAL';
-    hudStatus.style.color = lastPoseResult ? '#0f0' : '#f00';
 
-    // 9. Render
+    // Status line
+    if (!trackingReady) {
+      hudStatus.textContent = 'NO CAMERA';
+      hudStatus.style.color = '#f00';
+    } else if (!lastPoseResult) {
+      hudStatus.textContent = 'NO SIGNAL';
+      hudStatus.style.color = '#f00';
+    } else if (network.opponentConnected) {
+      hudStatus.textContent = 'PVP ACTIVE';
+      hudStatus.style.color = '#0f0';
+    } else if (networkConnected) {
+      hudStatus.textContent = 'WAITING FOR OPPONENT';
+      hudStatus.style.color = '#ff0';
+    } else {
+      hudStatus.textContent = 'SOLO MODE';
+      hudStatus.style.color = '#0ff';
+    }
+
+    // 12. Render
     composer.render();
   }
 
   gameLoop();
 }
+
+// ── Helpers ────────────────────────────────────────────────
 
 function drawLandmarks(landmarks) {
   if (!landmarks) return;
@@ -193,7 +289,8 @@ function updateLoading(pct, msg) {
   document.getElementById('loading-text').textContent = msg;
 }
 
-// Launch
+// ── Launch ─────────────────────────────────────────────────
+
 init().catch((err) => {
   console.error('Failed to initialize Mecha-Mime:', err);
   document.getElementById('loading-text').textContent = 'ERROR: ' + err.message;
