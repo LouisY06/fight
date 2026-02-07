@@ -1,0 +1,131 @@
+// =============================================================================
+// ArenaEffects.tsx — Fog, ambient particles, post-processing
+// =============================================================================
+
+import { useRef, useMemo } from 'react';
+import { useFrame, useThree } from '@react-three/fiber';
+import * as THREE from 'three';
+import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
+import type { ArenaTheme } from './arenaThemes';
+
+interface ArenaEffectsProps {
+  theme: ArenaTheme;
+}
+
+export function ArenaEffects({ theme }: ArenaEffectsProps) {
+  return (
+    <>
+      <AmbientParticles color={theme.particleColor} />
+      <FogSetup
+        color={theme.fog.color}
+        near={theme.fog.near}
+        far={theme.fog.far}
+      />
+      <PostProcessing />
+    </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Ambient floating particles (dust / embers)
+// ---------------------------------------------------------------------------
+
+function AmbientParticles({ color, count = 500 }: { color: string; count?: number }) {
+  const meshRef = useRef<THREE.Points>(null!);
+
+  const { positions, velocities } = useMemo(() => {
+    const positions = new Float32Array(count * 3);
+    const velocities = new Float32Array(count * 3);
+    for (let i = 0; i < count; i++) {
+      positions[i * 3] = (Math.random() - 0.5) * 20;
+      positions[i * 3 + 1] = Math.random() * 10;
+      positions[i * 3 + 2] = (Math.random() - 0.5) * 20;
+      velocities[i * 3] = (Math.random() - 0.5) * 0.01;
+      velocities[i * 3 + 1] = Math.random() * 0.005 + 0.002;
+      velocities[i * 3 + 2] = (Math.random() - 0.5) * 0.01;
+    }
+    return { positions, velocities };
+  }, [count]);
+
+  useFrame(() => {
+    if (!meshRef.current) return;
+    const posAttr = meshRef.current.geometry.attributes
+      .position as THREE.BufferAttribute;
+    const arr = posAttr.array as Float32Array;
+
+    for (let i = 0; i < count; i++) {
+      arr[i * 3] += velocities[i * 3];
+      arr[i * 3 + 1] += velocities[i * 3 + 1];
+      arr[i * 3 + 2] += velocities[i * 3 + 2];
+
+      // Reset particles that go too high
+      if (arr[i * 3 + 1] > 12) {
+        arr[i * 3] = (Math.random() - 0.5) * 20;
+        arr[i * 3 + 1] = -1;
+        arr[i * 3 + 2] = (Math.random() - 0.5) * 20;
+      }
+    }
+    posAttr.needsUpdate = true;
+  });
+
+  return (
+    <points ref={meshRef}>
+      <bufferGeometry>
+        <bufferAttribute
+          attach="attributes-position"
+          count={count}
+          array={positions}
+          itemSize={3}
+        />
+      </bufferGeometry>
+      <pointsMaterial
+        color={color}
+        size={0.05}
+        transparent
+        opacity={0.6}
+        blending={THREE.AdditiveBlending}
+        depthWrite={false}
+      />
+    </points>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Scene fog setup
+// ---------------------------------------------------------------------------
+
+function FogSetup({
+  color,
+  near,
+  far,
+}: {
+  color: string;
+  near: number;
+  far: number;
+}) {
+  const { scene } = useThree();
+
+  useMemo(() => {
+    scene.fog = new THREE.Fog(color, near, far);
+  }, [scene, color, near, far]);
+
+  return null;
+}
+
+// ---------------------------------------------------------------------------
+// Post-processing: Bloom + Vignette
+// ---------------------------------------------------------------------------
+
+function PostProcessing() {
+  return (
+    <EffectComposer>
+      <Bloom
+        intensity={0.4}
+        luminanceThreshold={0.6}
+        luminanceSmoothing={0.9}
+        mipmapBlur
+      />
+      <Vignette eskil={false} offset={0.1} darkness={0.8} />
+    </EffectComposer>
+  );
+}
