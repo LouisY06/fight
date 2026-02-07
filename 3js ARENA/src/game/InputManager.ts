@@ -11,6 +11,7 @@ export interface PlayerInput {
   weaponRotation: THREE.Euler;
   attack: boolean;
   block: boolean;
+  jump: boolean;
   gesture: 'idle' | 'slash' | 'stab' | 'shoot' | 'block' | 'none';
 }
 
@@ -20,11 +21,12 @@ const defaultInput = (): PlayerInput => ({
   weaponRotation: new THREE.Euler(),
   attack: false,
   block: false,
+  jump: false,
   gesture: 'idle',
 });
 
 /**
- * Hook for Player 1 keyboard input: WASD + Space (attack) + Shift (block)
+ * Hook for Player 1 keyboard input: WASD + E (attack) + Shift (block) + Space (jump)
  */
 export function usePlayer1Input(): PlayerInput {
   const input = useRef<PlayerInput>(defaultInput());
@@ -50,13 +52,18 @@ export function usePlayer1Input(): PlayerInput {
       if (k.has('d')) dir.x += 1;
       dir.normalize();
 
+      const isAttacking = k.has('e');
+      const isBlocking = k.has('shift');
+      const isJumping = k.has(' ');
+
       input.current = {
         moveDirection: dir,
         weaponPosition: new THREE.Vector3(-2, 1, 0),
-        weaponRotation: new THREE.Euler(0, 0, k.has(' ') ? -Math.PI / 3 : 0),
-        attack: k.has(' '),
-        block: k.has('shift'),
-        gesture: k.has('shift') ? 'block' : k.has(' ') ? 'slash' : 'idle',
+        weaponRotation: new THREE.Euler(0, 0, isAttacking ? -Math.PI / 3 : 0),
+        attack: isAttacking,
+        block: isBlocking,
+        jump: isJumping,
+        gesture: isBlocking ? 'block' : isAttacking ? 'slash' : 'idle',
       };
     }, 16); // ~60fps polling
 
@@ -71,7 +78,7 @@ export function usePlayer1Input(): PlayerInput {
 }
 
 /**
- * Hook for Player 2 keyboard input: Arrow Keys + Enter (attack) + RShift (block)
+ * Hook for Player 2 keyboard input: Arrow Keys + RCtrl (attack) + RShift (block) + Enter (jump)
  */
 export function usePlayer2Input(): PlayerInput {
   const input = useRef<PlayerInput>(defaultInput());
@@ -97,13 +104,18 @@ export function usePlayer2Input(): PlayerInput {
       if (k.has('ArrowRight')) dir.x += 1;
       dir.normalize();
 
+      const isAttacking = k.has('Control');
+      const isBlocking = k.has('Shift');
+      const isJumping = k.has('Enter');
+
       input.current = {
         moveDirection: dir,
         weaponPosition: new THREE.Vector3(2, 1, 0),
-        weaponRotation: new THREE.Euler(0, 0, k.has('Enter') ? Math.PI / 3 : 0),
-        attack: k.has('Enter'),
-        block: k.has('Shift'),
-        gesture: k.has('Shift') ? 'block' : k.has('Enter') ? 'slash' : 'idle',
+        weaponRotation: new THREE.Euler(0, 0, isAttacking ? Math.PI / 3 : 0),
+        attack: isAttacking,
+        block: isBlocking,
+        jump: isJumping,
+        gesture: isBlocking ? 'block' : isAttacking ? 'slash' : 'idle',
       };
     }, 16);
 

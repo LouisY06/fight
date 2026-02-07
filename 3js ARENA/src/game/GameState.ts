@@ -55,6 +55,10 @@ interface GameState {
   // Arena
   currentThemeId: string | null;
 
+  /** For health bar damage flash — which player just took damage */
+  lastDamagedPlayer: 'player1' | 'player2' | null;
+  lastDamageTime: number;
+
   // Actions
   goToLobby: () => void;
   goToWaiting: (roomId: string | null) => void;
@@ -96,6 +100,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   player1: defaultPlayerState(-GAME_CONFIG.playerSpawnDistance / 2),
   player2: defaultPlayerState(GAME_CONFIG.playerSpawnDistance / 2),
   currentThemeId: null,
+  lastDamagedPlayer: null,
+  lastDamageTime: 0,
 
   setPhase: (phase) => set({ phase }),
 
@@ -121,6 +127,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       phase: 'countdown',
       roundTimeRemaining: GAME_CONFIG.roundTime,
       roundWinner: null,
+      lastDamagedPlayer: null,
       player1: {
         ...get().player1,
         health: GAME_CONFIG.maxHealth,
@@ -179,7 +186,11 @@ export const useGameStore = create<GameState>((set, get) => ({
       : amount;
     const newHealth = Math.max(0, player.health - effectiveAmount);
 
-    set({ [target]: { ...player, health: newHealth } });
+    set({
+      [target]: { ...player, health: newHealth },
+      lastDamagedPlayer: target,
+      lastDamageTime: Date.now(),
+    });
 
     if (newHealth <= 0) {
       const winner = target === 'player1' ? 'player2' : 'player1';
@@ -207,6 +218,8 @@ export const useGameStore = create<GameState>((set, get) => ({
       roundTimeRemaining: GAME_CONFIG.roundTime,
       roundWinner: null,
       currentThemeId: null,
+      lastDamagedPlayer: null,
+      lastDamageTime: 0,
       player1: defaultPlayerState(-GAME_CONFIG.playerSpawnDistance / 2),
       player2: defaultPlayerState(GAME_CONFIG.playerSpawnDistance / 2),
     }),

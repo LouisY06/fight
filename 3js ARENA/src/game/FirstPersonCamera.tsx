@@ -10,10 +10,17 @@ import * as THREE from 'three';
 import { useGameStore } from './GameState';
 import { GAME_CONFIG } from './GameConfig';
 import { useCVContext } from '../cv/CVProvider';
+import {
+  useScreenShakeStore,
+  computeShakeOffset,
+} from './useScreenShake';
 
 const EYE_HEIGHT = 1.7;
 const MOVE_SPEED = 5; // units per second (keyboard mode)
 const MOUSE_SENSITIVITY = 0.002;
+const JUMP_FORCE = 7; // units per second
+const GRAVITY = 20; // units per second squared
+const MAX_FALL_SPEED = 20;
 
 export function FirstPersonCamera() {
   const { camera, gl } = useThree();
@@ -26,6 +33,11 @@ export function FirstPersonCamera() {
   const keys = useRef<Set<string>>(new Set());
   const euler = useRef(new THREE.Euler(0, 0, 0, 'YXZ'));
   const isLocked = useRef(false);
+  
+  // Jump physics
+  const verticalVelocity = useRef(0);
+  const isGrounded = useRef(true);
+  const jumpPressed = useRef(false);
 
   // Spawn Z and facing yaw depend on which player slot we are.
   // Player 1 (or practice): spawn at -Z, face +Z (yaw = PI)
@@ -46,8 +58,19 @@ export function FirstPersonCamera() {
 
   // ---- Keyboard listeners ----
   useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => keys.current.add(e.code);
-    const onKeyUp = (e: KeyboardEvent) => keys.current.delete(e.code);
+    const onKeyDown = (e: KeyboardEvent) => {
+      keys.current.add(e.code);
+      // Track jump key for jump buffering
+      if (e.code === 'Space') {
+        jumpPressed.current = true;
+      }
+    };
+    const onKeyUp = (e: KeyboardEvent) => {
+      keys.current.delete(e.code);
+      if (e.code === 'Space') {
+        jumpPressed.current = false;
+      }
+    };
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup', onKeyUp);
     return () => {
@@ -151,8 +174,44 @@ export function FirstPersonCamera() {
         camera.position.add(move);
       }
 
-      // Keep at eye height
-      camera.position.y = EYE_HEIGHT;
+      // ---- Jump Physics ----
+      // Check if on ground
+      isGrounded.current = camera.position.y <= EYE_HEIGHT;
+
+      // Jump when spacebar is pressed and on ground
+      if (jumpPressed.current && isGrounded.current) {
+        verticalVelocity.current = JUMP_FORCE;
+        jumpPressed.current = false; // Prevent double jump
+      }
+
+      // Apply gravity
+      if (!isGrounded.current || verticalVelocity.current > 0) {
+        verticalVelocity.current -= GRAVITY * delta;
+        
+        // Clamp fall speed
+        if (verticalVelocity.current < -MAX_FALL_SPEED) {
+          verticalVelocity.current = -MAX_FALL_SPEED;
+        }
+        
+        // Apply vertical velocity
+        camera.position.y += verticalVelocity.current * delta;
+      }
+
+      // Ground collision - stop falling
+      if (camera.position.y <= EYE_HEIGHT) {
+        camera.position.y = EYE_HEIGHT;
+        verticalVelocity.current = 0;
+        isGrounded.current = true;
+      }
+
+      // Screen shake
+      const { intensity: si, durationMs: sd, startTime: st } =
+        useScreenShakeStore.getState();
+      const shake = computeShakeOffset(st, sd, si);
+      const camRight = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+      const camUp = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
+      camera.position.addScaledVector(camRight, shake.x);
+      camera.position.addScaledVector(camUp, shake.y);
 
       // Clamp to arena bounds
       const r = GAME_CONFIG.arenaRadius - 0.5;

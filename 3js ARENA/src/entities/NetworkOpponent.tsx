@@ -4,14 +4,48 @@
 // =============================================================================
 
 import { useRef, useState, useEffect } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, createPortal } from '@react-three/fiber';
 import { RigidBody, CapsuleCollider } from '@react-three/rapier';
 import * as THREE from 'three';
 import { DeathEffect } from './DeathEffect';
 import { useNetwork } from '../networking/NetworkProvider';
 import { useGameStore } from '../game/GameState';
-import { GAME_CONFIG } from '../game/GameConfig';
 import { OpponentHitbox } from './OpponentHitbox';
+import { RobotEntity, type RobotEntityGraph } from '../avatars/RobotEntity';
+
+/** Bone name aliases for right hand in biped_robot.glb (useGraph nodes). */
+const RIGHT_HAND_ALIASES = ['RightHand', 'Hand_R', 'hand_r', 'RightWrist'];
+
+function getRightHandBone(graph: RobotEntityGraph): THREE.Object3D | null {
+  for (const name of RIGHT_HAND_ALIASES) {
+    const bone = graph.nodes[name];
+    if (bone) return bone;
+  }
+  return null;
+}
+
+/** Scale so sword fits the ~2-unit-tall robot and arena (blade ~0.25 units). */
+const OPPONENT_SWORD_SCALE = 0.4;
+
+/** Sword group (handle, guard, blade) with local rotation so blade points out of the fist. All meshes cast shadows. */
+function OpponentSword() {
+  return (
+    <group position={[0, 0, 0]} rotation={[-0.4, 0, 0.2]} scale={[OPPONENT_SWORD_SCALE, OPPONENT_SWORD_SCALE, OPPONENT_SWORD_SCALE]}>
+      <mesh castShadow>
+        <cylinderGeometry args={[0.02, 0.025, 0.18, 8]} />
+        <meshStandardMaterial color="#5C3317" roughness={0.85} />
+      </mesh>
+      <mesh position={[0, 0.11, 0]} castShadow>
+        <boxGeometry args={[0.12, 0.02, 0.04]} />
+        <meshStandardMaterial color="#888" roughness={0.3} metalness={0.8} />
+      </mesh>
+      <mesh position={[0, 0.45, 0]} castShadow>
+        <boxGeometry args={[0.03, 0.55, 0.01]} />
+        <meshStandardMaterial color="#ddd" roughness={0.1} metalness={0.95} />
+      </mesh>
+    </group>
+  );
+}
 
 interface NetworkOpponentProps {
   color?: string;
@@ -27,10 +61,10 @@ export function NetworkOpponent({ color = '#ff4444' }: NetworkOpponentProps) {
   const [deathPosition, setDeathPosition] = useState<[number, number, number]>([0, 0, 0]);
   const previousHealthRef = useRef(player2.health);
 
-  // Detect when opponent dies
+  // Detect when opponent dies or respawns
   useEffect(() => {
-    if (previousHealthRef.current > 0 && player2.health <= 0) {
-      // Opponent just died
+    // Check if opponent just died
+    if (player2.health <= 0 && !isDead) {
       setIsDead(true);
       if (groupRef.current) {
         setDeathPosition([
@@ -39,12 +73,20 @@ export function NetworkOpponent({ color = '#ff4444' }: NetworkOpponentProps) {
           groupRef.current.position.z,
         ]);
       }
-    } else if (player2.health > 0 && isDead) {
-      // Opponent respawned
+    }
+    // Check if opponent respawned (health restored)
+    else if (player2.health > 0 && isDead) {
       setIsDead(false);
     }
     previousHealthRef.current = player2.health;
   }, [player2.health, isDead]);
+
+  // Reset death state when new round starts
+  useEffect(() => {
+    if (phase === 'countdown' && isDead) {
+      setIsDead(false);
+    }
+  }, [phase, isDead]);
 
   // Smoothly interpolate opponent position/rotation
   // The opponent's position comes directly from network (their camera position).
@@ -81,55 +123,38 @@ export function NetworkOpponent({ color = '#ff4444' }: NetworkOpponentProps) {
   });
 
   const isSwinging = opponentState.isSwinging;
+  const isMovingRef = useRef(false);
+  const prevPos = useRef({ x: opponentState.position[0], z: opponentState.position[2] });
+  useFrame(() => {
+    const dx = opponentState.position[0] - prevPos.current.x;
+    const dz = opponentState.position[2] - prevPos.current.z;
+    isMovingRef.current = dx * dx + dz * dz > 0.0001;
+    prevPos.current = { x: opponentState.position[0], z: opponentState.position[2] };
+  });
 
   return (
     <>
-      <group ref={groupRef} position={[0, 0, 0]} userData={{ isOpponent: true }}>
+      {/* Position/rotation set in useFrame — do not pass as props or R3F will overwrite and break MeleeCombat hit detection */}
+      <group ref={groupRef} userData={{ isOpponent: true }}>
         {/* Only show opponent if not dead */}
         {!isDead && (
           <RigidBody type="kinematicPosition" colliders={false}>
             <CapsuleCollider args={[0.5, 0.3]} position={[0, 1, 0]} />
 
-            {/* Body */}
-            <mesh position={[0, 1, 0]} castShadow>
-              <capsuleGeometry args={[0.3, 1, 8, 16]} />
-              <meshStandardMaterial color={color} roughness={0.5} metalness={0.3} />
-            </mesh>
-
-            {/* Head */}
-            <mesh position={[0, 1.9, 0]} castShadow>
-              <sphereGeometry args={[0.2, 16, 16]} />
-              <meshStandardMaterial color={color} roughness={0.5} metalness={0.3} />
-            </mesh>
+            {/* Robot from biped_robot.glb; RightHand found via useGraph, sword portaled into hand with createPortal */}
+            <RobotEntity
+              color={color}
+              targetHeight={2}
+              isWalkingRef={isMovingRef}
+              isSwinging={isSwinging}
+              children={(graph) => {
+                const rightHand = getRightHandBone(graph);
+                return rightHand ? createPortal(<OpponentSword />, rightHand) : null;
+              }}
+            />
 
             {/* Hitbox visualization */}
             <OpponentHitbox />
-
-            {/* Opponent's sword — simple representation */}
-            <group
-              position={[0.4, 1.2, -0.3]}
-              rotation={[
-                isSwinging ? -0.8 : -0.3,
-                0,
-                isSwinging ? -1.2 : -0.4,
-              ]}
-            >
-              {/* Handle */}
-              <mesh>
-                <cylinderGeometry args={[0.02, 0.025, 0.18, 8]} />
-                <meshStandardMaterial color="#5C3317" roughness={0.85} />
-              </mesh>
-              {/* Guard */}
-              <mesh position={[0, 0.11, 0]}>
-                <boxGeometry args={[0.12, 0.02, 0.04]} />
-                <meshStandardMaterial color="#888" roughness={0.3} metalness={0.8} />
-              </mesh>
-              {/* Blade */}
-              <mesh position={[0, 0.45, 0]}>
-                <boxGeometry args={[0.03, 0.55, 0.01]} />
-                <meshStandardMaterial color="#ddd" roughness={0.1} metalness={0.95} />
-              </mesh>
-            </group>
           </RigidBody>
         )}
       </group>

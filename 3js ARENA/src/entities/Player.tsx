@@ -12,6 +12,7 @@ import type { PlayerInput } from '../game/InputManager';
 import { useGameStore } from '../game/GameState';
 import { GAME_CONFIG } from '../game/GameConfig';
 import { OpponentHitbox } from './OpponentHitbox';
+import { RobotEntity } from '../avatars/RobotEntity';
 
 interface PlayerProps {
   playerId: 'player1' | 'player2';
@@ -29,10 +30,10 @@ export function Player({ playerId, input, color, spawnPosition }: PlayerProps) {
   const [deathPosition, setDeathPosition] = useState<[number, number, number]>([0, 0, 0]);
   const previousHealthRef = useRef(playerState.health);
 
-  // Detect when player dies
+  // Detect when player dies or respawns
   useEffect(() => {
-    if (previousHealthRef.current > 0 && playerState.health <= 0) {
-      // Player just died
+    // Check if player just died
+    if (playerState.health <= 0 && !isDead) {
       setIsDead(true);
       if (groupRef.current) {
         setDeathPosition([
@@ -41,12 +42,20 @@ export function Player({ playerId, input, color, spawnPosition }: PlayerProps) {
           groupRef.current.position.z,
         ]);
       }
-    } else if (playerState.health > 0 && isDead) {
-      // Player respawned
+    }
+    // Check if player respawned (health restored)
+    else if (playerState.health > 0 && isDead) {
       setIsDead(false);
     }
     previousHealthRef.current = playerState.health;
   }, [playerState.health, isDead]);
+
+  // Reset death state when new round starts
+  useEffect(() => {
+    if (phase === 'countdown' && isDead) {
+      setIsDead(false);
+    }
+  }, [phase, isDead]);
 
   // Move player based on input during gameplay
   useFrame(() => {
@@ -77,21 +86,16 @@ export function Player({ playerId, input, color, spawnPosition }: PlayerProps) {
         {/* Only show player if not dead */}
         {!isDead && (
           <>
-            {/* Player body (capsule) */}
             <RigidBody type="kinematicPosition" colliders={false}>
               <CapsuleCollider args={[0.5, 0.3]} position={[0, 1, 0]} />
 
-              {/* Simple body representation — will be replaced with GLB avatar */}
-              <mesh position={[0, 1, 0]} castShadow>
-                <capsuleGeometry args={[0.3, 1, 8, 16]} />
-                <meshStandardMaterial color={color} roughness={0.5} metalness={0.3} />
-              </mesh>
-
-              {/* Head */}
-              <mesh position={[0, 1.9, 0]} castShadow>
-                <sphereGeometry args={[0.2, 16, 16]} />
-                <meshStandardMaterial color={color} roughness={0.5} metalness={0.3} />
-              </mesh>
+              {/* Robot GLB normalized to 2 units height, feet at y=0 */}
+              <RobotEntity
+                color={color}
+                targetHeight={2}
+                isWalking={input.moveDirection.lengthSq() > 0.0001}
+                isSwinging={input.gesture === 'slash' || input.gesture === 'stab'}
+              />
 
               {/* Hitbox visualization (only for opponent) */}
               {isOpponent && <OpponentHitbox />}
