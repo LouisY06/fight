@@ -1,36 +1,37 @@
 // =============================================================================
 // NetworkOpponent.tsx — Renders the remote opponent using network state
 // Position and rotation are interpolated from WebSocket updates.
+// Uses SimpleCharacterModel (procedural, no GLB).
 // =============================================================================
 
 import { useRef, useState, useEffect } from 'react';
-import { useFrame, createPortal } from '@react-three/fiber';
+import { useFrame } from '@react-three/fiber';
 import { RigidBody, CapsuleCollider } from '@react-three/rapier';
 import * as THREE from 'three';
 import { DeathEffect } from './DeathEffect';
 import { useNetwork } from '../networking/NetworkProvider';
 import { useGameStore } from '../game/GameState';
 import { OpponentHitbox } from './OpponentHitbox';
-import { RobotEntity, type RobotEntityGraph } from '../avatars/RobotEntity';
+import { SimpleCharacterModel } from './SimpleCharacterModel';
 
-/** Bone name aliases for right hand in biped_robot.glb (useGraph nodes). */
-const RIGHT_HAND_ALIASES = ['RightHand', 'Hand_R', 'hand_r', 'RightWrist'];
-
-function getRightHandBone(graph: RobotEntityGraph): THREE.Object3D | null {
-  for (const name of RIGHT_HAND_ALIASES) {
-    const bone = graph.nodes[name];
-    if (bone) return bone;
-  }
-  return null;
-}
-
-/** Scale so sword fits the ~2-unit-tall robot and arena (blade ~0.25 units). */
+/** Sword positioned at right arm (no bones). */
 const OPPONENT_SWORD_SCALE = 0.4;
 
-/** Sword group (handle, guard, blade) with local rotation so blade points out of the fist. All meshes cast shadows. */
-function OpponentSword() {
+function OpponentSword({ isSwinging }: { isSwinging: boolean }) {
+  const ref = useRef<THREE.Group>(null!);
+  const swingRef = useRef(0);
+  useFrame((_, delta) => {
+    if (!ref.current) return;
+    if (isSwinging) {
+      swingRef.current = Math.min(1, swingRef.current + delta / 0.35);
+    } else {
+      swingRef.current = Math.max(0, swingRef.current - delta / 0.35);
+    }
+    const pitch = Math.sin(swingRef.current * Math.PI) * -0.8;
+    ref.current.rotation.set(-0.4 + pitch, 0, 0.2);
+  });
   return (
-    <group position={[0, 0, 0]} rotation={[-0.4, 0, 0.2]} scale={[OPPONENT_SWORD_SCALE, OPPONENT_SWORD_SCALE, OPPONENT_SWORD_SCALE]}>
+    <group ref={ref} position={[0.4, 1.2, 0.3]} scale={[OPPONENT_SWORD_SCALE, OPPONENT_SWORD_SCALE, OPPONENT_SWORD_SCALE]}>
       <mesh castShadow>
         <cylinderGeometry args={[0.02, 0.025, 0.18, 8]} />
         <meshStandardMaterial color="#5C3317" roughness={0.85} />
@@ -141,17 +142,14 @@ export function NetworkOpponent({ color = '#ff4444' }: NetworkOpponentProps) {
           <RigidBody type="kinematicPosition" colliders={false}>
             <CapsuleCollider args={[0.5, 0.3]} position={[0, 1, 0]} />
 
-            {/* Robot from biped_robot.glb; RightHand found via useGraph, sword portaled into hand with createPortal */}
-            <RobotEntity
+            {/* Procedural character model (no GLB) */}
+            <SimpleCharacterModel
               color={color}
               targetHeight={2}
               isWalkingRef={isMovingRef}
               isSwinging={isSwinging}
-              children={(graph) => {
-                const rightHand = getRightHandBone(graph);
-                return rightHand ? createPortal(<OpponentSword />, rightHand) : null;
-              }}
             />
+            <OpponentSword isSwinging={isSwinging} />
 
             {/* Hitbox visualization */}
             <OpponentHitbox />

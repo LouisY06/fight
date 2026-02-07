@@ -12,7 +12,7 @@ import type { PlayerInput } from '../game/InputManager';
 import { useGameStore } from '../game/GameState';
 import { GAME_CONFIG } from '../game/GameConfig';
 import { OpponentHitbox } from './OpponentHitbox';
-import { RobotEntity } from '../avatars/RobotEntity';
+import { SimpleCharacterModel } from './SimpleCharacterModel';
 
 interface PlayerProps {
   playerId: 'player1' | 'player2';
@@ -89,8 +89,8 @@ export function Player({ playerId, input, color, spawnPosition }: PlayerProps) {
             <RigidBody type="kinematicPosition" colliders={false}>
               <CapsuleCollider args={[0.5, 0.3]} position={[0, 1, 0]} />
 
-              {/* Robot GLB normalized to 2 units height, feet at y=0 */}
-              <RobotEntity
+              {/* Procedural character model — no GLB */}
+              <SimpleCharacterModel
                 color={color}
                 targetHeight={2}
                 isWalking={input.moveDirection.lengthSq() > 0.0001}

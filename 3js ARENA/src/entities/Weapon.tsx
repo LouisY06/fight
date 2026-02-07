@@ -8,13 +8,24 @@ import { CapsuleCollider, RigidBody } from '@react-three/rapier';
 import * as THREE from 'three';
 import { WeaponTrail } from './WeaponTrail';
 
+/** Blade length for bot weapon hit detection (local +Y from hilt). */
+export const WEAPON_BLADE_LENGTH = 0.95;
+
 interface WeaponProps {
   playerId: 'player1' | 'player2';
   position: THREE.Vector3;
   rotation: THREE.Euler;
   gesture: string;
   accentColor: string;
+  /** Optional: use refs for dynamic position/rotation (bot weapon). */
+  positionRef?: React.MutableRefObject<THREE.Vector3>;
+  rotationRef?: React.MutableRefObject<THREE.Euler>;
+  /** Optional: publish sword segment for bot hit detection (MeleeCombat reads when in practice). */
+  publishSwordSegment?: (hilt: THREE.Vector3, tip: THREE.Vector3, active: boolean) => void;
 }
+
+const _hilt = new THREE.Vector3();
+const _tipOffset = new THREE.Vector3(0, WEAPON_BLADE_LENGTH, 0);
 
 export function Weapon({
   playerId,
@@ -22,14 +33,27 @@ export function Weapon({
   rotation,
   gesture,
   accentColor,
+  positionRef,
+  rotationRef,
+  publishSwordSegment,
 }: WeaponProps) {
   const meshRef = useRef<THREE.Group>(null!);
   const isAttacking = gesture === 'slash' || gesture === 'stab';
 
   useFrame(() => {
     if (!meshRef.current) return;
-    meshRef.current.position.copy(position);
-    meshRef.current.rotation.copy(rotation);
+    const pos = positionRef?.current ?? position;
+    const rot = rotationRef?.current ?? rotation;
+    meshRef.current.position.copy(pos);
+    meshRef.current.rotation.copy(rot);
+
+    if (publishSwordSegment) {
+      meshRef.current.getWorldPosition(_hilt);
+      const tip = _tipOffset.clone()
+        .applyQuaternion(meshRef.current.quaternion)
+        .add(_hilt);
+      publishSwordSegment(_hilt.clone(), tip, isAttacking);
+    }
   });
 
   return (
