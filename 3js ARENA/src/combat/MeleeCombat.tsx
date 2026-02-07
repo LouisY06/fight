@@ -1,62 +1,157 @@
 // =============================================================================
-// MeleeCombat.tsx — Raycasts from camera center on sword swing to detect hits
-// Deals damage to enemies in range when the blade crosses the crosshair.
+// MeleeCombat.tsx — Per-frame sword collision detection against opponents
+// Every frame, checks if the sword blade (hilt→tip line segment) intersects
+// the opponent's body capsule. A hit registers when:
+//   - The sword is inside the hitbox, AND
+//   - The sword is moving fast enough (CV) or a keyboard swing is active, AND
+//   - The hit cooldown has elapsed.
 // =============================================================================
 
-import { useEffect, useRef } from 'react';
-import { useThree } from '@react-three/fiber';
+import { useRef } from 'react';
+import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from '../game/GameState';
 import { GAME_CONFIG } from '../game/GameConfig';
-import { onSwordSwing } from '../entities/ViewmodelSword';
+import { swordHilt, swordTip, swordSpeed, keyboardSwingActive } from './SwordState';
+import { fireHitEvent } from './HitEvent';
+import { playSwordHit } from '../audio/SoundManager';
+import { gameSocket } from '../networking/socket';
 
-const HIT_RANGE = 3.0; // max distance a sword swing can reach
+// Opponent body approximated as a vertical capsule
+const OPPONENT_RADIUS = 0.45;       // capsule radius (generous for good feel)
+const OPPONENT_CAPSULE_BOT = 0.2;   // bottom of capsule axis (y offset from group)
+const OPPONENT_CAPSULE_TOP = 2.1;   // top of capsule axis
 
-/**
- * MeleeCombat runs inside the R3F Canvas.
- * When the sword swing hits the midpoint, it raycasts from the camera
- * forward to see if the opponent is in front of us and within range.
- */
+// Sword must be moving at least this fast to deal damage (world units/sec)
+// This prevents "resting sword on opponent" from dealing damage
+const MIN_SWING_SPEED = 1.5;
+
+// Max distance from camera to opponent for hit to count
+const MAX_OPPONENT_DIST = 4.0;
+
+// Temp vectors
+const _capsuleBot = new THREE.Vector3();
+const _capsuleTop = new THREE.Vector3();
+const _closestOnSword = new THREE.Vector3();
+const _closestOnCapsule = new THREE.Vector3();
+const _hitPoint = new THREE.Vector3();
+const _oppPos = new THREE.Vector3();
+
+// ---------------------------------------------------------------------------
+// Closest distance between two line segments
+// ---------------------------------------------------------------------------
+
+function closestDistSegmentSegment(
+  p1: THREE.Vector3, q1: THREE.Vector3,
+  p2: THREE.Vector3, q2: THREE.Vector3,
+  outA: THREE.Vector3,
+  outB: THREE.Vector3
+): number {
+  const d1x = q1.x - p1.x, d1y = q1.y - p1.y, d1z = q1.z - p1.z;
+  const d2x = q2.x - p2.x, d2y = q2.y - p2.y, d2z = q2.z - p2.z;
+  const rx = p1.x - p2.x, ry = p1.y - p2.y, rz = p1.z - p2.z;
+
+  const a = d1x * d1x + d1y * d1y + d1z * d1z;
+  const e = d2x * d2x + d2y * d2y + d2z * d2z;
+  const f = d2x * rx + d2y * ry + d2z * rz;
+
+  let s: number, t: number;
+
+  if (a <= 1e-6 && e <= 1e-6) {
+    s = t = 0;
+  } else if (a <= 1e-6) {
+    s = 0;
+    t = Math.max(0, Math.min(1, f / e));
+  } else {
+    const c = d1x * rx + d1y * ry + d1z * rz;
+    if (e <= 1e-6) {
+      t = 0;
+      s = Math.max(0, Math.min(1, -c / a));
+    } else {
+      const b = d1x * d2x + d1y * d2y + d1z * d2z;
+      const denom = a * e - b * b;
+      s = denom !== 0 ? Math.max(0, Math.min(1, (b * f - c * e) / denom)) : 0;
+      t = (b * s + f) / e;
+      if (t < 0) {
+        t = 0;
+        s = Math.max(0, Math.min(1, -c / a));
+      } else if (t > 1) {
+        t = 1;
+        s = Math.max(0, Math.min(1, (b - c) / a));
+      }
+    }
+  }
+
+  outA.set(p1.x + d1x * s, p1.y + d1y * s, p1.z + d1z * s);
+  outB.set(p2.x + d2x * t, p2.y + d2y * t, p2.z + d2z * t);
+  return outA.distanceTo(outB);
+}
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
 export function MeleeCombat() {
   const { camera, scene } = useThree();
   const lastHitTime = useRef(0);
 
-  const phase = useGameStore((s) => s.phase);
+  useFrame(() => {
+    const phase = useGameStore.getState().phase;
+    if (phase !== 'playing') return;
 
-  useEffect(() => {
-    const unsub = onSwordSwing(() => {
-      if (phase !== 'playing') return;
+    // Is the sword "active" (swinging / moving fast enough)?
+    const isActive = keyboardSwingActive || swordSpeed > MIN_SWING_SPEED;
+    if (!isActive) return;
 
-      // Cooldown check
-      const now = Date.now();
-      if (now - lastHitTime.current < GAME_CONFIG.attackCooldownMs) return;
+    // Cooldown
+    const now = Date.now();
+    if (now - lastHitTime.current < GAME_CONFIG.attackCooldownMs) return;
 
-      // Raycast from screen center (where the crosshair is)
-      const raycaster = new THREE.Raycaster();
-      raycaster.set(camera.position, new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion));
-      raycaster.far = HIT_RANGE;
+    // Check against all opponents
+    scene.traverse((obj) => {
+      if (!obj.userData?.isOpponent) return;
+      if (lastHitTime.current === now) return; // already hit this frame
 
-      // Find all intersections with meshes in the scene
-      const intersects = raycaster.intersectObjects(scene.children, true);
+      obj.getWorldPosition(_oppPos);
 
-      for (const hit of intersects) {
-        // Walk up the parent chain to find if this belongs to an opponent
-        let obj: THREE.Object3D | null = hit.object;
-        while (obj) {
-          // We tag opponent groups with userData.isOpponent
-          if (obj.userData?.isOpponent) {
-            lastHitTime.current = now;
-            const { dealDamage } = useGameStore.getState();
-            dealDamage('player2', GAME_CONFIG.damage.swordSlash);
-            return; // Only hit once per swing
-          }
-          obj = obj.parent;
+      // Quick distance cull
+      if (camera.position.distanceTo(_oppPos) > MAX_OPPONENT_DIST) return;
+
+      // Opponent capsule axis
+      _capsuleBot.set(_oppPos.x, _oppPos.y + OPPONENT_CAPSULE_BOT, _oppPos.z);
+      _capsuleTop.set(_oppPos.x, _oppPos.y + OPPONENT_CAPSULE_TOP, _oppPos.z);
+
+      // Closest distance: sword segment ↔ opponent capsule axis
+      const dist = closestDistSegmentSegment(
+        swordHilt, swordTip,
+        _capsuleBot, _capsuleTop,
+        _closestOnSword, _closestOnCapsule
+      );
+
+      if (dist <= OPPONENT_RADIUS) {
+        // HIT!
+        lastHitTime.current = now;
+
+        _hitPoint.addVectors(_closestOnSword, _closestOnCapsule).multiplyScalar(0.5);
+
+        const { playerSlot, isMultiplayer, dealDamage } = useGameStore.getState();
+        const opponentSlot: 'player1' | 'player2' =
+          playerSlot === 'player2' ? 'player1' : 'player2';
+        const amount = GAME_CONFIG.damage.swordSlash;
+
+        dealDamage(opponentSlot, amount);
+        fireHitEvent({ point: _hitPoint.clone(), amount });
+
+        if (isMultiplayer) {
+          gameSocket.send({
+            type: 'damage_event',
+            target: opponentSlot,
+            amount,
+          });
         }
       }
     });
-
-    return unsub;
-  }, [camera, scene, phase]);
+  });
 
   return null;
 }

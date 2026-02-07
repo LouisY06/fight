@@ -10,6 +10,7 @@ import * as THREE from 'three';
 import { useNetwork } from '../networking/NetworkProvider';
 import { useGameStore } from '../game/GameState';
 import { GAME_CONFIG } from '../game/GameConfig';
+import { OpponentHitbox } from './OpponentHitbox';
 
 interface NetworkOpponentProps {
   color?: string;
@@ -71,6 +72,9 @@ export function NetworkOpponent({ color = '#ff4444' }: NetworkOpponentProps) {
           <sphereGeometry args={[0.2, 16, 16]} />
           <meshStandardMaterial color={color} roughness={0.5} metalness={0.3} />
         </mesh>
+
+        {/* Hitbox visualization */}
+        <OpponentHitbox />
 
         {/* Opponent's sword — simple representation */}
         <group

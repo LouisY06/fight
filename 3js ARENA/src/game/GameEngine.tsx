@@ -16,6 +16,7 @@ import { GAME_CONFIG } from './GameConfig';
 export function GameEngine() {
   const phase = useGameStore((s) => s.phase);
   const setPhase = useGameStore((s) => s.setPhase);
+  const startRound = useGameStore((s) => s.startRound);
   const roundTimeRemaining = useGameStore((s) => s.roundTimeRemaining);
   const setRoundTime = useGameStore((s) => s.setRoundTime);
   const endRound = useGameStore((s) => s.endRound);
@@ -30,6 +31,17 @@ export function GameEngine() {
       countdownTimer.current = GAME_CONFIG.countdownDuration;
     }
   }, [phase]);
+
+  // Handle roundEnd → next round transition after delay
+  useEffect(() => {
+    if (phase === 'roundEnd') {
+      const timer = setTimeout(() => {
+        startRound();
+      }, GAME_CONFIG.roundEndDelay);
+
+      return () => clearTimeout(timer);
+    }
+  }, [phase, startRound]);
 
   // Main game loop (runs every frame inside R3F)
   useFrame((_, delta) => {

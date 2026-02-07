@@ -5,6 +5,7 @@
   "type": "module",
   "main": "dist-electron/main.js",
   "scripts": {
+    "postinstall": "bash scripts/setup-mediapipe.sh",
     "dev": "vite",
     "server": "npm run dev --prefix server",
     "dev:all": "concurrently \"npm run server\" \"npm run dev\"",
@@ -34,18 +35,28 @@
       }
     ],
     "mac": {
-      "target": ["dmg", "zip"],
+      "target": [
+        "dmg",
+        "zip"
+      ],
       "category": "public.app-category.games"
     },
     "win": {
-      "target": ["nsis", "zip"]
+      "target": [
+        "nsis",
+        "zip"
+      ]
     },
     "linux": {
-      "target": ["AppImage", "deb"]
+      "target": [
+        "AppImage",
+        "deb"
+      ]
     }
   },
   "dependencies": {
     "@google/genai": "^1.40.0",
+    "@mediapipe/tasks-vision": "^0.10.32",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.5.0",
     "@react-three/postprocessing": "^3.0.4",

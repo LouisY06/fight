@@ -4,6 +4,7 @@
 
 import { useState, useEffect } from 'react';
 import { useGameStore } from '../game/GameState';
+import { playKO } from '../audio/SoundManager';
 
 export function RoundAnnouncer() {
   const phase = useGameStore((s) => s.phase);
@@ -48,6 +49,7 @@ export function RoundAnnouncer() {
         setText('DRAW');
       } else {
         setText('K.O.');
+        playKO(); // Boom sound on knockout
       }
       requestAnimationFrame(() => setScale(1));
 

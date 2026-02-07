@@ -1,9 +1,10 @@
 // =============================================================================
-// MainMenu.tsx — Start screen with multiplayer mode selection
+// MainMenu.tsx — Start screen with multiplayer mode selection + CV toggle
 // =============================================================================
 
 import { useGameStore } from '../game/GameState';
 import { useNetwork } from '../networking/NetworkProvider';
+import { useCVContext } from '../cv/CVProvider';
 import { ARENA_THEMES } from '../arena/arenaThemes';
 import { randomPick } from '../utils/random';
 
@@ -12,6 +13,7 @@ export function MainMenu() {
   const goToLobby = useGameStore((s) => s.goToLobby);
   const startGame = useGameStore((s) => s.startGame);
   const { connect } = useNetwork();
+  const { cvEnabled, setCvEnabled } = useCVContext();
 
   if (phase !== 'menu') return null;
 
@@ -89,6 +91,65 @@ export function MainMenu() {
 
       <div style={{ height: '24px' }} />
 
+      {/* CV Toggle */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          padding: '10px 20px',
+          background: cvEnabled
+            ? 'rgba(68, 204, 102, 0.1)'
+            : 'rgba(255, 255, 255, 0.03)',
+          border: cvEnabled
+            ? '1px solid rgba(68, 204, 102, 0.3)'
+            : '1px solid rgba(255, 255, 255, 0.08)',
+          borderRadius: '6px',
+          cursor: 'pointer',
+          transition: 'all 0.2s ease',
+        }}
+        onClick={() => setCvEnabled(!cvEnabled)}
+      >
+        {/* Toggle switch */}
+        <div
+          style={{
+            width: '36px',
+            height: '20px',
+            borderRadius: '10px',
+            background: cvEnabled ? '#44cc66' : '#333',
+            position: 'relative',
+            transition: 'background 0.2s ease',
+          }}
+        >
+          <div
+            style={{
+              width: '16px',
+              height: '16px',
+              borderRadius: '50%',
+              background: '#fff',
+              position: 'absolute',
+              top: '2px',
+              left: cvEnabled ? '18px' : '2px',
+              transition: 'left 0.2s ease',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+            }}
+          />
+        </div>
+        <span
+          style={{
+            color: cvEnabled ? '#44cc66' : '#666',
+            fontSize: '14px',
+            fontFamily: "'Impact', 'Arial Black', sans-serif",
+            textTransform: 'uppercase',
+            letterSpacing: '2px',
+          }}
+        >
+          {cvEnabled ? 'CV MODE ON' : 'CV MODE OFF'}
+        </span>
+      </div>
+
+      <div style={{ height: '16px' }} />
+
       {/* Controls hint */}
       <div
         style={{
@@ -99,7 +160,14 @@ export function MainMenu() {
           fontFamily: 'monospace',
         }}
       >
-        <div>WASD move | Mouse look | Click to swing</div>
+        {cvEnabled ? (
+          <>
+            <div>Move your body to move | Swing right arm to attack</div>
+            <div>Raise left arm to block | Mouse to look</div>
+          </>
+        ) : (
+          <div>WASD move | Mouse look | Click to swing</div>
+        )}
         <div style={{ marginTop: '8px', color: '#444' }}>ESC to pause</div>
       </div>
     </div>

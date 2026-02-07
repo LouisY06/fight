@@ -161,11 +161,11 @@ export function LobbyMenu() {
       {/* ---- Choose mode ---- */}
       {view === 'choose' && (
         <>
-          <LobbyButton onClick={handleQuickMatch} primary>
-            QUICK MATCH
+          <LobbyButton onClick={handleQuickMatch} primary disabled={!isConnected}>
+            {isConnected ? 'QUICK MATCH' : 'CONNECTING...'}
           </LobbyButton>
-          <LobbyButton onClick={handleCreateRoom}>CREATE ROOM</LobbyButton>
-          <LobbyButton onClick={() => setView('join')}>JOIN ROOM</LobbyButton>
+          <LobbyButton onClick={handleCreateRoom} disabled={!isConnected}>CREATE ROOM</LobbyButton>
+          <LobbyButton onClick={() => setView('join')} disabled={!isConnected}>JOIN ROOM</LobbyButton>
         </>
       )}
 

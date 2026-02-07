@@ -27,6 +27,8 @@ export interface PlayerState {
 interface GameState {
   // Phase
   phase: GamePhase;
+  /** Phase before pausing (so resume returns to the right place) */
+  prePausePhase: GamePhase | null;
   setPhase: (phase: GamePhase) => void;
 
   // Multiplayer
@@ -73,6 +75,7 @@ const defaultPlayerState = (spawnX: number): PlayerState => ({
 
 export const useGameStore = create<GameState>((set, get) => ({
   phase: 'menu',
+  prePausePhase: null,
   isMultiplayer: false,
   isHost: false,
   roomId: null,
@@ -143,11 +146,19 @@ export const useGameStore = create<GameState>((set, get) => ({
   endGame: () => set({ phase: 'gameOver' }),
 
   pauseGame: () => {
-    if (get().phase === 'playing') set({ phase: 'paused' });
+    const p = get().phase;
+    // Allow pausing from any active gameplay phase
+    const pausable: GamePhase[] = ['playing', 'countdown', 'roundEnd', 'gameOver'];
+    if (pausable.includes(p)) {
+      set({ phase: 'paused', prePausePhase: p });
+    }
   },
 
   resumeGame: () => {
-    if (get().phase === 'paused') set({ phase: 'playing' });
+    if (get().phase === 'paused') {
+      const resumeTo = get().prePausePhase ?? 'playing';
+      set({ phase: resumeTo, prePausePhase: null });
+    }
   },
 
   dealDamage: (target, amount) => {
@@ -176,6 +187,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   resetToMenu: () =>
     set({
       phase: 'menu',
+      prePausePhase: null,
       isMultiplayer: false,
       isHost: false,
       roomId: null,

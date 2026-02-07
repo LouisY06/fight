@@ -1,5 +1,6 @@
 // =============================================================================
 // FirstPersonCamera.tsx — Full FPS camera: WASD move + mouse look
+// CV mode: head rotation for look + 1:1 position mapping from body tracking.
 // Click the canvas to lock the pointer. ESC to unlock / pause.
 // =============================================================================
 
@@ -8,20 +9,34 @@ import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from './GameState';
 import { GAME_CONFIG } from './GameConfig';
+import { useCVContext } from '../cv/CVProvider';
 
 const EYE_HEIGHT = 1.7;
-const MOVE_SPEED = 5; // units per second
+const MOVE_SPEED = 5; // units per second (keyboard mode)
 const MOUSE_SENSITIVITY = 0.002;
 const PLAYER_Z = -GAME_CONFIG.playerSpawnDistance / 2;
+
+// Player spawns at -Z and opponent at +Z, so we face +Z (PI yaw).
+const FACING_OPPONENT_YAW = Math.PI;
 
 export function FirstPersonCamera() {
   const { camera, gl } = useThree();
   const phase = useGameStore((s) => s.phase);
+  const { cvEnabled, cvInputRef } = useCVContext();
 
   const initialized = useRef(false);
   const keys = useRef<Set<string>>(new Set());
   const euler = useRef(new THREE.Euler(0, 0, 0, 'YXZ'));
   const isLocked = useRef(false);
+
+  // Spawn position — CV mode adds offset to this
+  const spawnPos = useRef(new THREE.Vector3(0, EYE_HEIGHT, PLAYER_Z));
+
+  // Re-usable objects to avoid per-frame allocation
+  const _forward = new THREE.Vector3();
+  const _right = new THREE.Vector3();
+  const _yawQuat = new THREE.Quaternion();
+  const _yAxis = new THREE.Vector3(0, 1, 0);
 
   // ---- Keyboard listeners ----
   useEffect(() => {
@@ -35,7 +50,7 @@ export function FirstPersonCamera() {
     };
   }, []);
 
-  // ---- Pointer lock for mouse look ----
+  // ---- Pointer lock for mouse look (keyboard mode) ----
   useEffect(() => {
     const canvas = gl.domElement;
 
@@ -54,7 +69,6 @@ export function FirstPersonCamera() {
       if (!isLocked.current) return;
       euler.current.y -= e.movementX * MOUSE_SENSITIVITY;
       euler.current.x -= e.movementY * MOUSE_SENSITIVITY;
-      // Clamp vertical look to +-85 degrees
       euler.current.x = Math.max(
         -Math.PI * 0.47,
         Math.min(Math.PI * 0.47, euler.current.x)
@@ -82,30 +96,43 @@ export function FirstPersonCamera() {
 
     if (isGameplay) {
       if (!initialized.current) {
-        camera.position.set(0, EYE_HEIGHT, PLAYER_Z);
-        // Face toward +Z (the opponent)
-        euler.current.set(0, 0, 0);
+        spawnPos.current.set(0, EYE_HEIGHT, PLAYER_Z);
+        camera.position.copy(spawnPos.current);
+        // Start facing the opponent (+Z direction)
+        euler.current.set(0, FACING_OPPONENT_YAW, 0);
         initialized.current = true;
       }
 
-      // ---- WASD movement relative to where camera is facing ----
-      const k = keys.current;
-      const forward = new THREE.Vector3(0, 0, -1);
-      const right = new THREE.Vector3(1, 0, 0);
+      const cvInput = cvInputRef.current;
+      if (cvEnabled && cvInput.isTracking) {
+        // ---- CV mode ----
 
-      // Rotate movement vectors by camera's Y rotation (yaw only — no flying)
-      const yawQuat = new THREE.Quaternion().setFromAxisAngle(
-        new THREE.Vector3(0, 1, 0),
-        euler.current.y
-      );
-      forward.applyQuaternion(yawQuat);
-      right.applyQuaternion(yawQuat);
+        // Head rotation → camera look direction
+        //    lookYaw / lookPitch from CVInputMapper are offsets from neutral.
+        //    We ADD them to the base facing-opponent yaw.
+        euler.current.y = FACING_OPPONENT_YAW - cvInput.lookYaw;
+        euler.current.x = cvInput.lookPitch;
+        euler.current.x = Math.max(
+          -Math.PI * 0.47,
+          Math.min(Math.PI * 0.47, euler.current.x)
+        );
+
+        // Movement is handled by WASD even in CV mode (CV position tracking disabled).
+      }
+
+      // ---- WASD movement (works in both keyboard and CV mode) ----
+      _forward.set(0, 0, -1);
+      _right.set(1, 0, 0);
+      _yawQuat.setFromAxisAngle(_yAxis, euler.current.y);
+      _forward.applyQuaternion(_yawQuat);
+      _right.applyQuaternion(_yawQuat);
 
       const move = new THREE.Vector3();
-      if (k.has('KeyW')) move.add(forward);
-      if (k.has('KeyS')) move.sub(forward);
-      if (k.has('KeyD')) move.add(right);
-      if (k.has('KeyA')) move.sub(right);
+      const k = keys.current;
+      if (k.has('KeyW')) move.add(_forward);
+      if (k.has('KeyS')) move.sub(_forward);
+      if (k.has('KeyD')) move.add(_right);
+      if (k.has('KeyA')) move.sub(_right);
 
       if (move.lengthSq() > 0) {
         move.normalize().multiplyScalar(MOVE_SPEED * delta);
@@ -116,19 +143,21 @@ export function FirstPersonCamera() {
       camera.position.y = EYE_HEIGHT;
 
       // Clamp to arena bounds
-      const pos2D = new THREE.Vector2(camera.position.x, camera.position.z);
-      if (pos2D.length() > GAME_CONFIG.arenaRadius - 0.5) {
-        pos2D.normalize().multiplyScalar(GAME_CONFIG.arenaRadius - 0.5);
-        camera.position.x = pos2D.x;
-        camera.position.z = pos2D.y;
+      const r = GAME_CONFIG.arenaRadius - 0.5;
+      const dx = camera.position.x;
+      const dz = camera.position.z;
+      const dist = Math.sqrt(dx * dx + dz * dz);
+      if (dist > r) {
+        const scale = r / dist;
+        camera.position.x = dx * scale;
+        camera.position.z = dz * scale;
       }
 
-      // Apply mouse look rotation
+      // Apply look rotation
       camera.quaternion.setFromEuler(euler.current);
     }
 
-    if (phase === 'menu') {
-      // Slow orbiting camera for menu background
+    if (phase === 'menu' || phase === 'lobby' || phase === 'waiting') {
       const t = Date.now() * 0.0003;
       camera.position.set(Math.cos(t) * 10, 5, Math.sin(t) * 10);
       camera.lookAt(0, 1, 0);

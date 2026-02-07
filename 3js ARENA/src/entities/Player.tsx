@@ -9,6 +9,7 @@ import * as THREE from 'three';
 import { Weapon } from './Weapon';
 import type { PlayerInput } from '../game/InputManager';
 import { useGameStore } from '../game/GameState';
+import { OpponentHitbox } from './OpponentHitbox';
 
 interface PlayerProps {
   playerId: 'player1' | 'player2';
@@ -50,6 +51,9 @@ export function Player({ playerId, input, color, spawnPosition }: PlayerProps) {
           <sphereGeometry args={[0.2, 16, 16]} />
           <meshStandardMaterial color={color} roughness={0.5} metalness={0.3} />
         </mesh>
+
+        {/* Hitbox visualization (only for opponent) */}
+        {isOpponent && <OpponentHitbox />}
       </RigidBody>
 
       {/* Weapon */}

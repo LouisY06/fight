@@ -17,9 +17,14 @@ import { usePlayer2Input } from './game/InputManager';
 import { GAME_CONFIG } from './game/GameConfig';
 import { FirstPersonCamera } from './game/FirstPersonCamera';
 import { ViewmodelSword } from './entities/ViewmodelSword';
+import { MechaArms } from './entities/MechaArms';
 import { NetworkProvider } from './networking/NetworkProvider';
 import { InputSyncBridge } from './networking/InputSyncBridge';
 import { MeleeCombat } from './combat/MeleeCombat';
+import { HitEffectManager } from './combat/HitEffectManager';
+import { CVProvider } from './cv/CVProvider';
+import { CVSync } from './cv/CVSync';
+import { WebcamView } from './cv/WebcamView';
 
 // UI Overlays
 import { HUD } from './ui/HUD';
@@ -30,9 +35,11 @@ import { GameOverScreen } from './ui/GameOverScreen';
 
 function App() {
   return (
-    <NetworkProvider>
-      <GameApp />
-    </NetworkProvider>
+    <CVProvider>
+      <NetworkProvider>
+        <GameApp />
+      </NetworkProvider>
+    </CVProvider>
   );
 }
 
@@ -87,10 +94,15 @@ function GameApp() {
             {/* Game logic loop */}
             <GameEngine />
 
-            {/* First-person camera + viewmodel sword + input sync + combat */}
+            {/* CV pose detection (runs every frame inside render loop) */}
+            <CVSync />
+
+            {/* First-person camera + viewmodel weapons + input sync + combat */}
             <FirstPersonCamera />
             <ViewmodelSword />
+            <MechaArms />
             <MeleeCombat />
+            <HitEffectManager />
             <InputSyncBridge />
 
             {/* Arena environment */}
@@ -122,6 +134,9 @@ function GameApp() {
       <HUD />
       <PauseMenu />
       <GameOverScreen />
+
+      {/* Webcam PiP (shown when CV mode is active during gameplay) */}
+      <WebcamView />
     </div>
   );
 }
