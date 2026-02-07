@@ -11,6 +11,7 @@ import { useNetwork } from '../networking/NetworkProvider';
 import { useGameStore } from '../game/GameState';
 import { GAME_CONFIG } from '../game/GameConfig';
 import { OpponentHitbox } from './OpponentHitbox';
+import { RobotEntity } from '../avatars/RobotEntity';
 
 interface NetworkOpponentProps {
   color?: string;
@@ -55,23 +56,26 @@ export function NetworkOpponent({ color = '#ff4444' }: NetworkOpponentProps) {
   });
 
   const isSwinging = opponentState.isSwinging;
+  const isMovingRef = useRef(false);
+  const prevPos = useRef({ x: opponentState.position[0], z: opponentState.position[2] });
+  useFrame(() => {
+    const dx = opponentState.position[0] - prevPos.current.x;
+    const dz = opponentState.position[2] - prevPos.current.z;
+    isMovingRef.current = dx * dx + dz * dz > 0.0001;
+    prevPos.current = { x: opponentState.position[0], z: opponentState.position[2] };
+  });
 
   return (
     <group ref={groupRef} position={[0, 0, GAME_CONFIG.playerSpawnDistance / 2]} userData={{ isOpponent: true }}>
       <RigidBody type="kinematicPosition" colliders={false}>
         <CapsuleCollider args={[0.5, 0.3]} position={[0, 1, 0]} />
 
-        {/* Body */}
-        <mesh position={[0, 1, 0]} castShadow>
-          <capsuleGeometry args={[0.3, 1, 8, 16]} />
-          <meshStandardMaterial color={color} roughness={0.5} metalness={0.3} />
-        </mesh>
-
-        {/* Head */}
-        <mesh position={[0, 1.9, 0]} castShadow>
-          <sphereGeometry args={[0.2, 16, 16]} />
-          <meshStandardMaterial color={color} roughness={0.5} metalness={0.3} />
-        </mesh>
+        {/* Animated GLB: walk when moving, swing when attacking (SkeletonUtils clone from prefab) */}
+        <RobotEntity
+          color={color}
+          isWalkingRef={isMovingRef}
+          isSwinging={isSwinging}
+        />
 
         {/* Hitbox visualization */}
         <OpponentHitbox />

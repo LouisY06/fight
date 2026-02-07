@@ -10,6 +10,7 @@ import { Weapon } from './Weapon';
 import type { PlayerInput } from '../game/InputManager';
 import { useGameStore } from '../game/GameState';
 import { OpponentHitbox } from './OpponentHitbox';
+import { RobotEntity } from '../avatars/RobotEntity';
 
 interface PlayerProps {
   playerId: 'player1' | 'player2';
@@ -40,17 +41,38 @@ export function Player({ playerId, input, color, spawnPosition }: PlayerProps) {
       <RigidBody type="kinematicPosition" colliders={false}>
         <CapsuleCollider args={[0.5, 0.3]} position={[0, 1, 0]} />
 
-        {/* Simple body representation — will be replaced with GLB avatar */}
-        <mesh position={[0, 1, 0]} castShadow>
-          <capsuleGeometry args={[0.3, 1, 8, 16]} />
-          <meshStandardMaterial color={color} roughness={0.5} metalness={0.3} />
-        </mesh>
-
-        {/* Head */}
-        <mesh position={[0, 1.9, 0]} castShadow>
-          <sphereGeometry args={[0.2, 16, 16]} />
-          <meshStandardMaterial color={color} roughness={0.5} metalness={0.3} />
-        </mesh>
+        {/* Enemy: robot GLB (with solid fallback so we never show only wireframe). Local player: capsule. */}
+        {isOpponent ? (
+          <>
+            {/* Guaranteed solid body so enemy is never just a wireframe */}
+            <mesh position={[0, 1, 0]} castShadow renderOrder={0}>
+              <capsuleGeometry args={[0.3, 1, 8, 16]} />
+              <meshStandardMaterial color={color} roughness={0.5} metalness={0.3} depthWrite />
+            </mesh>
+            <mesh position={[0, 1.9, 0]} castShadow renderOrder={0}>
+              <sphereGeometry args={[0.2, 16, 16]} />
+              <meshStandardMaterial color={color} roughness={0.5} metalness={0.3} depthWrite />
+            </mesh>
+            <group renderOrder={1}>
+              <RobotEntity
+                color={color}
+                isWalking={input.moveDirection.lengthSq() > 0.01}
+                isSwinging={input.gesture === 'slash'}
+              />
+            </group>
+          </>
+        ) : (
+          <>
+            <mesh position={[0, 1, 0]} castShadow>
+              <capsuleGeometry args={[0.3, 1, 8, 16]} />
+              <meshStandardMaterial color={color} roughness={0.5} metalness={0.3} />
+            </mesh>
+            <mesh position={[0, 1.9, 0]} castShadow>
+              <sphereGeometry args={[0.2, 16, 16]} />
+              <meshStandardMaterial color={color} roughness={0.5} metalness={0.3} />
+            </mesh>
+          </>
+        )}
 
         {/* Hitbox visualization (only for opponent) */}
         {isOpponent && <OpponentHitbox />}
