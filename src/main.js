@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { createScene } from './scene.js';
 import { createMecha, updateMecha, getHeadPosition } from './mecha.js';
 import { startWebcam, initTracking, detectPose, setProgressCallback } from './tracking.js';
+import { detectColorRegion } from './colorTrack.js';
 
 // ── DOM refs ──────────────────────────────────────────────
 
@@ -92,9 +93,12 @@ async function init() {
       if (pose) lastPose = pose;
     }
 
+    // Color-track the sword prop
+    const colorData = detectColorRegion(videoEl);
+
     // Update mecha from pose
     if (lastPose) {
-      updateMecha(parts, lastPose.worldLandmarks);
+      updateMecha(parts, lastPose.worldLandmarks, lastPose.landmarks, colorData);
 
       // First-person camera: subtle X/Y sway from head, fixed Z
       const headPos = getHeadPosition(lastPose.worldLandmarks);
