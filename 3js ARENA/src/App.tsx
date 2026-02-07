@@ -11,10 +11,9 @@ import { useGameStore } from './game/GameState';
 import { GameEngine } from './game/GameEngine';
 import { Arena } from './arena/Arena';
 import { getThemeById, ARENA_THEMES } from './arena/arenaThemes';
-import { Player } from './entities/Player';
 import { NetworkOpponent } from './entities/NetworkOpponent';
+import { BotOpponent } from './entities/BotOpponent';
 import { GAME_CONFIG } from './game/GameConfig';
-import { useAIInput } from './ai/useAIInput';
 import { FirstPersonCamera } from './game/FirstPersonCamera';
 import { ViewmodelSword } from './entities/ViewmodelSword';
 import { MechaArms } from './entities/MechaArms';
@@ -114,7 +113,7 @@ function GameApp() {
               isMultiplayer ? (
                 <NetworkOpponent color="#ff4444" />
               ) : (
-                <LocalOpponent />
+                <BotOpponent color="#ff4444" />
               )
             )}
           </Physics>
@@ -140,23 +139,6 @@ function GameApp() {
       {/* Webcam PiP (shown when CV mode is active during gameplay) */}
       <WebcamView />
     </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Local opponent (for practice mode) — powered by Vultr AI
-// ---------------------------------------------------------------------------
-
-function LocalOpponent() {
-  const aiInput = useAIInput();
-
-  return (
-    <Player
-      playerId="player2"
-      input={aiInput}
-      color="#ff4444"
-      spawnPosition={GAME_CONFIG.spawnP2}
-    />
   );
 }
 

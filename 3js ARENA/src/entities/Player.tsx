@@ -12,6 +12,7 @@ import type { PlayerInput } from '../game/InputManager';
 import { useGameStore } from '../game/GameState';
 import { GAME_CONFIG } from '../game/GameConfig';
 import { OpponentHitbox } from './OpponentHitbox';
+import { SimpleCharacterModel } from './SimpleCharacterModel';
 
 interface PlayerProps {
   playerId: 'player1' | 'player2';
@@ -92,17 +93,13 @@ export function Player({ playerId, input, color, spawnPosition }: PlayerProps) {
             <RigidBody type="kinematicPosition" colliders={false}>
               <CapsuleCollider args={[0.5, 0.3]} position={[0, 1, 0]} />
 
-              {/* Bean capsule opponent */}
-              <group>
-                <mesh position={[0, 1, 0]} castShadow>
-                  <capsuleGeometry args={[0.35, 1.0, 8, 16]} />
-                  <meshStandardMaterial color={color} roughness={0.4} metalness={0.3} />
-                </mesh>
-                <mesh position={[0, 1.9, 0]} castShadow>
-                  <sphereGeometry args={[0.22, 16, 16]} />
-                  <meshStandardMaterial color={color} roughness={0.4} metalness={0.3} />
-                </mesh>
-              </group>
+              {/* Procedural character model — no GLB */}
+              <SimpleCharacterModel
+                color={color}
+                targetHeight={2}
+                isWalking={input.moveDirection.lengthSq() > 0.0001}
+                isSwinging={input.gesture === 'slash' || input.gesture === 'stab'}
+              />
 
               {/* Hitbox visualization (only for opponent) */}
               {isOpponent && <OpponentHitbox />}

@@ -13,6 +13,7 @@ import * as THREE from 'three';
 import { useGameStore } from '../game/GameState';
 import { GAME_CONFIG } from '../game/GameConfig';
 import { swordHilt, swordTip, swordSpeed, keyboardSwingActive } from './SwordState';
+import { botSwordHilt, botSwordTip, botSwordActive } from './OpponentSwordState';
 import { fireHitEvent } from './HitEvent';
 import { playSwordHit } from '../audio/SoundManager';
 import { gameSocket } from '../networking/socket';
@@ -22,6 +23,10 @@ import { useScreenShakeStore } from '../game/useScreenShake';
 const OPPONENT_RADIUS = 0.45;       // capsule radius (generous for good feel)
 const OPPONENT_CAPSULE_BOT = 0.2;   // bottom of capsule axis (y offset from group)
 const OPPONENT_CAPSULE_TOP = 2.1;   // top of capsule axis
+
+// Player body (camera) capsule for bot hits
+const PLAYER_CAPSULE_BOT = 0.5;
+const PLAYER_CAPSULE_TOP = 2.0;
 
 // Sword must be moving at least this fast to deal damage (world units/sec)
 // This prevents "resting sword on opponent" from dealing damage
@@ -37,6 +42,8 @@ const _closestOnSword = new THREE.Vector3();
 const _closestOnCapsule = new THREE.Vector3();
 const _hitPoint = new THREE.Vector3();
 const _oppPos = new THREE.Vector3();
+const _playerCapsuleBot = new THREE.Vector3();
+const _playerCapsuleTop = new THREE.Vector3();
 
 // ---------------------------------------------------------------------------
 // Closest distance between two line segments
@@ -100,15 +107,12 @@ export function MeleeCombat() {
     const phase = useGameStore.getState().phase;
     if (phase !== 'playing') return;
 
-    // Is the sword "active" (swinging / moving fast enough)?
-    const isActive = keyboardSwingActive || swordSpeed > MIN_SWING_SPEED;
-    if (!isActive) return;
-
-    // Cooldown
     const now = Date.now();
-    if (now - lastHitTime.current < GAME_CONFIG.attackCooldownMs) return;
 
-    // Check against all opponents
+    // Player sword vs opponents
+    const isActive = keyboardSwingActive || swordSpeed > MIN_SWING_SPEED;
+    if (isActive && now - lastHitTime.current >= GAME_CONFIG.attackCooldownMs) {
+      // Check against all opponents
     scene.traverse((obj) => {
       if (!obj.userData?.isOpponent) return;
       if (lastHitTime.current === now) return; // already hit this frame
@@ -153,6 +157,34 @@ export function MeleeCombat() {
         }
       }
     });
+    }
+
+    // Bot sword vs player (practice mode only)
+    const { isMultiplayer } = useGameStore.getState();
+    if (!isMultiplayer && botSwordActive && now - lastHitTime.current >= GAME_CONFIG.attackCooldownMs) {
+      const playerPos = camera.position;
+      _playerCapsuleBot.set(playerPos.x, playerPos.y + PLAYER_CAPSULE_BOT, playerPos.z);
+      _playerCapsuleTop.set(playerPos.x, playerPos.y + PLAYER_CAPSULE_TOP, playerPos.z);
+
+      const dist = closestDistSegmentSegment(
+        botSwordHilt,
+        botSwordTip,
+        _playerCapsuleBot,
+        _playerCapsuleTop,
+        _closestOnSword,
+        _closestOnCapsule
+      );
+
+      if (dist <= OPPONENT_RADIUS) {
+        lastHitTime.current = now;
+        _hitPoint.addVectors(_closestOnSword, _closestOnCapsule).multiplyScalar(0.5);
+
+        const { dealDamage } = useGameStore.getState();
+        dealDamage('player1', GAME_CONFIG.damage.swordSlash);
+        fireHitEvent({ point: _hitPoint.clone(), amount: GAME_CONFIG.damage.swordSlash });
+        useScreenShakeStore.getState().trigger(0.5, 200);
+      }
+    }
   });
 
   return null;
