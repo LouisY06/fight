@@ -81,6 +81,7 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
   const startGame = useGameStore((s) => s.startGame);
   const dealDamage = useGameStore((s) => s.dealDamage);
   const endRound = useGameStore((s) => s.endRound);
+  const setOpponentName = useGameStore((s) => s.setOpponentName);
 
   // Subscribe to socket events
   useEffect(() => {
@@ -108,6 +109,13 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
 
         case 'opponent_joined':
           setOpponentConnected(true);
+          // Send our username to the opponent
+          {
+            const name = useGameStore.getState().username;
+            if (name) {
+              gameSocket.send({ type: 'set_username', username: name });
+            }
+          }
           break;
 
         case 'opponent_left':
@@ -141,6 +149,10 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
         case 'opponent_round_end':
           endRound(msg.winner);
           break;
+
+        case 'opponent_username':
+          setOpponentName(msg.username);
+          break;
       }
     });
 
@@ -148,7 +160,7 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
       unsubStatus();
       unsubMsg();
     };
-  }, [setPhase, startGame, dealDamage, endRound]);
+  }, [setPhase, startGame, dealDamage, endRound, setOpponentName]);
 
   // Actions
   const connect = useCallback(() => gameSocket.connect(), []);

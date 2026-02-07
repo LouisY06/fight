@@ -37,6 +37,9 @@ const defaultCvInput: CVGameInput = {
 
 // ---- Context type ----
 
+/** Minimum seconds between calibrations (prevents spam). */
+const CALIBRATE_COOLDOWN = 1.5;
+
 interface CVContextType {
   /** Whether CV mode is enabled by the user */
   cvEnabled: boolean;
@@ -63,8 +66,14 @@ interface CVContextType {
   /** The raw video element for PiP display */
   videoElement: HTMLVideoElement | null;
 
-  /** Re-calibrate neutral position (resets head facing to center) */
+  /** Re-calibrate neutral position + reset camera facing (with cooldown). */
   calibrate: () => void;
+
+  /**
+   * Register a callback to run when calibrate fires (e.g. reset camera yaw).
+   * Returns unsubscribe function.
+   */
+  onCalibrate: (cb: () => void) => () => void;
 }
 
 const CVContext = createContext<CVContextType>({
@@ -76,6 +85,7 @@ const CVContext = createContext<CVContextType>({
   mapperRef: { current: new CVInputMapper() },
   videoElement: null,
   calibrate: () => {},
+  onCalibrate: () => () => {},
 });
 
 // ---- Provider ----
@@ -117,8 +127,23 @@ export function CVProvider({ children }: { children: ReactNode }) {
     };
   }, [cvEnabled]);
 
+  // Calibrate with cooldown + notify listeners (e.g. camera reset)
+  const lastCalibrateTime = useRef(0);
+  const calibrateListeners = useRef(new Set<() => void>());
+
   const calibrate = useCallback(() => {
+    const now = Date.now() / 1000;
+    if (now - lastCalibrateTime.current < CALIBRATE_COOLDOWN) return; // cooldown
+    lastCalibrateTime.current = now;
+
     mapperRef.current.calibrate();
+    // Notify listeners (camera facing reset, etc.)
+    for (const cb of calibrateListeners.current) cb();
+  }, []);
+
+  const onCalibrate = useCallback((cb: () => void) => {
+    calibrateListeners.current.add(cb);
+    return () => { calibrateListeners.current.delete(cb); };
   }, []);
 
   return (
@@ -132,6 +157,7 @@ export function CVProvider({ children }: { children: ReactNode }) {
         mapperRef,
         videoElement,
         calibrate,
+        onCalibrate,
       }}
     >
       {children}

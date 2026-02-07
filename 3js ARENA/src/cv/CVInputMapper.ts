@@ -14,12 +14,16 @@ import type { NormalizedLandmark } from '@mediapipe/tasks-vision';
 const NOSE = 0;
 const LEFT_SHOULDER = 11;
 const RIGHT_SHOULDER = 12;
-const LEFT_ELBOW = 13;
+const _LEFT_ELBOW = 13; // unused — left arm on keyboard
 const RIGHT_ELBOW = 14;
-const LEFT_WRIST = 15;
+const _LEFT_WRIST = 15; // unused — left arm on keyboard
 const RIGHT_WRIST = 16;
 const LEFT_HIP = 23;
 const RIGHT_HIP = 24;
+
+// Suppress unused warnings
+void _LEFT_ELBOW;
+void _LEFT_WRIST;
 
 // ---- Head look tuning ----
 const HEAD_YAW_SCALE = 8.0;   // radians per unit of normalized displacement
@@ -42,8 +46,7 @@ const ROTATION_SMOOTH = 0.15;   // lower = smoother (was 0.35)
 const SWING_VELOCITY_THRESHOLD = 2.5;  // raised: needs a deliberate swing (was 1.2)
 const SWING_COOLDOWN_MS = 600;         // longer cooldown between swings (was 500)
 
-// ---- Block tuning ----
-const BLOCK_HEIGHT_OFFSET = 0.08;
+// Block detection removed — left hand is on keyboard for WASD.
 
 export interface CVGameInput {
   /** Head look yaw offset in radians (positive = look right) */
@@ -131,7 +134,6 @@ export class CVInputMapper {
     const rightHip = landmarks[RIGHT_HIP];
     const rightWrist = landmarks[RIGHT_WRIST];
     const rightElbow = landmarks[RIGHT_ELBOW];
-    const leftWrist = landmarks[LEFT_WRIST];
     const leftShoulder = landmarks[LEFT_SHOULDER];
     const rightShoulder = landmarks[RIGHT_SHOULDER];
 
@@ -238,8 +240,8 @@ export class CVInputMapper {
     this.prevWristY = rightWrist.y;
     this.prevTimestamp = timestamp;
 
-    // ---- Block detection ----
-    const isBlocking = leftWrist.y < leftShoulder.y - BLOCK_HEIGHT_OFFSET;
+    // Block detection removed — left hand on keyboard
+    const isBlocking = false;
 
     return {
       lookYaw: this.smoothLookYaw,

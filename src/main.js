@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { createScene } from './scene.js';
 import { createMecha, updateMecha, getHeadPosition } from './mecha.js';
 import { startWebcam, initTracking, detectPose, setProgressCallback } from './tracking.js';
+import { detectColorRegion } from './colorTrack.js';
 
 // ── DOM refs ──────────────────────────────────────────────
 
@@ -25,7 +26,7 @@ async function init() {
   const { scene, camera, renderer } = createScene();
 
   updateLoading(25, 'Building mecha...');
-  const parts = createMecha(scene);
+  const parts = await createMecha(scene);
 
   // Start webcam first (independent of tracking)
   updateLoading(35, 'Starting webcam...');
@@ -92,9 +93,12 @@ async function init() {
       if (pose) lastPose = pose;
     }
 
+    // Color-track near the right hand only
+    const colorData = detectColorRegion(videoEl, lastPose ? lastPose.landmarks : null);
+
     // Update mecha from pose
     if (lastPose) {
-      updateMecha(parts, lastPose.worldLandmarks);
+      updateMecha(parts, lastPose.worldLandmarks, lastPose.landmarks, colorData);
 
       // First-person camera: subtle X/Y sway from head, fixed Z
       const headPos = getHeadPosition(lastPose.worldLandmarks);

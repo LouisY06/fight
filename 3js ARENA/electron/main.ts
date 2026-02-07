@@ -99,6 +99,12 @@ ipcMain.handle('list-arena-images', async () => {
   }
 });
 
+// ---- IPC: Quit application ----
+
+ipcMain.on('quit-app', () => {
+  app.quit();
+});
+
 // ---- Lifecycle ----
 
 app.on('window-all-closed', () => {
