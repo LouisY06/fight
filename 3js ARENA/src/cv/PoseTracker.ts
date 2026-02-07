@@ -50,17 +50,27 @@ class PoseTracker {
       );
 
       console.log('[PoseTracker] Creating pose landmarker (local model)...');
-      this.landmarker = await PoseLandmarker.createFromOptions(vision, {
+      // Try GPU first, fall back to CPU if it fails
+      const opts = {
         baseOptions: {
           modelAssetPath: assetUrl('mediapipe/pose_landmarker_lite.task'),
-          delegate: 'GPU',
+          delegate: 'GPU' as const,
         },
-        runningMode: 'VIDEO',
+        runningMode: 'VIDEO' as const,
         numPoses: 1,
         minPoseDetectionConfidence: 0.5,
         minPosePresenceConfidence: 0.5,
         minTrackingConfidence: 0.5,
-      });
+      };
+      try {
+        this.landmarker = await PoseLandmarker.createFromOptions(vision, opts);
+        console.log('[PoseTracker] Using GPU delegate');
+      } catch (gpuErr) {
+        console.warn('[PoseTracker] GPU delegate failed, falling back to CPU:', gpuErr);
+        opts.baseOptions.delegate = 'CPU' as const;
+        this.landmarker = await PoseLandmarker.createFromOptions(vision, opts);
+        console.log('[PoseTracker] Using CPU delegate');
+      }
 
       // Open webcam
       console.log('[PoseTracker] Requesting webcam...');
@@ -75,8 +85,9 @@ class PoseTracker {
       this.video.playsInline = true;
       this.video.muted = true;
 
-      await new Promise<void>((resolve) => {
+      await new Promise<void>((resolve, reject) => {
         this.video!.onloadeddata = () => resolve();
+        setTimeout(() => reject(new Error('Webcam video timed out (10s)')), 10000);
       });
 
       this._isRunning = true;
