@@ -3,8 +3,8 @@
 // Use with RobotPrefabProvider; GLB is loaded once, each entity is a clone.
 // =============================================================================
 
-import { useRef, useMemo, Suspense, type MutableRefObject } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useRef, useMemo, Suspense, type MutableRefObject, type ReactNode } from 'react';
+import { useFrame, useGraph } from '@react-three/fiber';
 import * as THREE from 'three';
 import { clone } from 'three/addons/utils/SkeletonUtils.js';
 import { useRobotPrefab } from './RobotPrefabContext';
@@ -110,17 +110,26 @@ function FallbackCapsule({ color = '#cc4444' }: { color?: string }) {
   );
 }
 
+/** Graph of named nodes from the cloned GLB (from useGraph). Used to attach props e.g. sword to RightHand. */
+export type RobotEntityGraph = {
+  nodes: Record<string, THREE.Object3D>;
+  materials: Record<string, THREE.Material>;
+  meshes: Record<string, THREE.Mesh>;
+};
+
 export interface RobotEntityProps extends AvatarModelProps {
   isWalking?: boolean;
   isSwinging: boolean;
   isWalkingRef?: MutableRefObject<boolean>;
+  /** Optional. Receives the clone's node graph so you can e.g. createPortal(sword, graph.nodes.RightHand). */
+  children?: (graph: RobotEntityGraph) => ReactNode;
 }
 
 function RobotEntityInner(props: RobotEntityProps) {
   const prefab = useRobotPrefab();
   const targetHeight = props.targetHeight ?? DEFAULT_TARGET_HEIGHT;
   const scaleProp = props.scale;
-  const { isWalking = false, isSwinging, isWalkingRef } = props;
+  const { isWalking = false, isSwinging, isWalkingRef, children } = props;
 
   const cloneRef = useRef<THREE.Group | null>(null);
   const walkTime = useRef(0);
@@ -177,10 +186,13 @@ function RobotEntityInner(props: RobotEntityProps) {
     }
   });
 
+  const graph = useGraph(cloned!);
+
   if (!cloned) return <FallbackCapsule color={props.color} />;
   return (
     <group position={[0, 0, 0]} scale={scaleProp ?? [1, 1, 1]}>
       <primitive object={cloned} />
+      {typeof children === 'function' ? children(graph) : children}
     </group>
   );
 }

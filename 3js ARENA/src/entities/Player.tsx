@@ -66,21 +66,16 @@ export function Player({ playerId, input, color, spawnPosition }: PlayerProps) {
         {/* Only show player if not dead */}
         {!isDead && (
           <>
-            {/* Player body (capsule) */}
             <RigidBody type="kinematicPosition" colliders={false}>
               <CapsuleCollider args={[0.5, 0.3]} position={[0, 1, 0]} />
 
-              {/* Simple body representation — will be replaced with GLB avatar */}
-              <mesh position={[0, 1, 0]} castShadow>
-                <capsuleGeometry args={[0.3, 1, 8, 16]} />
-                <meshStandardMaterial color={color} roughness={0.5} metalness={0.3} />
-              </mesh>
-
-              {/* Head */}
-              <mesh position={[0, 1.9, 0]} castShadow>
-                <sphereGeometry args={[0.2, 16, 16]} />
-                <meshStandardMaterial color={color} roughness={0.5} metalness={0.3} />
-              </mesh>
+              {/* Robot GLB normalized to 2 units height, feet at y=0 */}
+              <RobotEntity
+                color={color}
+                targetHeight={2}
+                isWalking={input.moveDirection.lengthSq() > 0.0001}
+                isSwinging={input.gesture === 'slash' || input.gesture === 'stab'}
+              />
 
               {/* Hitbox visualization (only for opponent) */}
               {isOpponent && <OpponentHitbox />}

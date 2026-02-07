@@ -30,8 +30,8 @@ export interface AvatarModelProps {
 }
 
 /**
- * Normalize GLB scale to targetHeight and put feet on y=0 (production pipeline step 4).
- * Use after loading the model; enables consistent placement in the arena.
+ * Use THREE.Box3 to normalize GLB: scale to targetHeight (default 2 units) and ground feet at y=0.
+ * Centers the model on x/z. Use after loading; ensures correct size for hitboxes and arena.
  */
 export function normalizeToHeight(root: THREE.Object3D, targetHeight: number = 2): void {
   const box = new THREE.Box3().setFromObject(root);

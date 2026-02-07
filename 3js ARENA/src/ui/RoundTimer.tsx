@@ -43,9 +43,10 @@ export function RoundTimer() {
           fontWeight: 'bold',
           fontFamily: 'monospace',
           textShadow: isLow
-            ? '0 0 20px rgba(255,0,0,0.5)'
+            ? '0 0 20px rgba(255,0,0,0.6), 0 0 40px rgba(255,0,0,0.3)'
             : '0 0 10px rgba(0,0,0,0.5)',
-          animation: isLow ? 'pulse 0.5s ease-in-out infinite alternate' : 'none',
+          animation: isLow ? 'pulse 0.4s ease-in-out infinite alternate' : 'none',
+          transition: 'color 0.2s ease, text-shadow 0.2s ease',
         }}
       >
         {timeStr}

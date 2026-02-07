@@ -43,7 +43,7 @@ export function MainMenu() {
         zIndex: 200,
       }}
     >
-      {/* Title */}
+      {/* Title — staggered entrance */}
       <h1
         style={{
           color: '#ffffff',
@@ -57,6 +57,8 @@ export function MainMenu() {
           marginBottom: '8px',
           textAlign: 'center',
           lineHeight: 1.1,
+          animation: 'fadeInUp 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
+          opacity: 0,
         }}
       >
         SUPERMECHAFIGHTER
@@ -73,7 +75,15 @@ export function MainMenu() {
       <div style={{ height: '32px' }} />
 
       {/* Username input */}
-      <div style={{ position: 'relative', width: '280px', marginBottom: '24px' }}>
+      <div
+        style={{
+          position: 'relative',
+          width: '280px',
+          marginBottom: '24px',
+          animation: 'fadeInUp 0.5s 0.15s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
+          opacity: 0,
+        }}
+      >
         <input
           type="text"
           value={username}
@@ -107,23 +117,29 @@ export function MainMenu() {
       </div>
 
       {/* Online 1v1 */}
-      <MenuButton onClick={handleOnlinePlay} primary>
-        ONLINE 1v1
-      </MenuButton>
+      <div style={{ animation: 'fadeInUp 0.5s 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards', opacity: 0 }}>
+        <MenuButton onClick={handleOnlinePlay} primary>
+          ONLINE 1v1
+        </MenuButton>
+      </div>
 
       <div style={{ height: '12px' }} />
 
       {/* Local play */}
-      <MenuButton onClick={handleLocalPlay}>
-        LOCAL PRACTICE
-      </MenuButton>
+      <div style={{ animation: 'fadeInUp 0.5s 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards', opacity: 0 }}>
+        <MenuButton onClick={handleLocalPlay}>
+          LOCAL PRACTICE
+        </MenuButton>
+      </div>
 
       <div style={{ height: '12px' }} />
 
       {/* 2v2 — coming soon */}
-      <MenuButton onClick={() => {}} disabled>
-        2v2 (COMING SOON)
-      </MenuButton>
+      <div style={{ animation: 'fadeInUp 0.5s 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards', opacity: 0 }}>
+        <MenuButton onClick={() => {}} disabled>
+          2v2 (COMING SOON)
+        </MenuButton>
+      </div>
 
       <div style={{ height: '24px' }} />
 
@@ -131,6 +147,8 @@ export function MainMenu() {
       <div
         style={{
           display: 'flex',
+          animation: 'fadeInUp 0.5s 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
+          opacity: 0,
           alignItems: 'center',
           gap: '12px',
           padding: '10px 20px',
@@ -250,6 +268,13 @@ function MenuButton({
         transition: 'transform 0.15s ease, box-shadow 0.15s ease',
         minWidth: '280px',
         opacity: disabled ? 0.5 : 1,
+      }}
+      onMouseDown={(e) => {
+        if (disabled) return;
+        e.currentTarget.style.transform = 'scale(0.97)';
+      }}
+      onMouseUp={(e) => {
+        e.currentTarget.style.transform = 'scale(1)';
       }}
       onMouseEnter={(e) => {
         if (disabled) return;

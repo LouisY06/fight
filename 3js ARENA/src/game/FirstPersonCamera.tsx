@@ -10,6 +10,10 @@ import * as THREE from 'three';
 import { useGameStore } from './GameState';
 import { GAME_CONFIG } from './GameConfig';
 import { useCVContext } from '../cv/CVProvider';
+import {
+  useScreenShakeStore,
+  computeShakeOffset,
+} from './useScreenShake';
 
 const EYE_HEIGHT = 1.7;
 const MOVE_SPEED = 5; // units per second (keyboard mode)
@@ -153,6 +157,15 @@ export function FirstPersonCamera() {
 
       // Keep at eye height
       camera.position.y = EYE_HEIGHT;
+
+      // Screen shake
+      const { intensity: si, durationMs: sd, startTime: st } =
+        useScreenShakeStore.getState();
+      const shake = computeShakeOffset(st, sd, si);
+      const camRight = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+      const camUp = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
+      camera.position.addScaledVector(camRight, shake.x);
+      camera.position.addScaledVector(camUp, shake.y);
 
       // Clamp to arena bounds
       const r = GAME_CONFIG.arenaRadius - 0.5;

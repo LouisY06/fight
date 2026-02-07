@@ -14,6 +14,7 @@ import {
 import { gameSocket } from './socket';
 import type { ServerMessage, ClientMessage } from './protocol';
 import { useGameStore } from '../game/GameState';
+import { useScreenShakeStore } from '../game/useScreenShake';
 
 export interface OpponentState {
   position: [number, number, number];
@@ -140,6 +141,12 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
 
         case 'opponent_damage':
           dealDamage(msg.target, msg.amount);
+          {
+            const slot = useGameStore.getState().playerSlot;
+            if (slot === msg.target) {
+              useScreenShakeStore.getState().trigger(0.5, 200); // we got hit
+            }
+          }
           break;
 
         case 'opponent_game_start':

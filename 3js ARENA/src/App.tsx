@@ -33,6 +33,7 @@ import { MainMenu } from './ui/MainMenu';
 import { LobbyMenu } from './ui/LobbyMenu';
 import { PauseMenu } from './ui/PauseMenu';
 import { GameOverScreen } from './ui/GameOverScreen';
+import { ArenaLoadingOverlay } from './ui/ArenaLoadingOverlay';
 
 function App() {
   return (
@@ -134,6 +135,7 @@ function GameApp() {
       {/* UI Overlays (HTML on top of Canvas) */}
       <MainMenu />
       <LobbyMenu />
+      <ArenaLoadingOverlay />
       <HUD />
       <PauseMenu />
       <GameOverScreen />

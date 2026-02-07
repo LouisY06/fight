@@ -1,24 +1,53 @@
 // =============================================================================
-// HealthBar.tsx — Animated health bar with color transitions
+// HealthBar.tsx — Animated health bar with damage flash, ghost bar, low-health pulse
 // =============================================================================
 
-import { useMemo } from 'react';
+import { useMemo, useRef, useEffect, useState } from 'react';
+import { useGameStore } from '../game/GameState';
 import { GAME_CONFIG } from '../game/GameConfig';
 
 interface HealthBarProps {
   health: number;
   side: 'left' | 'right';
   playerName: string;
+  playerKey: 'player1' | 'player2';
 }
 
-export function HealthBar({ health, side, playerName }: HealthBarProps) {
+const DAMAGE_FLASH_MS = 400;
+const GHOST_DELAY_MS = 300;
+
+export function HealthBar({ health, side, playerName, playerKey }: HealthBarProps) {
   const percentage = (health / GAME_CONFIG.maxHealth) * 100;
+  const lastDamagedPlayer = useGameStore((s) => s.lastDamagedPlayer);
+  const lastDamageTime = useGameStore((s) => s.lastDamageTime);
+  const prevHealthRef = useRef(health);
+  const [ghostPercentage, setGhostPercentage] = useState(percentage);
+
+  // Damage flash: show when this player just took damage
+  const showDamageFlash =
+    lastDamagedPlayer === playerKey && Date.now() - lastDamageTime < DAMAGE_FLASH_MS;
+
+  // Ghost bar: delayed trailing bar when health drops
+  useEffect(() => {
+    if (health < prevHealthRef.current) {
+      const timer = setTimeout(() => {
+        setGhostPercentage((health / GAME_CONFIG.maxHealth) * 100);
+        prevHealthRef.current = health;
+      }, GHOST_DELAY_MS);
+      return () => clearTimeout(timer);
+    } else {
+      prevHealthRef.current = health;
+      setGhostPercentage((health / GAME_CONFIG.maxHealth) * 100);
+    }
+  }, [health]);
 
   const barColor = useMemo(() => {
     if (percentage > 60) return '#22cc44';
     if (percentage > 30) return '#ccaa22';
     return '#cc2222';
   }, [percentage]);
+
+  const isLowHealth = percentage <= 30;
 
   return (
     <div
@@ -54,8 +83,36 @@ export function HealthBar({ health, side, playerName }: HealthBarProps) {
           borderRadius: '4px',
           overflow: 'hidden',
           position: 'relative',
+          animation: isLowHealth ? 'lowHealthPulse 1.2s ease-in-out infinite' : 'none',
         }}
       >
+        {/* Damage flash overlay */}
+        {showDamageFlash && (
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background: 'rgba(255, 50, 50, 0.5)',
+              borderRadius: '2px',
+              animation: 'damageFlash 0.4s ease-out forwards',
+              pointerEvents: 'none',
+            }}
+          />
+        )}
+
+        {/* Ghost bar (delayed trailing) */}
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            [side === 'left' ? 'left' : 'right']: 0,
+            width: `${ghostPercentage}%`,
+            height: '100%',
+            background: 'rgba(200, 200, 255, 0.35)',
+            transition: 'width 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+          }}
+        />
+
         {/* Health fill */}
         <div
           style={{
