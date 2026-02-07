@@ -81,6 +81,38 @@ export function playSwordHit(): void {
 }
 
 // ---------------------------------------------------------------------------
+// Sword Block — metallic clang, duller than hit
+// ---------------------------------------------------------------------------
+
+export function playSwordBlock(): void {
+  const ac = getCtx();
+  const now = ac.currentTime;
+
+  const noiseDuration = 0.08;
+  const bufferSize = Math.ceil(ac.sampleRate * noiseDuration);
+  const noiseBuffer = ac.createBuffer(1, bufferSize, ac.sampleRate);
+  const data = noiseBuffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) {
+    data[i] = (Math.random() * 2 - 1) * 0.5;
+  }
+  const noise = ac.createBufferSource();
+  noise.buffer = noiseBuffer;
+
+  const bp = ac.createBiquadFilter();
+  bp.type = 'bandpass';
+  bp.frequency.setValueAtTime(1800, now);
+  bp.Q.setValueAtTime(4, now);
+
+  const noiseGain = ac.createGain();
+  noiseGain.gain.setValueAtTime(0.4, now);
+  noiseGain.gain.exponentialRampToValueAtTime(0.001, now + noiseDuration);
+
+  noise.connect(bp).connect(noiseGain).connect(ac.destination);
+  noise.start(now);
+  noise.stop(now + noiseDuration);
+}
+
+// ---------------------------------------------------------------------------
 // Sword Swing (miss) — whoosh
 // ---------------------------------------------------------------------------
 

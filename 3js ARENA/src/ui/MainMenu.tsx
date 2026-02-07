@@ -2,11 +2,14 @@
 // MainMenu.tsx — Start screen with multiplayer mode selection + CV toggle
 // =============================================================================
 
+import { useState } from 'react';
 import { useGameStore } from '../game/GameState';
 import { useNetwork } from '../networking/NetworkProvider';
 import { useCVContext } from '../cv/CVProvider';
 import { ARENA_THEMES } from '../arena/arenaThemes';
 import { randomPick } from '../utils/random';
+import { MenuCharacterPreview } from './MenuCharacterPreview';
+import { CustomizationPanel } from './CustomizationPanel';
 
 export function MainMenu() {
   const phase = useGameStore((s) => s.phase);
@@ -16,6 +19,7 @@ export function MainMenu() {
   const setUsername = useGameStore((s) => s.setUsername);
   const { connect } = useNetwork();
   const { cvEnabled, setCvEnabled } = useCVContext();
+  const [showCustomize, setShowCustomize] = useState(false);
 
   if (phase !== 'menu') return null;
 
@@ -35,14 +39,25 @@ export function MainMenu() {
         position: 'absolute',
         inset: 0,
         display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
+        flexDirection: 'row',
+        alignItems: 'stretch',
         background:
           'radial-gradient(ellipse at center, rgba(20,0,40,0.95) 0%, rgba(0,0,0,0.98) 100%)',
         zIndex: 200,
       }}
     >
+      {/* Left: menu content */}
+      <div
+        style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minWidth: 0,
+          paddingRight: 'min(42%, 400px)',
+        }}
+      >
       {/* Title — staggered entrance */}
       <h1
         style={{
@@ -58,7 +73,7 @@ export function MainMenu() {
           textAlign: 'center',
           lineHeight: 1.1,
           animation: 'fadeInUp 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
-          opacity: 0,
+          opacity: 1,
         }}
       >
         SUPERMECHAFIGHTER
@@ -81,7 +96,7 @@ export function MainMenu() {
           width: '280px',
           marginBottom: '24px',
           animation: 'fadeInUp 0.5s 0.15s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
-          opacity: 0,
+          opacity: 1,
         }}
       >
         <input
@@ -117,7 +132,7 @@ export function MainMenu() {
       </div>
 
       {/* Online 1v1 */}
-      <div style={{ animation: 'fadeInUp 0.5s 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards', opacity: 0 }}>
+      <div style={{ animation: 'fadeInUp 0.5s 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards', opacity: 1 }}>
         <MenuButton onClick={handleOnlinePlay} primary>
           ONLINE 1v1
         </MenuButton>
@@ -126,7 +141,7 @@ export function MainMenu() {
       <div style={{ height: '12px' }} />
 
       {/* Local play */}
-      <div style={{ animation: 'fadeInUp 0.5s 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards', opacity: 0 }}>
+      <div style={{ animation: 'fadeInUp 0.5s 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards', opacity: 1 }}>
         <MenuButton onClick={handleLocalPlay}>
           PRACTICE AGAINST AI
         </MenuButton>
@@ -135,7 +150,7 @@ export function MainMenu() {
       <div style={{ height: '12px' }} />
 
       {/* 2v2 — coming soon */}
-      <div style={{ animation: 'fadeInUp 0.5s 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards', opacity: 0 }}>
+      <div style={{ animation: 'fadeInUp 0.5s 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards', opacity: 1 }}>
         <MenuButton onClick={() => {}} disabled>
           2v2 (COMING SOON)
         </MenuButton>
@@ -148,7 +163,7 @@ export function MainMenu() {
         style={{
           display: 'flex',
           animation: 'fadeInUp 0.5s 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
-          opacity: 0,
+          opacity: 1,
           alignItems: 'center',
           gap: '12px',
           padding: '10px 20px',
@@ -224,6 +239,56 @@ export function MainMenu() {
         )}
         <div style={{ marginTop: '8px', color: '#444' }}>ESC to pause</div>
       </div>
+      </div>
+
+      {/* Right: character preview in a transparent box integrated with the background */}
+      <div
+        style={{
+          position: 'absolute',
+          right: 24,
+          top: 24,
+          bottom: 24,
+          width: '42%',
+          minWidth: 320,
+          maxWidth: 480,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'flex-end',
+          paddingBottom: '48px',
+          background: 'rgba(20, 0, 40, 0.4)',
+          border: '1px solid rgba(255, 68, 136, 0.2)',
+          borderRadius: 16,
+          boxShadow: 'inset 0 0 60px rgba(0,0,0,0.3), 0 0 40px rgba(0,0,0,0.2)',
+        }}
+      >
+        <div style={{ flex: 1, width: '100%', position: 'relative', minHeight: 0 }}>
+          <MenuCharacterPreview />
+        </div>
+        <button
+          onClick={() => setShowCustomize(true)}
+          style={{
+            padding: '12px 32px',
+            fontSize: '16px',
+            fontFamily: "'Impact', 'Arial Black', sans-serif",
+            textTransform: 'uppercase',
+            letterSpacing: '3px',
+            color: '#fff',
+            background: 'rgba(255, 255, 255, 0.1)',
+            border: '1px solid rgba(255, 68, 136, 0.5)',
+            borderRadius: 6,
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            boxShadow: '0 0 20px rgba(255, 68, 136, 0.2)',
+          }}
+        >
+          Customize
+        </button>
+      </div>
+
+      {showCustomize && (
+        <CustomizationPanel onClose={() => setShowCustomize(false)} />
+      )}
     </div>
   );
 }

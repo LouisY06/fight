@@ -7,7 +7,8 @@ import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { onHitEvent, type HitEventData } from './HitEvent';
-import { playSwordHit } from '../audio/SoundManager';
+import { playSwordHit, playSwordBlock } from '../audio/SoundManager';
+import { useDamageIndicatorStore } from '../ui/DamageIndicator';
 import { ElevenLabs } from '../audio/ElevenLabsService';
 
 // ---- Spark config ----
@@ -36,8 +37,20 @@ export function HitEffectManager() {
 
   useEffect(() => {
     const unsub = onHitEvent((data: HitEventData) => {
-      // Play metallic clang (procedural)
-      playSwordHit();
+      // Play hit or block SFX
+      if (data.isBlocked) {
+        playSwordBlock();
+      } else {
+        playSwordHit();
+      }
+
+      // Floating damage number (center screen)
+      useDamageIndicatorStore.getState().addDamageNumber(
+        data.amount,
+        50,
+        false,
+        data.isBlocked ?? false
+      );
 
       // Every 3rd hit, layer an ElevenLabs sword clash SFX for richness
       hitCounter++;

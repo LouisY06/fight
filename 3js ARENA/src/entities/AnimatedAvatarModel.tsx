@@ -159,12 +159,24 @@ function AnimatedAvatarModelInner(props: AnimatedAvatarModelProps) {
   const wasSwinging = useRef(false);
 
   const loggedBones = useRef(false);
+  const accentColor = props.color;
   const cloned = useMemo(() => {
     const c = cloneSceneWithOwnSkeleton(scene);
     c.traverse((node) => {
       if ((node as THREE.Mesh).isMesh) {
-        (node as THREE.Mesh).castShadow = true;
-        (node as THREE.Mesh).receiveShadow = true;
+        const mesh = node as THREE.Mesh;
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        if (accentColor && mesh.material) {
+          const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+          mesh.material = mats.map((m) => {
+            if (!(m as THREE.Material).isMeshStandardMaterial) return m;
+            const mat = (m as THREE.MeshStandardMaterial).clone();
+            mat.emissive.set(accentColor);
+            mat.emissiveIntensity = 0.12;
+            return mat;
+          }) as THREE.Material;
+        }
       }
     });
     normalizeToHeight(c, targetHeight);
@@ -175,7 +187,7 @@ function AnimatedAvatarModelInner(props: AnimatedAvatarModelProps) {
       loggedBones.current = true;
     }
     return c;
-  }, [scene, targetHeight]);
+  }, [scene, targetHeight, accentColor]);
 
   useFrame((_, delta) => {
     const root = cloneRef.current;

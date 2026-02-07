@@ -9,7 +9,9 @@ import * as THREE from 'three';
 
 import { useGameStore } from './game/GameState';
 import { GameEngine } from './game/GameEngine';
+import { IntroSequencer } from './game/IntroSequencer';
 import { Arena } from './arena/Arena';
+import { SceneBackground } from './arena/SceneBackground';
 import { getThemeById, ARENA_THEMES } from './arena/arenaThemes';
 import { NetworkOpponent } from './entities/NetworkOpponent';
 import { BotOpponent } from './entities/BotOpponent';
@@ -21,6 +23,7 @@ import { NetworkProvider } from './networking/NetworkProvider';
 import { InputSyncBridge } from './networking/InputSyncBridge';
 import { MeleeCombat } from './combat/MeleeCombat';
 import { HitEffectManager } from './combat/HitEffectManager';
+
 import { CVProvider } from './cv/CVProvider';
 import { CVSync } from './cv/CVSync';
 import { WebcamView } from './cv/WebcamView';
@@ -63,17 +66,31 @@ function GameApp() {
     phase === 'paused' ||
     phase === 'roundEnd';
 
+  // Defer Canvas until game starts — avoids WebGL/Physics init during menu
+  // (can cause black screen in Electron / some GPUs)
+  const showCanvas =
+    phase === 'arenaLoading' ||
+    phase === 'intro' ||
+    phase === 'countdown' ||
+    phase === 'playing' ||
+    phase === 'paused' ||
+    phase === 'roundEnd' ||
+    phase === 'gameOver';
+
   return (
     <div
       style={{
         width: '100vw',
         height: '100vh',
-        background: '#000000',
+        background: phase === 'menu' || phase === 'lobby' || phase === 'waiting'
+          ? 'radial-gradient(ellipse at center, #1a0a2e 0%, #0a0015 50%, #000 100%)'
+          : '#000000',
         position: 'relative',
         overflow: 'hidden',
       }}
     >
-      {/* 3D Canvas */}
+      {/* 3D Canvas — only mount when game starts */}
+      {showCanvas && (
       <Canvas
         shadows
         camera={{
@@ -87,12 +104,15 @@ function GameApp() {
           toneMapping: THREE.ACESFilmicToneMapping,
           toneMappingExposure: 1.5,
         }}
-        style={{ position: 'absolute', inset: 0 }}
+        style={{ position: 'absolute', inset: 0, zIndex: 0 }}
       >
         <Suspense fallback={null}>
           <Physics gravity={[0, -9.81, 0]}>
             {/* Game logic loop */}
             <GameEngine />
+
+            {/* Glambot intro: orbit mech + Power On visor (runs during intro phase) */}
+            <IntroSequencer />
 
             {/* CV pose detection (runs every frame inside render loop) */}
             <CVSync />
@@ -111,33 +131,35 @@ function GameApp() {
             {/* Opponent */}
             {showPlayers && (
               isMultiplayer ? (
-                <NetworkOpponent color="#ff4444" />
+                <NetworkOpponent color="#CC00FF" />
               ) : (
-                <BotOpponent color="#ff4444" />
+                <BotOpponent color="#CC00FF" />
               )
             )}
           </Physics>
         </Suspense>
 
-        {/* Fallback lighting for menu/lobby */}
+        {/* Fallback lighting + background for menu/lobby (no Arena yet) */}
         {(phase === 'menu' || phase === 'lobby' || phase === 'waiting') && (
           <>
+            <SceneBackground />
             <ambientLight intensity={0.3} color="#220033" />
             <pointLight position={[0, 8, 0]} intensity={2} color="#ff0066" />
           </>
         )}
       </Canvas>
+      )}
 
-      {/* UI Overlays (HTML on top of Canvas) */}
-      <MainMenu />
-      <LobbyMenu />
-      <ArenaLoadingOverlay />
-      <HUD />
-      <PauseMenu />
-      <GameOverScreen />
-
-      {/* Webcam PiP (shown when CV mode is active during gameplay) */}
-      <WebcamView />
+      {/* UI Overlays — above Canvas when present, or full screen during menu */}
+      <div style={{ position: 'absolute', inset: 0, zIndex: 10 }}>
+        <MainMenu />
+        <LobbyMenu />
+        <ArenaLoadingOverlay />
+        <HUD />
+        <PauseMenu />
+        <GameOverScreen />
+        <WebcamView />
+      </div>
     </div>
   );
 }

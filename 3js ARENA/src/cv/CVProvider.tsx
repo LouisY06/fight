@@ -17,6 +17,7 @@ import {
 import type { NormalizedLandmark } from '@mediapipe/tasks-vision';
 import { poseTracker } from './PoseTracker';
 import { CVInputMapper, type CVGameInput } from './CVInputMapper';
+import { cvBridge } from './cvBridge';
 
 // ---- Default input ----
 
@@ -100,6 +101,21 @@ export function CVProvider({ children }: { children: ReactNode }) {
   const worldLandmarksRef = useRef<NormalizedLandmark[] | null>(null);
   const mapperRef = useRef(new CVInputMapper());
 
+  // Register refs with bridge so R3F components (different React tree) can read without useContext
+  useEffect(() => {
+    cvBridge.register({
+      cvInputRef,
+      worldLandmarksRef,
+      mapperRef,
+    });
+    cvBridge.cvEnabled = cvEnabled;
+  });
+
+  useEffect(() => {
+    cvBridge.cvEnabled = cvEnabled;
+    cvBridge.isTracking = isTracking;
+  }, [cvEnabled, isTracking]);
+
   // Start/stop PoseTracker when cvEnabled changes
   useEffect(() => {
     if (cvEnabled) {
@@ -139,6 +155,7 @@ export function CVProvider({ children }: { children: ReactNode }) {
     mapperRef.current.calibrate();
     // Notify listeners (camera facing reset, etc.)
     for (const cb of calibrateListeners.current) cb();
+    cvBridge.triggerCalibrate();
   }, []);
 
   const onCalibrate = useCallback((cb: () => void) => {

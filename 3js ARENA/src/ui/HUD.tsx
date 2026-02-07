@@ -9,7 +9,7 @@ import { HealthBar } from './HealthBar';
 import { RoundTimer } from './RoundTimer';
 import { RoundAnnouncer } from './RoundAnnouncer';
 import { CombatCommentator } from './CombatCommentator';
-import { DamageIndicator, useDamageIndicators } from './DamageIndicator';
+import { DamageIndicator } from './DamageIndicator';
 import { onHitEvent } from '../combat/HitEvent';
 
 export function HUD() {
@@ -19,8 +19,6 @@ export function HUD() {
   const username = useGameStore((s) => s.username);
   const opponentName = useGameStore((s) => s.opponentName);
   const playerSlot = useGameStore((s) => s.playerSlot);
-  const { numbers } = useDamageIndicators();
-
   // Only show HUD during gameplay phases
   const showHUD =
     phase === 'playing' ||
@@ -86,7 +84,7 @@ export function HUD() {
       <Crosshair />
 
       {/* Damage numbers */}
-      <DamageIndicator numbers={numbers} />
+      <DamageIndicator />
 
       {/* Round announcer */}
       <RoundAnnouncer />

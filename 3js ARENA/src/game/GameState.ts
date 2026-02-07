@@ -10,6 +10,7 @@ export type GamePhase =
   | 'lobby'
   | 'waiting'
   | 'arenaLoading'
+  | 'intro'
   | 'countdown'
   | 'playing'
   | 'paused'

@@ -25,12 +25,19 @@ export function GameEngine() {
 
   const countdownTimer = useRef(GAME_CONFIG.countdownDuration);
 
-  // Handle countdown → playing transition
+  // Handle countdown → playing transition (useFrame + safety timeout)
   useEffect(() => {
     if (phase === 'countdown') {
       countdownTimer.current = GAME_CONFIG.countdownDuration;
+      // Safety: ensure we transition to playing even if useFrame is throttled (e.g. tab background)
+      const safety = setTimeout(() => {
+        if (useGameStore.getState().phase === 'countdown') {
+          setPhase('playing');
+        }
+      }, (GAME_CONFIG.countdownDuration + 0.5) * 1000);
+      return () => clearTimeout(safety);
     }
-  }, [phase]);
+  }, [phase, setPhase]);
 
   // Handle roundEnd → next round transition after delay
   useEffect(() => {

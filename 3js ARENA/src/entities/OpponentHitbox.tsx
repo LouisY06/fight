@@ -1,9 +1,10 @@
 // =============================================================================
-// OpponentHitbox.tsx — Visible hitbox wireframe on the opponent
+// OpponentHitbox.tsx — Visible hitbox wireframe (debug only: F3 or ?debug=1)
 // Shows the raycast target zone. Flashes bright green on successful hit.
 // =============================================================================
 
 import { useRef, useEffect, useCallback } from 'react';
+import { useDebugStore } from '../game/DebugState';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { onHitEvent } from '../combat/HitEvent';
@@ -29,6 +30,8 @@ const IDLE_WIREFRAME_OPACITY = 0.04;
  * Place this as a CHILD of the opponent group (so it inherits position).
  */
 export function OpponentHitbox() {
+  const debug = useDebugStore((s) => s.debug);
+
   // Body hitbox (capsule approximated as cylinder + 2 hemispheres)
   const bodyWireRef = useRef<THREE.Mesh>(null!);
   const headWireRef = useRef<THREE.Mesh>(null!);
@@ -97,6 +100,8 @@ export function OpponentHitbox() {
       (headFlashRef.current.material as THREE.MeshBasicMaterial).visible = false;
     }
   });
+
+  if (!debug) return null;
 
   return (
     <group>

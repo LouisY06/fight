@@ -7,7 +7,7 @@ import { useRef, useMemo, Suspense } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
-import { useCVContext } from '../cv/CVProvider';
+import { cvBridge } from '../cv/cvBridge';
 import { AVATAR_GLB_URL } from './AvatarModel';
 import type { NormalizedLandmark } from '@mediapipe/tasks-vision';
 
@@ -122,7 +122,9 @@ const REST_AXIS_FOREARM = new THREE.Vector3(0, -1, 0);
 
 function CVDrivenAvatarModelInner() {
   const { scene } = useGLTF(AVATAR_GLB_URL);
-  const { worldLandmarksRef, cvInputRef, isTracking } = useCVContext();
+  const worldLandmarksRef = cvBridge.worldLandmarksRef;
+  const cvInputRef = cvBridge.cvInputRef;
+  const isTracking = cvBridge.isTracking;
 
   const groupRef = useRef<THREE.Group>(null!);
   const skeletonRef = useRef<THREE.Skeleton | null>(null);

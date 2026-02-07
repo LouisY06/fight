@@ -12,7 +12,7 @@ import type { PlayerInput } from '../game/InputManager';
 import { useGameStore } from '../game/GameState';
 import { GAME_CONFIG } from '../game/GameConfig';
 import { OpponentHitbox } from './OpponentHitbox';
-import { SimpleCharacterModel } from './SimpleCharacterModel';
+import { MechaEntity } from '../avatars/MechaEntity';
 
 interface PlayerProps {
   playerId: 'player1' | 'player2';
@@ -25,7 +25,7 @@ export function Player({ playerId, input, color, spawnPosition }: PlayerProps) {
   const groupRef = useRef<THREE.Group>(null!);
   const phase = useGameStore((s) => s.phase);
   const playerState = useGameStore((s) => playerId === 'player1' ? s.player1 : s.player2);
-  
+
   const [isDead, setIsDead] = useState(false);
   const [deathPosition, setDeathPosition] = useState<[number, number, number]>([0, 0, 0]);
   const previousHealthRef = useRef(playerState.health);
@@ -93,10 +93,8 @@ export function Player({ playerId, input, color, spawnPosition }: PlayerProps) {
             <RigidBody type="kinematicPosition" colliders={false}>
               <CapsuleCollider args={[0.5, 0.3]} position={[0, 1, 0]} />
 
-              {/* Procedural character model — no GLB */}
-              <SimpleCharacterModel
-                color={color}
-                targetHeight={2}
+              {/* Procedural mecha body */}
+              <MechaEntity
                 isWalking={input.moveDirection.lengthSq() > 0.0001}
                 isSwinging={input.gesture === 'slash' || input.gesture === 'stab'}
               />
@@ -116,10 +114,10 @@ export function Player({ playerId, input, color, spawnPosition }: PlayerProps) {
           </>
         )}
       </group>
-      
+
       {/* Death effect */}
       {isDead && (
-        <DeathEffect 
+        <DeathEffect
           position={deathPosition}
           color={color}
         />

@@ -3,7 +3,7 @@
 // Falls back to a procedural color sky if the image file doesn't exist yet.
 // =============================================================================
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useLayoutEffect } from 'react';
 import { useThree } from '@react-three/fiber';
 import { Environment } from '@react-three/drei';
 import * as THREE from 'three';
@@ -48,7 +48,7 @@ export function ArenaEnvironment({ skyboxPath, fogColor = '#0a0a0a' }: ArenaEnvi
 function FallbackSky({ color }: { color: string }) {
   const { scene } = useThree();
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     scene.background = new THREE.Color(color);
     return () => {
       scene.background = null;
