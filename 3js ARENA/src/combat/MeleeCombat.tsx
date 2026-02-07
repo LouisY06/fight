@@ -16,6 +16,7 @@ import { swordHilt, swordTip, swordSpeed, keyboardSwingActive } from './SwordSta
 import { fireHitEvent } from './HitEvent';
 import { playSwordHit } from '../audio/SoundManager';
 import { gameSocket } from '../networking/socket';
+import { useScreenShakeStore } from '../game/useScreenShake';
 
 // Opponent body approximated as a vertical capsule
 const OPPONENT_RADIUS = 0.45;       // capsule radius (generous for good feel)
@@ -141,6 +142,7 @@ export function MeleeCombat() {
 
         dealDamage(opponentSlot, amount);
         fireHitEvent({ point: _hitPoint.clone(), amount });
+        useScreenShakeStore.getState().trigger(0.25, 120); // attack landed feedback
 
         if (isMultiplayer) {
           gameSocket.send({

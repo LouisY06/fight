@@ -16,9 +16,10 @@ const noRaycast = (mesh: THREE.Mesh) => {
 // How long the green flash lasts (seconds)
 const FLASH_DURATION = 0.35;
 
-// Default wireframe color (subtle cyan outline)
+// Wireframe only prominent on hit; at idle barely visible so the robot GLB is the main visual
 const IDLE_COLOR = new THREE.Color('#00ccff');
 const HIT_COLOR = new THREE.Color('#00ff44');
+const IDLE_WIREFRAME_OPACITY = 0.04;
 
 /**
  * A visible hitbox around the opponent.
@@ -83,13 +84,13 @@ export function OpponentHitbox() {
         isFlashing.current = false;
       }
     } else {
-      // Idle state: subtle wireframe
+      // Idle: very subtle so the robot body is the main visual
       const wireMat = bodyWireRef.current.material as THREE.MeshBasicMaterial;
       wireMat.color.copy(IDLE_COLOR);
-      wireMat.opacity = 0.15;
+      wireMat.opacity = IDLE_WIREFRAME_OPACITY;
       const headWireMat = headWireRef.current.material as THREE.MeshBasicMaterial;
       headWireMat.color.copy(IDLE_COLOR);
-      headWireMat.opacity = 0.15;
+      headWireMat.opacity = IDLE_WIREFRAME_OPACITY;
 
       // Hide flash overlays
       (bodyFlashRef.current.material as THREE.MeshBasicMaterial).visible = false;
@@ -108,7 +109,7 @@ export function OpponentHitbox() {
           color={IDLE_COLOR}
           wireframe
           transparent
-          opacity={0.15}
+          opacity={IDLE_WIREFRAME_OPACITY}
           depthWrite={false}
         />
       </mesh>
@@ -120,7 +121,7 @@ export function OpponentHitbox() {
           color={IDLE_COLOR}
           wireframe
           transparent
-          opacity={0.15}
+          opacity={IDLE_WIREFRAME_OPACITY}
           depthWrite={false}
         />
       </mesh>

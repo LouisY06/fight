@@ -190,6 +190,7 @@ export function LobbyMenu() {
               letterSpacing: '16px',
               textShadow: '0 0 30px rgba(255,0,80,0.5)',
               userSelect: 'all',
+              animation: 'roomCodeGlow 2s ease-in-out infinite',
             }}
           >
             {roomId ?? '....'}
@@ -314,6 +315,12 @@ function LobbyButton({
   return (
     <button
       onClick={disabled ? undefined : onClick}
+      onMouseDown={(e) => {
+        if (!disabled) e.currentTarget.style.transform = 'scale(0.97)';
+      }}
+      onMouseUp={(e) => {
+        e.currentTarget.style.transform = 'scale(1)';
+      }}
       style={{
         padding: '12px 48px',
         fontSize: '18px',
@@ -350,13 +357,14 @@ function Spinner() {
   return (
     <div
       style={{
-        width: '24px',
-        height: '24px',
-        border: '3px solid #333',
+        width: '28px',
+        height: '28px',
+        border: '3px solid rgba(255,68,136,0.2)',
         borderTop: '3px solid #ff4488',
         borderRadius: '50%',
-        animation: 'spin 0.8s linear infinite',
+        animation: 'spin 0.7s linear infinite',
         marginTop: '8px',
+        boxShadow: '0 0 12px rgba(255,68,136,0.3)',
       }}
     >
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>

@@ -1,0 +1,1 @@
+Always use TypeScript and React Three Fiber. For Computer Vision, prioritize MediaPipe Tasks Vision. When mapping landmarks to the biped_robot.glb, reference bone rotations using quaternion slerping rather than direct position mapping.

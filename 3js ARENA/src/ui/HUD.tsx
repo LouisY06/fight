@@ -2,12 +2,14 @@
 // HUD.tsx — In-game overlay: health bars, timer, round counter, win tracker
 // =============================================================================
 
+import { useEffect, useState } from 'react';
 import { useGameStore } from '../game/GameState';
 import { GAME_CONFIG } from '../game/GameConfig';
 import { HealthBar } from './HealthBar';
 import { RoundTimer } from './RoundTimer';
 import { RoundAnnouncer } from './RoundAnnouncer';
 import { DamageIndicator, useDamageIndicators } from './DamageIndicator';
+import { onHitEvent } from '../combat/HitEvent';
 
 export function HUD() {
   const phase = useGameStore((s) => s.phase);
@@ -43,6 +45,7 @@ export function HUD() {
         inset: 0,
         pointerEvents: 'none',
         zIndex: 50,
+        animation: 'fadeIn 0.4s ease-out',
       }}
     >
       {/* Top bar: health bars + timer */}
@@ -60,6 +63,7 @@ export function HUD() {
             health={player1.health}
             side="left"
             playerName={leftName}
+            playerKey="player1"
           />
           <WinTracker wins={player1.roundsWon} side="left" />
         </div>
@@ -71,6 +75,7 @@ export function HUD() {
             health={player2.health}
             side="right"
             playerName={rightName}
+            playerKey="player2"
           />
           <WinTracker wins={player2.roundsWon} side="right" />
         </div>
@@ -93,14 +98,24 @@ export function HUD() {
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
-// Crosshair — simple dot + thin lines
+// Crosshair — dot + lines, flashes on hit
 // ---------------------------------------------------------------------------
 
 function Crosshair() {
+  const [isHitFlash, setIsHitFlash] = useState(false);
   const lineStyle: React.CSSProperties = {
     position: 'absolute',
-    background: 'rgba(255, 255, 255, 0.7)',
+    background: isHitFlash ? 'rgba(0, 255, 136, 0.95)' : 'rgba(255, 255, 255, 0.7)',
+    transition: 'background 0.1s ease',
   };
+
+  useEffect(() => {
+    const unsub = onHitEvent(() => {
+      setIsHitFlash(true);
+      setTimeout(() => setIsHitFlash(false), 120);
+    });
+    return unsub;
+  }, []);
 
   return (
     <div
@@ -124,8 +139,12 @@ function Crosshair() {
           width: '3px',
           height: '3px',
           borderRadius: '50%',
-          background: '#fff',
-          boxShadow: '0 0 4px rgba(0,0,0,0.8)',
+          background: isHitFlash ? '#00ff88' : '#fff',
+          boxShadow: isHitFlash
+            ? '0 0 12px rgba(0,255,136,0.9)'
+            : '0 0 4px rgba(0,0,0,0.8)',
+          transition: 'background 0.1s, box-shadow 0.1s',
+          animation: isHitFlash ? 'crosshairHit 0.15s ease-out' : 'none',
         }}
       />
       {/* Top */}
@@ -172,6 +191,7 @@ function WinTracker({
             border: '1px solid rgba(255, 255, 255, 0.3)',
             boxShadow:
               i < wins ? '0 0 8px rgba(255, 200, 0, 0.6)' : 'none',
+            animation: i < wins ? 'winDotPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)' : 'none',
           }}
         />
       ))}

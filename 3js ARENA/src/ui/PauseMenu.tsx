@@ -84,6 +84,7 @@ export function PauseMenu() {
         backdropFilter: 'blur(6px)',
         zIndex: 250,
         gap: '12px',
+        animation: 'fadeIn 0.2s ease-out',
       }}
     >
       <h2
@@ -96,6 +97,7 @@ export function PauseMenu() {
           letterSpacing: '6px',
           marginBottom: '28px',
           textShadow: '0 0 30px rgba(255,255,255,0.15)',
+          animation: 'slideUp 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)',
         }}
       >
         {title}
@@ -175,6 +177,12 @@ function MenuButton({
         transition: 'all 0.15s ease',
         fontFamily: "'Impact', 'Arial Black', sans-serif",
         minWidth: '280px',
+      }}
+      onMouseDown={(e) => {
+        e.currentTarget.style.transform = 'scale(0.97)';
+      }}
+      onMouseUp={(e) => {
+        e.currentTarget.style.transform = '';
       }}
       onMouseEnter={(e) => {
         e.currentTarget.style.background = bgHover;

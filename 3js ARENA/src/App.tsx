@@ -22,6 +22,7 @@ import { NetworkProvider } from './networking/NetworkProvider';
 import { InputSyncBridge } from './networking/InputSyncBridge';
 import { MeleeCombat } from './combat/MeleeCombat';
 import { HitEffectManager } from './combat/HitEffectManager';
+import { RobotPrefabProvider } from './avatars/RobotPrefabContext';
 import { CVProvider } from './cv/CVProvider';
 import { CVSync } from './cv/CVSync';
 import { WebcamView } from './cv/WebcamView';
@@ -32,6 +33,7 @@ import { MainMenu } from './ui/MainMenu';
 import { LobbyMenu } from './ui/LobbyMenu';
 import { PauseMenu } from './ui/PauseMenu';
 import { GameOverScreen } from './ui/GameOverScreen';
+import { ArenaLoadingOverlay } from './ui/ArenaLoadingOverlay';
 
 function App() {
   return (
@@ -91,6 +93,7 @@ function GameApp() {
       >
         <Suspense fallback={null}>
           <Physics gravity={[0, -9.81, 0]}>
+            <RobotPrefabProvider>
             {/* Game logic loop */}
             <GameEngine />
 
@@ -116,6 +119,7 @@ function GameApp() {
                 <LocalOpponent />
               )
             )}
+            </RobotPrefabProvider>
           </Physics>
         </Suspense>
 
@@ -131,6 +135,7 @@ function GameApp() {
       {/* UI Overlays (HTML on top of Canvas) */}
       <MainMenu />
       <LobbyMenu />
+      <ArenaLoadingOverlay />
       <HUD />
       <PauseMenu />
       <GameOverScreen />
@@ -153,7 +158,7 @@ function LocalOpponent() {
       playerId="player2"
       input={p2Input}
       color="#ff4444"
-      spawnPosition={[0, 0, GAME_CONFIG.playerSpawnDistance / 2]}
+      spawnPosition={GAME_CONFIG.spawnP2}
     />
   );
 }
