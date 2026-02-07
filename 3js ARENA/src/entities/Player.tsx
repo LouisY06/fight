@@ -10,6 +10,7 @@ import { Weapon } from './Weapon';
 import { DeathEffect } from './DeathEffect';
 import type { PlayerInput } from '../game/InputManager';
 import { useGameStore } from '../game/GameState';
+import { GAME_CONFIG } from '../game/GameConfig';
 import { OpponentHitbox } from './OpponentHitbox';
 
 interface PlayerProps {
@@ -54,6 +55,17 @@ export function Player({ playerId, input, color, spawnPosition }: PlayerProps) {
     const speed = 0.05;
     groupRef.current.position.x += input.moveDirection.x * speed;
     groupRef.current.position.z += input.moveDirection.z * speed;
+
+    // Clamp to arena bounds (prevents walking off screen)
+    const r = GAME_CONFIG.arenaRadius - 0.5;
+    const px = groupRef.current.position.x;
+    const pz = groupRef.current.position.z;
+    const dist = Math.sqrt(px * px + pz * pz);
+    if (dist > r) {
+      const clampScale = r / dist;
+      groupRef.current.position.x = px * clampScale;
+      groupRef.current.position.z = pz * clampScale;
+    }
   });
 
   // Tag opponent for raycast hit detection

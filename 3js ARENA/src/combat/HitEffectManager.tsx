@@ -8,9 +8,11 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { onHitEvent, type HitEventData } from './HitEvent';
 import { playSwordHit } from '../audio/SoundManager';
+import { ElevenLabs } from '../audio/ElevenLabsService';
 
 // ---- Spark config ----
 const SPARK_COUNT = 24;
+let hitCounter = 0; // Track hits for occasional ElevenLabs SFX
 const SPARK_LIFETIME = 0.45; // seconds
 const SPARK_SPEED = 5.0;
 const GRAVITY = 9.8;
@@ -34,8 +36,14 @@ export function HitEffectManager() {
 
   useEffect(() => {
     const unsub = onHitEvent((data: HitEventData) => {
-      // Play metallic clang
+      // Play metallic clang (procedural)
       playSwordHit();
+
+      // Every 3rd hit, layer an ElevenLabs sword clash SFX for richness
+      hitCounter++;
+      if (hitCounter % 3 === 0) {
+        ElevenLabs.playSwordClash();
+      }
 
       // Spawn spark burst
       const velocities = new Float32Array(SPARK_COUNT * 3);

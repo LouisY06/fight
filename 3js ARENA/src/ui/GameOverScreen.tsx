@@ -2,9 +2,11 @@
 // GameOverScreen.tsx — Winner display, play again
 // =============================================================================
 
+import { useEffect, useRef } from 'react';
 import { useGameStore } from '../game/GameState';
 import { ARENA_THEMES } from '../arena/arenaThemes';
 import { randomPick } from '../utils/random';
+import { ElevenLabs } from '../audio/ElevenLabsService';
 
 export function GameOverScreen() {
   const phase = useGameStore((s) => s.phase);
@@ -12,8 +14,27 @@ export function GameOverScreen() {
   const player2 = useGameStore((s) => s.player2);
   const startGame = useGameStore((s) => s.startGame);
   const resetToMenu = useGameStore((s) => s.resetToMenu);
+  const announcedRef = useRef(false);
 
-  if (phase !== 'gameOver') return null;
+  const isGameOver = phase === 'gameOver';
+  const playerWon = player1.roundsWon > player2.roundsWon;
+
+  // Announce win/lose when game over screen appears
+  useEffect(() => {
+    if (isGameOver && !announcedRef.current) {
+      announcedRef.current = true;
+      if (playerWon) {
+        ElevenLabs.announceYouWin();
+      } else {
+        ElevenLabs.announceYouLose();
+      }
+    }
+    if (!isGameOver) {
+      announcedRef.current = false;
+    }
+  }, [isGameOver, playerWon]);
+
+  if (!isGameOver) return null;
 
   const winner =
     player1.roundsWon > player2.roundsWon ? 'Player 1' : 'Player 2';

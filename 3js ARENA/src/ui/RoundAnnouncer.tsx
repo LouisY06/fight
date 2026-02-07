@@ -1,10 +1,12 @@
 // =============================================================================
 // RoundAnnouncer.tsx — Full-screen text overlay: "ROUND 1", "FIGHT!", "K.O."
+// Now with ElevenLabs AI announcer voice!
 // =============================================================================
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useGameStore } from '../game/GameState';
 import { playKO } from '../audio/SoundManager';
+import { ElevenLabs } from '../audio/ElevenLabsService';
 
 export function RoundAnnouncer() {
   const phase = useGameStore((s) => s.phase);
@@ -13,6 +15,15 @@ export function RoundAnnouncer() {
   const [text, setText] = useState('');
   const [visible, setVisible] = useState(false);
   const [scale, setScale] = useState(0.5);
+  const preWarmed = useRef(false);
+
+  // Pre-warm ElevenLabs cache on first render
+  useEffect(() => {
+    if (!preWarmed.current) {
+      preWarmed.current = true;
+      ElevenLabs.preWarm();
+    }
+  }, []);
 
   useEffect(() => {
     if (phase === 'countdown') {
@@ -23,11 +34,17 @@ export function RoundAnnouncer() {
       setText(`ROUND ${currentRound}`);
       requestAnimationFrame(() => setScale(1));
 
+      // ElevenLabs: announce "Round X!"
+      ElevenLabs.announceRound(currentRound);
+
       const fightTimer = setTimeout(() => {
         setScale(0.5);
         setTimeout(() => {
           setText('FIGHT!');
           setScale(1);
+
+          // ElevenLabs: announce "FIGHT!"
+          ElevenLabs.announceFight();
         }, 200);
       }, 1500);
 
@@ -47,9 +64,12 @@ export function RoundAnnouncer() {
 
       if (roundWinner === 'draw') {
         setText('DRAW');
+        ElevenLabs.announceDraw();
       } else {
         setText('K.O.');
         playKO(); // Boom sound on knockout
+        ElevenLabs.announceKO();
+        ElevenLabs.playCrowdRoar();
       }
       requestAnimationFrame(() => setScale(1));
 

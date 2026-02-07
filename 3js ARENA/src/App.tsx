@@ -13,8 +13,8 @@ import { Arena } from './arena/Arena';
 import { getThemeById, ARENA_THEMES } from './arena/arenaThemes';
 import { Player } from './entities/Player';
 import { NetworkOpponent } from './entities/NetworkOpponent';
-import { usePlayer2Input } from './game/InputManager';
 import { GAME_CONFIG } from './game/GameConfig';
+import { useAIInput } from './ai/useAIInput';
 import { FirstPersonCamera } from './game/FirstPersonCamera';
 import { ViewmodelSword } from './entities/ViewmodelSword';
 import { MechaArms } from './entities/MechaArms';
@@ -142,16 +142,16 @@ function GameApp() {
 }
 
 // ---------------------------------------------------------------------------
-// Local opponent (for practice mode)
+// Local opponent (for practice mode) — powered by Vultr AI
 // ---------------------------------------------------------------------------
 
 function LocalOpponent() {
-  const p2Input = usePlayer2Input();
+  const aiInput = useAIInput();
 
   return (
     <Player
       playerId="player2"
-      input={p2Input}
+      input={aiInput}
       color="#ff4444"
       spawnPosition={[0, 0, GAME_CONFIG.playerSpawnDistance / 2]}
     />

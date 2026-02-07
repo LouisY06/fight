@@ -7,6 +7,7 @@ import { GAME_CONFIG } from '../game/GameConfig';
 import { HealthBar } from './HealthBar';
 import { RoundTimer } from './RoundTimer';
 import { RoundAnnouncer } from './RoundAnnouncer';
+import { CombatCommentator } from './CombatCommentator';
 import { DamageIndicator, useDamageIndicators } from './DamageIndicator';
 
 export function HUD() {
@@ -84,6 +85,9 @@ export function HUD() {
 
       {/* Round announcer */}
       <RoundAnnouncer />
+
+      {/* AI combat commentator (pure logic, no visuals) */}
+      <CombatCommentator />
     </div>
   );
 }
