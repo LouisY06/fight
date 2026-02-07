@@ -26,7 +26,7 @@ async function init() {
   const { scene, camera, renderer } = createScene();
 
   updateLoading(25, 'Building mecha...');
-  const parts = createMecha(scene);
+  const parts = await createMecha(scene);
 
   // Start webcam first (independent of tracking)
   updateLoading(35, 'Starting webcam...');
@@ -93,8 +93,8 @@ async function init() {
       if (pose) lastPose = pose;
     }
 
-    // Color-track the sword prop
-    const colorData = detectColorRegion(videoEl);
+    // Color-track near the right hand only
+    const colorData = detectColorRegion(videoEl, lastPose ? lastPose.landmarks : null);
 
     // Update mecha from pose
     if (lastPose) {
