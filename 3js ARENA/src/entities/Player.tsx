@@ -30,8 +30,11 @@ export function Player({ playerId, input, color, spawnPosition }: PlayerProps) {
     groupRef.current.position.z += input.moveDirection.z * speed;
   });
 
+  // Tag opponent for raycast hit detection
+  const isOpponent = playerId === 'player2';
+
   return (
-    <group ref={groupRef} position={spawnPosition}>
+    <group ref={groupRef} position={spawnPosition} userData={{ isOpponent }}>
       {/* Player body (capsule) */}
       <RigidBody type="kinematicPosition" colliders={false}>
         <CapsuleCollider args={[0.5, 0.3]} position={[0, 1, 0]} />

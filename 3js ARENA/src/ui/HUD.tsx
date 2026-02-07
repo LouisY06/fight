@@ -64,11 +64,66 @@ export function HUD() {
         </div>
       </div>
 
+      {/* Crosshair */}
+      <Crosshair />
+
       {/* Damage numbers */}
       <DamageIndicator numbers={numbers} />
 
       {/* Round announcer */}
       <RoundAnnouncer />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Win tracker dots
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Crosshair — simple dot + thin lines
+// ---------------------------------------------------------------------------
+
+function Crosshair() {
+  const lineStyle: React.CSSProperties = {
+    position: 'absolute',
+    background: 'rgba(255, 255, 255, 0.7)',
+  };
+
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        width: '20px',
+        height: '20px',
+        pointerEvents: 'none',
+      }}
+    >
+      {/* Center dot */}
+      <div
+        style={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: '3px',
+          height: '3px',
+          borderRadius: '50%',
+          background: '#fff',
+          boxShadow: '0 0 4px rgba(0,0,0,0.8)',
+        }}
+      />
+      {/* Top */}
+      <div style={{ ...lineStyle, top: 0, left: '50%', transform: 'translateX(-50%)', width: '1.5px', height: '6px' }} />
+      {/* Bottom */}
+      <div style={{ ...lineStyle, bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '1.5px', height: '6px' }} />
+      {/* Left */}
+      <div style={{ ...lineStyle, left: 0, top: '50%', transform: 'translateY(-50%)', width: '6px', height: '1.5px' }} />
+      {/* Right */}
+      <div style={{ ...lineStyle, right: 0, top: '50%', transform: 'translateY(-50%)', width: '6px', height: '1.5px' }} />
     </div>
   );
 }

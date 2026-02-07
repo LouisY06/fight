@@ -56,7 +56,7 @@ export function NetworkOpponent({ color = '#ff4444' }: NetworkOpponentProps) {
   const isSwinging = opponentState.isSwinging;
 
   return (
-    <group ref={groupRef} position={[0, 0, GAME_CONFIG.playerSpawnDistance / 2]}>
+    <group ref={groupRef} position={[0, 0, GAME_CONFIG.playerSpawnDistance / 2]} userData={{ isOpponent: true }}>
       <RigidBody type="kinematicPosition" colliders={false}>
         <CapsuleCollider args={[0.5, 0.3]} position={[0, 1, 0]} />
 

@@ -19,6 +19,7 @@ import { FirstPersonCamera } from './game/FirstPersonCamera';
 import { ViewmodelSword } from './entities/ViewmodelSword';
 import { NetworkProvider } from './networking/NetworkProvider';
 import { InputSyncBridge } from './networking/InputSyncBridge';
+import { MeleeCombat } from './combat/MeleeCombat';
 
 // UI Overlays
 import { HUD } from './ui/HUD';
@@ -86,9 +87,10 @@ function GameApp() {
             {/* Game logic loop */}
             <GameEngine />
 
-            {/* First-person camera + viewmodel sword + input sync */}
+            {/* First-person camera + viewmodel sword + input sync + combat */}
             <FirstPersonCamera />
             <ViewmodelSword />
+            <MeleeCombat />
             <InputSyncBridge />
 
             {/* Arena environment */}

@@ -1,6 +1,6 @@
 // =============================================================================
 // ViewmodelSword.tsx — First-person sword that follows the camera
-// Left-click to swing. Classic diagonal slash from upper-right to lower-left.
+// Left-click to swing. Slash sweeps through the crosshair (screen center).
 // =============================================================================
 
 import { useRef, useEffect, useState } from 'react';
@@ -13,13 +13,23 @@ const IDLE_OFFSET = new THREE.Vector3(0.55, -0.5, -0.5);
 const SWORD_SCALE = 0.65;
 const SWING_DURATION = 0.25; // seconds — snappy
 
+// Callback so other systems (combat) can know when a swing happens
+type SwingCallback = () => void;
+const swingListeners = new Set<SwingCallback>();
+
+export function onSwordSwing(cb: SwingCallback): () => void {
+  swingListeners.add(cb);
+  return () => swingListeners.delete(cb);
+}
+
 export function ViewmodelSword() {
   const { camera } = useThree();
   const groupRef = useRef<THREE.Group>(null!);
   const phase = useGameStore((s) => s.phase);
 
   const swingTime = useRef(-1);
-  const [isSwinging, setIsSwinging] = useState(false);
+  const [, setIsSwinging] = useState(false);
+  const swingNotified = useRef(false);
 
   // Left-click to swing while pointer is locked
   useEffect(() => {
@@ -28,6 +38,7 @@ export function ViewmodelSword() {
         if (swingTime.current < 0) {
           swingTime.current = 0;
           setIsSwinging(true);
+          swingNotified.current = false;
         }
       }
     };
@@ -52,6 +63,13 @@ export function ViewmodelSword() {
     // Advance swing timer
     if (swingTime.current >= 0) {
       swingTime.current += delta;
+
+      // Fire hit callback at the midpoint of the swing (when blade is at center)
+      if (!swingNotified.current && swingTime.current >= SWING_DURATION * 0.35) {
+        swingNotified.current = true;
+        for (const cb of swingListeners) cb();
+      }
+
       if (swingTime.current >= SWING_DURATION) {
         swingTime.current = -1;
         setIsSwinging(false);
@@ -72,10 +90,11 @@ export function ViewmodelSword() {
       // Eased swing curve (fast start, decelerate)
       const ease = 1 - Math.pow(1 - t, 3);
 
-      // Slash: upper-right → lower-left diagonal
-      offset.x += -ease * 0.6;           // sweep from right to left
-      offset.y += -ease * 0.3;           // drop down during slash
-      offset.z += -Math.sin(t * Math.PI) * 0.15; // slight forward lunge
+      // Slash: starts from idle (right side), sweeps through center, exits lower-left
+      // At t≈0.35 the blade crosses the screen center (crosshair)
+      offset.x += -ease * 0.7;           // sweep from right → past center → left
+      offset.y += -ease * 0.15 + Math.sin(t * Math.PI) * 0.15; // arc up through center then down
+      offset.z += -Math.sin(t * Math.PI) * 0.2; // lunge forward, peaking at mid-swing
 
       rotX += ease * 0.3;               // tilt blade forward
       rotY += -ease * 1.8;              // big yaw sweep to the left
