@@ -21,6 +21,7 @@ import { NetworkProvider } from './networking/NetworkProvider';
 import { InputSyncBridge } from './networking/InputSyncBridge';
 import { MeleeCombat } from './combat/MeleeCombat';
 import { HitEffectManager } from './combat/HitEffectManager';
+
 import { CVProvider } from './cv/CVProvider';
 import { CVSync } from './cv/CVSync';
 import { WebcamView } from './cv/WebcamView';
@@ -115,7 +116,7 @@ function GameApp() {
               ) : (
                 <BotOpponent color="#ff4444" />
               )
-              )}
+            )}
           </Physics>
         </Suspense>
 
