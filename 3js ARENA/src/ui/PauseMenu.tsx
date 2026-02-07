@@ -37,11 +37,15 @@ export function PauseMenu() {
     return () => window.removeEventListener('keydown', handleKey);
   }, [phase, pauseGame, resumeGame, resetToMenu]);
 
-  // Show/hide cursor when paused
+  // Show/hide cursor based on game phase
   useEffect(() => {
-    if (phase === 'paused') {
+    // Show cursor during menu, lobby, paused, and other UI phases
+    const showCursorPhases: GamePhase[] = ['menu', 'lobby', 'waiting', 'paused', 'arenaLoading'];
+    
+    if (showCursorPhases.includes(phase)) {
       document.body.style.cursor = 'default';
     } else {
+      // Hide cursor during gameplay (playing, countdown, roundEnd, gameOver)
       document.body.style.cursor = 'none';
     }
     
