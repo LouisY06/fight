@@ -14,23 +14,29 @@ import { useCVContext } from '../cv/CVProvider';
 const EYE_HEIGHT = 1.7;
 const MOVE_SPEED = 5; // units per second (keyboard mode)
 const MOUSE_SENSITIVITY = 0.002;
-const PLAYER_Z = -GAME_CONFIG.playerSpawnDistance / 2;
-
-// Player spawns at -Z and opponent at +Z, so we face +Z (PI yaw).
-const FACING_OPPONENT_YAW = Math.PI;
 
 export function FirstPersonCamera() {
   const { camera, gl } = useThree();
   const phase = useGameStore((s) => s.phase);
-  const { cvEnabled, cvInputRef } = useCVContext();
+  const playerSlot = useGameStore((s) => s.playerSlot);
+  const isMultiplayer = useGameStore((s) => s.isMultiplayer);
+  const { cvEnabled, cvInputRef, onCalibrate } = useCVContext();
 
   const initialized = useRef(false);
   const keys = useRef<Set<string>>(new Set());
   const euler = useRef(new THREE.Euler(0, 0, 0, 'YXZ'));
   const isLocked = useRef(false);
 
-  // Spawn position — CV mode adds offset to this
-  const spawnPos = useRef(new THREE.Vector3(0, EYE_HEIGHT, PLAYER_Z));
+  // Spawn Z and facing yaw depend on which player slot we are.
+  // Player 1 (or practice): spawn at -Z, face +Z (yaw = PI)
+  // Player 2: spawn at +Z, face -Z (yaw = 0)
+  const isP2 = isMultiplayer && playerSlot === 'player2';
+  const spawnZ = isP2
+    ? GAME_CONFIG.playerSpawnDistance / 2
+    : -GAME_CONFIG.playerSpawnDistance / 2;
+  const facingYaw = isP2 ? 0 : Math.PI;
+
+  const spawnPos = useRef(new THREE.Vector3(0, EYE_HEIGHT, spawnZ));
 
   // Re-usable objects to avoid per-frame allocation
   const _forward = new THREE.Vector3();
@@ -49,6 +55,14 @@ export function FirstPersonCamera() {
       window.removeEventListener('keyup', onKeyUp);
     };
   }, []);
+
+  // ---- Reset camera facing on calibrate ----
+  useEffect(() => {
+    const unsub = onCalibrate(() => {
+      euler.current.set(0, facingYaw, 0);
+    });
+    return unsub;
+  }, [onCalibrate, facingYaw]);
 
   // ---- Pointer lock for mouse look (keyboard mode) ----
   useEffect(() => {
@@ -96,10 +110,10 @@ export function FirstPersonCamera() {
 
     if (isGameplay) {
       if (!initialized.current) {
-        spawnPos.current.set(0, EYE_HEIGHT, PLAYER_Z);
+        spawnPos.current.set(0, EYE_HEIGHT, spawnZ);
         camera.position.copy(spawnPos.current);
-        // Start facing the opponent (+Z direction)
-        euler.current.set(0, FACING_OPPONENT_YAW, 0);
+        // Face the opponent
+        euler.current.set(0, facingYaw, 0);
         initialized.current = true;
       }
 
@@ -108,9 +122,7 @@ export function FirstPersonCamera() {
         // ---- CV mode ----
 
         // Head rotation → camera look direction
-        //    lookYaw / lookPitch from CVInputMapper are offsets from neutral.
-        //    We ADD them to the base facing-opponent yaw.
-        euler.current.y = FACING_OPPONENT_YAW - cvInput.lookYaw;
+        euler.current.y = facingYaw - cvInput.lookYaw;
         euler.current.x = cvInput.lookPitch;
         euler.current.x = Math.max(
           -Math.PI * 0.47,
@@ -165,6 +177,7 @@ export function FirstPersonCamera() {
     }
 
     if (phase === 'arenaLoading') {
+      spawnPos.current.set(0, EYE_HEIGHT, spawnZ);
       initialized.current = false;
     }
   });

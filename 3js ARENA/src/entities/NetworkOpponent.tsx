@@ -47,9 +47,10 @@ export function NetworkOpponent({ color = '#ff4444' }: NetworkOpponentProps) {
   }, [player2.health, isDead]);
 
   // Smoothly interpolate opponent position/rotation
-  const targetPos = useRef(new THREE.Vector3(0, 0, GAME_CONFIG.playerSpawnDistance / 2));
+  // The opponent's position comes directly from network (their camera position).
+  const targetPos = useRef(new THREE.Vector3());
   const targetRotY = useRef(0);
-  const currentPos = useRef(new THREE.Vector3(0, 0, GAME_CONFIG.playerSpawnDistance / 2));
+  const currentPos = useRef(new THREE.Vector3());
 
   useFrame(() => {
     if (!groupRef.current || isDead) return;
@@ -83,7 +84,7 @@ export function NetworkOpponent({ color = '#ff4444' }: NetworkOpponentProps) {
 
   return (
     <>
-      <group ref={groupRef} position={[0, 0, GAME_CONFIG.playerSpawnDistance / 2]} userData={{ isOpponent: true }}>
+      <group ref={groupRef} position={[0, 0, 0]} userData={{ isOpponent: true }}>
         {/* Only show opponent if not dead */}
         {!isDead && (
           <RigidBody type="kinematicPosition" colliders={false}>

@@ -1,9 +1,7 @@
 // =============================================================================
-// MechaArms.tsx — First-person cockpit mecha arms driven by CV pose tracking
-// Ported from mecha.js: robot arms mirror your real arm movements.
-// Right hand holds a sword. Left hand for blocking.
-//
-// All joint positions are interpolated (lerp) for smooth, fluid motion.
+// MechaArms.tsx — First-person cockpit RIGHT arm driven by CV pose tracking
+// Left arm removed (left hand is on keyboard for WASD movement).
+// Right hand holds a sword. All joints interpolated for smooth motion.
 // =============================================================================
 
 import { useRef, useMemo } from 'react';
@@ -19,8 +17,7 @@ const MECHA_BLUE = '#2288cc';
 const MECHA_DARK = '#334455';
 const JOINT_COLOR = '#00ffff';
 
-// ---- Cockpit anchor offsets (camera-local space) ----
-const L_SHOULDER = new THREE.Vector3(-0.5, -0.45, -1.0);
+// ---- Cockpit anchor (camera-local space) ----
 const R_SHOULDER = new THREE.Vector3(0.5, -0.45, -1.0);
 
 // How much the pose delta drives the arm
@@ -28,8 +25,6 @@ const ARM_SCALE = 3.5;
 const DEPTH_SCALE = 5.0;
 
 // ---- Smoothing ----
-// Lerp factor per frame: 0 = frozen, 1 = instant (no smoothing).
-// Higher values for fast-moving joints (wrists/hands), lower for shoulders.
 const SMOOTH_SHOULDER = 0.25;
 const SMOOTH_ELBOW = 0.2;
 const SMOOTH_WRIST = 0.25;
@@ -37,19 +32,14 @@ const SMOOTH_HAND = 0.3;
 const SMOOTH_SWORD_POS = 0.3;
 const SMOOTH_SWORD_ROT = 0.15;
 
-// ---- MediaPipe landmark indices ----
-const L_SHOULDER_IDX = 11;
+// ---- MediaPipe landmark indices (right side only) ----
 const R_SHOULDER_IDX = 12;
-const L_ELBOW_IDX = 13;
 const R_ELBOW_IDX = 14;
-const L_WRIST_IDX = 15;
 const R_WRIST_IDX = 16;
-const L_INDEX_IDX = 19;
 const R_INDEX_IDX = 20;
 
 /**
  * Get the delta of a landmark relative to its shoulder in MediaPipe world space.
- * Converts MediaPipe coords to camera-local coords.
  */
 function getDelta(
   lm: { x: number; y: number; z: number },
@@ -84,7 +74,7 @@ function positionLimb(
     dirNorm.normalize();
   }
   _tmpQuat.setFromUnitVectors(_UP, dirNorm);
-  mesh.quaternion.slerp(_tmpQuat, 0.35); // smooth orientation too
+  mesh.quaternion.slerp(_tmpQuat, 0.35);
 }
 
 // Reusable temp objects
@@ -93,14 +83,10 @@ const _tmpDir = new THREE.Vector3();
 const _tmpQuat = new THREE.Quaternion();
 const _UP = new THREE.Vector3(0, 1, 0);
 
-// Raw target positions (camera-local, before world transform)
-const _tLShoulder = new THREE.Vector3();
+// Raw target positions (right arm only)
 const _tRShoulder = new THREE.Vector3();
-const _tLElbow = new THREE.Vector3();
 const _tRElbow = new THREE.Vector3();
-const _tLWrist = new THREE.Vector3();
 const _tRWrist = new THREE.Vector3();
-const _tLHand = new THREE.Vector3();
 const _tRHand = new THREE.Vector3();
 
 export function MechaArms() {
@@ -108,31 +94,21 @@ export function MechaArms() {
   const phase = useGameStore((s) => s.phase);
   const { cvEnabled, cvInputRef, worldLandmarksRef } = useCVContext();
 
-  // Refs for each mecha part
+  // Refs for right arm parts only
   const groupRef = useRef<THREE.Group>(null!);
-  const leftUpperRef = useRef<THREE.Mesh>(null!);
   const rightUpperRef = useRef<THREE.Mesh>(null!);
-  const leftForeRef = useRef<THREE.Mesh>(null!);
   const rightForeRef = useRef<THREE.Mesh>(null!);
-  const leftHandRef = useRef<THREE.Mesh>(null!);
   const rightHandRef = useRef<THREE.Mesh>(null!);
-  const lShoulderRef = useRef<THREE.Mesh>(null!);
   const rShoulderRef = useRef<THREE.Mesh>(null!);
-  const lElbowRef = useRef<THREE.Mesh>(null!);
   const rElbowRef = useRef<THREE.Mesh>(null!);
-  const lWristRef = useRef<THREE.Mesh>(null!);
   const rWristRef = useRef<THREE.Mesh>(null!);
   const swordGroupRef = useRef<THREE.Group>(null!);
 
-  // Smoothed world-space positions (persistent between frames)
+  // Smoothed world-space positions (right arm only)
   const smoothJoints = useRef({
-    lShoulder: new THREE.Vector3(),
     rShoulder: new THREE.Vector3(),
-    lElbow: new THREE.Vector3(),
     rElbow: new THREE.Vector3(),
-    lWrist: new THREE.Vector3(),
     rWrist: new THREE.Vector3(),
-    lHand: new THREE.Vector3(),
     rHand: new THREE.Vector3(),
     swordQuat: new THREE.Quaternion(),
     initialized: false,
@@ -174,17 +150,10 @@ export function MechaArms() {
     }
 
     const s = smoothJoints.current;
-    const wlLS = worldLandmarks[L_SHOULDER_IDX];
     const wlRS = worldLandmarks[R_SHOULDER_IDX];
 
-    // Compute RAW joint positions in camera-local space
-    _tLShoulder.copy(L_SHOULDER);
+    // Compute RAW right arm joint positions in camera-local space
     _tRShoulder.copy(R_SHOULDER);
-
-    _tLElbow.copy(_tLShoulder).add(getDelta(worldLandmarks[L_ELBOW_IDX], wlLS));
-    _tLWrist.copy(_tLShoulder).add(getDelta(worldLandmarks[L_WRIST_IDX], wlLS));
-    _tLHand.copy(_tLShoulder).add(getDelta(worldLandmarks[L_INDEX_IDX], wlLS));
-
     _tRElbow.copy(_tRShoulder).add(getDelta(worldLandmarks[R_ELBOW_IDX], wlRS));
     _tRWrist.copy(_tRShoulder).add(getDelta(worldLandmarks[R_WRIST_IDX], wlRS));
     _tRHand.copy(_tRShoulder).add(getDelta(worldLandmarks[R_INDEX_IDX], wlRS));
@@ -194,54 +163,32 @@ export function MechaArms() {
     const camPos = camera.position;
     const toWorld = (v: THREE.Vector3) => v.applyQuaternion(camQuat).add(camPos);
 
-    toWorld(_tLShoulder);
     toWorld(_tRShoulder);
-    toWorld(_tLElbow);
     toWorld(_tRElbow);
-    toWorld(_tLWrist);
     toWorld(_tRWrist);
-    toWorld(_tLHand);
     toWorld(_tRHand);
 
-    // ---- Lerp smoothing: blend toward target positions ----
+    // ---- Lerp smoothing ----
     if (!s.initialized) {
-      // First frame: snap to position
-      s.lShoulder.copy(_tLShoulder);
       s.rShoulder.copy(_tRShoulder);
-      s.lElbow.copy(_tLElbow);
       s.rElbow.copy(_tRElbow);
-      s.lWrist.copy(_tLWrist);
       s.rWrist.copy(_tRWrist);
-      s.lHand.copy(_tLHand);
       s.rHand.copy(_tRHand);
       s.initialized = true;
     } else {
-      s.lShoulder.lerp(_tLShoulder, SMOOTH_SHOULDER);
       s.rShoulder.lerp(_tRShoulder, SMOOTH_SHOULDER);
-      s.lElbow.lerp(_tLElbow, SMOOTH_ELBOW);
       s.rElbow.lerp(_tRElbow, SMOOTH_ELBOW);
-      s.lWrist.lerp(_tLWrist, SMOOTH_WRIST);
       s.rWrist.lerp(_tRWrist, SMOOTH_WRIST);
-      s.lHand.lerp(_tLHand, SMOOTH_HAND);
       s.rHand.lerp(_tRHand, SMOOTH_HAND);
     }
 
-    // ---- Apply smoothed positions to meshes ----
-
-    // Joints
-    lShoulderRef.current.position.copy(s.lShoulder);
+    // ---- Apply to meshes ----
     rShoulderRef.current.position.copy(s.rShoulder);
-    lElbowRef.current.position.copy(s.lElbow);
     rElbowRef.current.position.copy(s.rElbow);
-    lWristRef.current.position.copy(s.lWrist);
     rWristRef.current.position.copy(s.rWrist);
 
-    // Limbs (positioned between smoothed joints)
-    positionLimb(leftUpperRef.current, s.lShoulder, s.lElbow, dims.upper);
     positionLimb(rightUpperRef.current, s.rShoulder, s.rElbow, dims.upper);
-    positionLimb(leftForeRef.current, s.lElbow, s.lWrist, dims.fore);
     positionLimb(rightForeRef.current, s.rElbow, s.rWrist, dims.fore);
-    positionLimb(leftHandRef.current, s.lWrist, s.lHand, dims.hand);
     positionLimb(rightHandRef.current, s.rWrist, s.rHand, dims.hand);
 
     // Sword at right hand, oriented along forearm
@@ -260,32 +207,19 @@ export function MechaArms() {
         swordGroupRef.current.quaternion.copy(s.swordQuat);
       }
 
-      // Publish world-space sword line for collision detection
       updateSwordTransform(swordGroupRef.current);
     }
   });
 
   return (
     <group ref={groupRef}>
-      {/* ---- Joint spheres ---- */}
-      <mesh ref={lShoulderRef}>
-        <sphereGeometry args={[0.08, 8, 8]} />
-        <meshStandardMaterial color={JOINT_COLOR} emissive={JOINT_COLOR} emissiveIntensity={0.3} />
-      </mesh>
+      {/* ---- Right arm joint spheres ---- */}
       <mesh ref={rShoulderRef}>
         <sphereGeometry args={[0.08, 8, 8]} />
         <meshStandardMaterial color={JOINT_COLOR} emissive={JOINT_COLOR} emissiveIntensity={0.3} />
       </mesh>
-      <mesh ref={lElbowRef}>
-        <sphereGeometry args={[0.06, 8, 8]} />
-        <meshStandardMaterial color={JOINT_COLOR} emissive={JOINT_COLOR} emissiveIntensity={0.3} />
-      </mesh>
       <mesh ref={rElbowRef}>
         <sphereGeometry args={[0.06, 8, 8]} />
-        <meshStandardMaterial color={JOINT_COLOR} emissive={JOINT_COLOR} emissiveIntensity={0.3} />
-      </mesh>
-      <mesh ref={lWristRef}>
-        <sphereGeometry args={[0.05, 8, 8]} />
         <meshStandardMaterial color={JOINT_COLOR} emissive={JOINT_COLOR} emissiveIntensity={0.3} />
       </mesh>
       <mesh ref={rWristRef}>
@@ -293,26 +227,14 @@ export function MechaArms() {
         <meshStandardMaterial color={JOINT_COLOR} emissive={JOINT_COLOR} emissiveIntensity={0.3} />
       </mesh>
 
-      {/* ---- Limb boxes ---- */}
-      <mesh ref={leftUpperRef} castShadow>
-        <boxGeometry args={[0.1, 0.35, 0.1]} />
-        <meshStandardMaterial color={MECHA_BLUE} metalness={0.6} roughness={0.3} />
-      </mesh>
+      {/* ---- Right arm limbs ---- */}
       <mesh ref={rightUpperRef} castShadow>
         <boxGeometry args={[0.1, 0.35, 0.1]} />
         <meshStandardMaterial color={MECHA_BLUE} metalness={0.6} roughness={0.3} />
       </mesh>
-      <mesh ref={leftForeRef} castShadow>
-        <boxGeometry args={[0.09, 0.32, 0.09]} />
-        <meshStandardMaterial color={MECHA_DARK} metalness={0.6} roughness={0.3} />
-      </mesh>
       <mesh ref={rightForeRef} castShadow>
         <boxGeometry args={[0.09, 0.32, 0.09]} />
         <meshStandardMaterial color={MECHA_DARK} metalness={0.6} roughness={0.3} />
-      </mesh>
-      <mesh ref={leftHandRef} castShadow>
-        <boxGeometry args={[0.08, 0.12, 0.06]} />
-        <meshStandardMaterial color={MECHA_BLUE} metalness={0.6} roughness={0.3} />
       </mesh>
       <mesh ref={rightHandRef} castShadow>
         <boxGeometry args={[0.08, 0.12, 0.06]} />
