@@ -128,7 +128,7 @@ export function MainMenu() {
       {/* Local play */}
       <div style={{ animation: 'fadeInUp 0.5s 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards', opacity: 0 }}>
         <MenuButton onClick={handleLocalPlay}>
-          LOCAL PRACTICE
+          PRACTICE AGAINST AI
         </MenuButton>
       </div>
 

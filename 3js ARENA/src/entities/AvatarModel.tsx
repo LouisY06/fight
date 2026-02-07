@@ -30,18 +30,61 @@ export interface AvatarModelProps {
 }
 
 /**
+ * Compute a robust bounding box by reading geometry vertex positions directly.
+ * Works reliably for SkinnedMesh / complex GLB hierarchies where Box3.setFromObject
+ * can return incorrect results due to stale world matrices or skinning.
+ */
+function robustBoundingBox(root: THREE.Object3D): THREE.Box3 {
+  root.updateWorldMatrix(true, true);
+
+  const box = new THREE.Box3();
+  const _pos = new THREE.Vector3();
+  let hasPoints = false;
+
+  root.traverse((node) => {
+    const mesh = node as THREE.Mesh;
+    if (!mesh.isMesh || !mesh.geometry) return;
+    const posAttr = mesh.geometry.getAttribute('position') as THREE.BufferAttribute | undefined;
+    if (!posAttr) return;
+
+    mesh.updateWorldMatrix(true, false);
+    for (let i = 0, l = posAttr.count; i < l; i++) {
+      _pos.fromBufferAttribute(posAttr, i);
+      _pos.applyMatrix4(mesh.matrixWorld);
+      if (!hasPoints) {
+        box.set(_pos, _pos.clone());
+        hasPoints = true;
+      } else {
+        box.expandByPoint(_pos);
+      }
+    }
+  });
+
+  if (!hasPoints) {
+    // Fallback to standard approach
+    box.setFromObject(root);
+  }
+  return box;
+}
+
+/**
  * Use THREE.Box3 to normalize GLB: scale to targetHeight (default 2 units) and ground feet at y=0.
  * Centers the model on x/z. Use after loading; ensures correct size for hitboxes and arena.
  */
 export function normalizeToHeight(root: THREE.Object3D, targetHeight: number = 2): void {
-  const box = new THREE.Box3().setFromObject(root);
+  const box = robustBoundingBox(root);
   const size = new THREE.Vector3();
   box.getSize(size);
+  console.log('[normalizeToHeight] Raw model bounds:', {
+    x: size.x.toFixed(2), y: size.y.toFixed(2), z: size.z.toFixed(2),
+    minY: box.min.y.toFixed(2), maxY: box.max.y.toFixed(2),
+  });
   const currentHeight = size.y || 1;
-  const s = Math.max(0.1, Math.min(10, targetHeight / currentHeight));
+  const s = targetHeight / currentHeight;
+  // No clamping — trust the vertex-level measurement
   root.scale.setScalar(s);
 
-  const box2 = new THREE.Box3().setFromObject(root);
+  const box2 = robustBoundingBox(root);
   root.position.y -= box2.min.y;
   const center = new THREE.Vector3();
   box2.getCenter(center);

@@ -410,7 +410,7 @@ function makeSword(): THREE.Group {
 // Cockpit anchor & tracking constants
 // ============================================================================
 
-const R_SHOULDER = new THREE.Vector3(0.5, -0.45, -1.0);
+const R_SHOULDER = new THREE.Vector3(0.5, -0.45, -0.55);
 const ARM_SCALE = 3.5;
 const DEPTH_SCALE = 5.0;
 

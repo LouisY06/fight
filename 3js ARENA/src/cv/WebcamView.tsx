@@ -6,32 +6,21 @@
 import { useEffect, useRef } from 'react';
 import { useCVContext } from './CVProvider';
 import { useGameStore } from '../game/GameState';
-import { poseTracker } from './PoseTracker';
 
 const PIP_WIDTH = 200;
 const PIP_HEIGHT = 150;
 
 export function WebcamView() {
-  const { cvEnabled, isTracking, calibrate } = useCVContext();
+  const { cvEnabled, isTracking, videoElement, calibrate } = useCVContext();
   const phase = useGameStore((s) => s.phase);
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  // Sync the video element's srcObject with the tracker's stream
+  // Pipe the tracker's stream into our visible <video>
   useEffect(() => {
-    if (!cvEnabled || !videoRef.current) return;
-
-    const checkVideo = () => {
-      const trackerVideo = poseTracker.getVideoElement();
-      if (trackerVideo && trackerVideo.srcObject && videoRef.current) {
-        videoRef.current.srcObject = trackerVideo.srcObject;
-        videoRef.current.play().catch(() => {});
-      }
-    };
-
-    checkVideo();
-    const interval = setInterval(checkVideo, 500);
-    return () => clearInterval(interval);
-  }, [cvEnabled, isTracking]);
+    if (!videoRef.current || !videoElement?.srcObject) return;
+    videoRef.current.srcObject = videoElement.srcObject;
+    videoRef.current.play().catch(() => {});
+  }, [videoElement, isTracking]);
 
   // Keyboard shortcut: C to calibrate
   useEffect(() => {
@@ -46,16 +35,14 @@ export function WebcamView() {
     return () => window.removeEventListener('keydown', onKey);
   }, [cvEnabled, calibrate]);
 
-  const showHUD =
+  const inGame =
     phase === 'playing' ||
     phase === 'countdown' ||
     phase === 'paused' ||
     phase === 'roundEnd' ||
     phase === 'gameOver';
 
-  if (!cvEnabled || !showHUD) return null;
-
-  console.log('[WebcamView] Rendering - cvEnabled:', cvEnabled, 'isTracking:', isTracking, 'phase:', phase);
+  if (!cvEnabled || !inGame) return null;
 
   return (
     <div
@@ -64,7 +51,7 @@ export function WebcamView() {
         bottom: '16px',
         left: '16px',
         width: `${PIP_WIDTH}px`,
-        zIndex: 200, // High z-index to stay visible above game elements but below pause menu (250)
+        zIndex: 300,
         pointerEvents: 'auto',
       }}
     >
@@ -113,7 +100,7 @@ export function WebcamView() {
         </div>
       </div>
 
-      {/* Calibrate button — prominent, below the PiP */}
+      {/* Calibrate button */}
       <button
         onClick={(e) => {
           e.stopPropagation();

@@ -12,7 +12,6 @@ import type { PlayerInput } from '../game/InputManager';
 import { useGameStore } from '../game/GameState';
 import { GAME_CONFIG } from '../game/GameConfig';
 import { OpponentHitbox } from './OpponentHitbox';
-import { RobotEntity } from '../avatars/RobotEntity';
 
 interface PlayerProps {
   playerId: 'player1' | 'player2';
@@ -50,12 +49,16 @@ export function Player({ playerId, input, color, spawnPosition }: PlayerProps) {
     previousHealthRef.current = playerState.health;
   }, [playerState.health, isDead]);
 
-  // Reset death state when new round starts
+  // Reset death state and position when new round starts
   useEffect(() => {
-    if (phase === 'countdown' && isDead) {
-      setIsDead(false);
+    if (phase === 'countdown') {
+      if (isDead) setIsDead(false);
+      // Reset to spawn position
+      if (groupRef.current) {
+        groupRef.current.position.set(...spawnPosition);
+      }
     }
-  }, [phase, isDead]);
+  }, [phase, isDead, spawnPosition]);
 
   // Move player based on input during gameplay
   useFrame(() => {
@@ -89,13 +92,17 @@ export function Player({ playerId, input, color, spawnPosition }: PlayerProps) {
             <RigidBody type="kinematicPosition" colliders={false}>
               <CapsuleCollider args={[0.5, 0.3]} position={[0, 1, 0]} />
 
-              {/* Robot GLB normalized to 2 units height, feet at y=0 */}
-              <RobotEntity
-                color={color}
-                targetHeight={2}
-                isWalking={input.moveDirection.lengthSq() > 0.0001}
-                isSwinging={input.gesture === 'slash' || input.gesture === 'stab'}
-              />
+              {/* Bean capsule opponent */}
+              <group>
+                <mesh position={[0, 1, 0]} castShadow>
+                  <capsuleGeometry args={[0.35, 1.0, 8, 16]} />
+                  <meshStandardMaterial color={color} roughness={0.4} metalness={0.3} />
+                </mesh>
+                <mesh position={[0, 1.9, 0]} castShadow>
+                  <sphereGeometry args={[0.22, 16, 16]} />
+                  <meshStandardMaterial color={color} roughness={0.4} metalness={0.3} />
+                </mesh>
+              </group>
 
               {/* Hitbox visualization (only for opponent) */}
               {isOpponent && <OpponentHitbox />}

@@ -296,24 +296,35 @@ export function useAIInput(): PlayerInput {
     }
   }, [trackOpponentActions, getPlayerPos]);
 
-  // Start/stop decision loop based on game phase
+  // Decision loop — poll LLM on interval
   useEffect(() => {
     decisionLoopRef.current = setInterval(() => {
       fetchDecision();
     }, DECISION_INTERVAL_MS);
-
-    actionLoopRef.current = setInterval(() => {
-      executeFrame();
-    }, 16);
 
     // Fetch first decision immediately
     fetchDecision();
 
     return () => {
       if (decisionLoopRef.current) clearInterval(decisionLoopRef.current);
-      if (actionLoopRef.current) clearInterval(actionLoopRef.current);
     };
-  }, [fetchDecision, executeFrame]);
+  }, [fetchDecision]);
+
+  // Action loop — run every frame via R3F useFrame (synced with render)
+  const frameCallback = useRef(executeFrame);
+  frameCallback.current = executeFrame;
+
+  // We import useFrame at the top already via useThree, but we need the hook directly
+  // Use a manual RAF loop since we're already in R3F context
+  useEffect(() => {
+    let rafId: number;
+    const tick = () => {
+      frameCallback.current();
+      rafId = requestAnimationFrame(tick);
+    };
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
+  }, []);
 
   // Reset AI state when round changes
   const phase = useGameStore((s) => s.phase);

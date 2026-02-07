@@ -140,12 +140,37 @@ function RobotEntityInner(props: RobotEntityProps) {
   const cloned = useMemo(() => {
     if (!prefab) return null;
     const c = clone(prefab) as THREE.Group;
+
+    // Remove flat base/platform meshes that come with the GLB export
+    const toRemove: THREE.Object3D[] = [];
     c.traverse((node) => {
       if ((node as THREE.Mesh).isMesh) {
-        (node as THREE.Mesh).castShadow = true;
-        (node as THREE.Mesh).receiveShadow = true;
+        const mesh = node as THREE.Mesh;
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+
+        // Detect flat disc / platform: very small Y extent relative to X/Z
+        const geo = mesh.geometry;
+        if (geo) {
+          geo.computeBoundingBox();
+          const bb = geo.boundingBox;
+          if (bb) {
+            const sy = bb.max.y - bb.min.y;
+            const sx = bb.max.x - bb.min.x;
+            const sz = bb.max.z - bb.min.z;
+            // If the mesh is very flat (height < 5% of width/depth) it's a base disc
+            if (sy > 0 && sx > 0 && sz > 0 && sy / Math.max(sx, sz) < 0.05) {
+              toRemove.push(mesh);
+            }
+          }
+        }
       }
     });
+    for (const obj of toRemove) {
+      console.log('[RobotEntity] Removing base disc mesh:', obj.name);
+      obj.removeFromParent();
+    }
+
     normalizeToHeight(c, targetHeight);
     cloneRef.current = c;
     const skel = getSkeletonFromScene(c);

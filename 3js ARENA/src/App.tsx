@@ -22,7 +22,6 @@ import { NetworkProvider } from './networking/NetworkProvider';
 import { InputSyncBridge } from './networking/InputSyncBridge';
 import { MeleeCombat } from './combat/MeleeCombat';
 import { HitEffectManager } from './combat/HitEffectManager';
-import { RobotPrefabProvider } from './avatars/RobotPrefabContext';
 import { CVProvider } from './cv/CVProvider';
 import { CVSync } from './cv/CVSync';
 import { WebcamView } from './cv/WebcamView';
@@ -93,7 +92,6 @@ function GameApp() {
       >
         <Suspense fallback={null}>
           <Physics gravity={[0, -9.81, 0]}>
-            <RobotPrefabProvider>
             {/* Game logic loop */}
             <GameEngine />
 
@@ -119,7 +117,6 @@ function GameApp() {
                 <LocalOpponent />
               )
             )}
-            </RobotPrefabProvider>
           </Physics>
         </Suspense>
 
