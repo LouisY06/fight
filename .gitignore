@@ -1,5 +1,7 @@
 node_modules/
 dist/
 release/
+public/mediapipe/
 *.dmg
 *.blockmap
+.DS_Store

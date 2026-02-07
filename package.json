@@ -1,35 +1,32 @@
 {
   "name": "mecha-mime",
   "version": "1.0.0",
-  "description": "Mecha-Mime: Phygital Combat — gesture-driven mecha cockpit",
+  "description": "Mecha-Mime: gesture-driven first-person mecha cockpit",
   "type": "module",
   "main": "electron/main.js",
   "scripts": {
     "dev": "vite",
-    "server": "node server.js",
-    "start": "node server.js & vite",
-    "electron": "electron .",
-    "electron:build": "CSC_IDENTITY_AUTO_DISCOVERY=false vite build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "electron": "electron .",
+    "electron:build": "CSC_IDENTITY_AUTO_DISCOVERY=false vite build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder"
   },
   "dependencies": {
-    "three": "^0.170.0",
-    "ws": "^8.18.0"
+    "@mediapipe/tasks-vision": "^0.10.32",
+    "three": "^0.170.0"
   },
   "devDependencies": {
-    "electron": "^34.0.0",
+    "electron": "^34.5.8",
     "electron-builder": "^25.1.8",
     "vite": "^6.0.0"
   },
   "build": {
     "appId": "com.mechamime.phygital",
     "productName": "Mecha-Mime",
+    "asar": false,
     "files": [
       "dist/**/*",
-      "electron/**/*",
-      "server.js",
-      "node_modules/ws/**/*"
+      "electron/**/*"
     ],
     "directories": {
       "output": "release"

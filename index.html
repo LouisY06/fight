@@ -3,54 +3,25 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Mecha-Mime: Phygital Combat</title>
+  <title>Mecha-Mime</title>
   <link rel="stylesheet" href="/src/style.css" />
 </head>
 <body>
-  <!-- Hidden video element for webcam feed -->
   <video id="webcam" autoplay playsinline style="display:none;"></video>
-
-  <!-- Small webcam preview (picture-in-picture) -->
   <canvas id="webcam-canvas"></canvas>
-
-  <!-- Three.js renders into this -->
   <div id="scene-container"></div>
 
-  <!-- HUD overlay -->
-  <div id="hud">
-    <div id="hud-top">
-      <div id="hud-weapon">FISTS</div>
-      <div id="hud-status">STANDBY</div>
-    </div>
-    <div id="hud-bottom">
-      <div id="hud-health-bar">
-        <div id="hud-health-fill"></div>
-        <span>SHIELD</span>
-      </div>
-      <div id="hud-energy-bar">
-        <div id="hud-energy-fill"></div>
-        <span>ENERGY</span>
-      </div>
-    </div>
-    <div id="hud-crosshair">+</div>
-    <div id="hud-target" class="hidden">TARGET ACQUIRED</div>
-    <div id="hud-score">KILLS: <span id="kill-count">0</span></div>
-    <div id="hud-corners">
-      <div class="corner tl"></div>
-      <div class="corner tr"></div>
-      <div class="corner bl"></div>
-      <div class="corner br"></div>
-    </div>
-  </div>
-
-  <!-- Loading screen -->
   <div id="loading">
-    <div id="loading-text">INITIALIZING MECHA-MIME SYSTEMS...</div>
-    <div id="loading-bar"><div id="loading-fill"></div></div>
+    <div id="loading-inner">
+      <h1>MECHA-MIME</h1>
+      <div id="loading-bar"><div id="loading-fill"></div></div>
+      <p id="loading-text">Initializing...</p>
+    </div>
   </div>
 
-  <!-- OpenCV.js loaded from CDN (async, heavy ~8MB) -->
-  <script async src="https://docs.opencv.org/4.9.0/opencv.js" id="opencv-script"></script>
+  <div id="hud">
+    <div id="hud-status">STANDBY</div>
+  </div>
 
   <script type="module" src="/src/main.js"></script>
 </body>

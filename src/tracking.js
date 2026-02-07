@@ -1,48 +1,61 @@
 /**
- * MediaPipe Pose tracking via @mediapipe/tasks-vision (CDN).
- * Loads the PoseLandmarker and provides per-frame pose detection.
+ * MediaPipe Pose tracking — local files for speed.
+ * Uses dynamic import to load vision_bundle.mjs from public/mediapipe/
+ * so path resolution works in both Vite dev and Electron production.
  */
 
+let PoseLandmarker, FilesetResolver;
 let poseLandmarker = null;
 let lastTimestamp = -1;
 
-export async function initTracking(videoEl) {
-  // Dynamic import from CDN to avoid bundler issues with WASM
-  const vision = await import(
-    'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/vision_bundle.mjs'
-  );
+let _onProgress = null;
+export function setProgressCallback(fn) {
+  _onProgress = fn;
+}
 
-  const { PoseLandmarker, FilesetResolver, DrawingUtils } = vision;
+function log(msg) {
+  console.log('[tracking]', msg);
+  if (_onProgress) _onProgress(msg);
+}
 
-  const filesetResolver = await FilesetResolver.forVisionTasks(
-    'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/wasm'
-  );
+function assetUrl(p) {
+  return new URL(p, window.location.href).href;
+}
 
-  poseLandmarker = await PoseLandmarker.createFromOptions(filesetResolver, {
-    baseOptions: {
-      modelAssetPath:
-        'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task',
-      delegate: 'GPU',
-    },
-    runningMode: 'VIDEO',
-    numPoses: 1,
-  });
-
-  // Start webcam
+export async function startWebcam(videoEl) {
+  log('Requesting webcam...');
   const stream = await navigator.mediaDevices.getUserMedia({
     video: { width: 640, height: 480, facingMode: 'user' },
     audio: false,
   });
   videoEl.srcObject = stream;
   await videoEl.play();
-
-  return { PoseLandmarker, DrawingUtils };
+  log('Webcam active');
 }
 
-/**
- * Detect pose for the current video frame.
- * Returns { landmarks, worldLandmarks } or null if no pose detected.
- */
+export async function initTracking() {
+  log('Loading MediaPipe module...');
+  const module = await import(/* @vite-ignore */ assetUrl('mediapipe/vision_bundle.mjs'));
+  PoseLandmarker = module.PoseLandmarker;
+  FilesetResolver = module.FilesetResolver;
+  log('Module loaded');
+
+  log('Loading WASM runtime...');
+  const vision = await FilesetResolver.forVisionTasks(assetUrl('mediapipe/wasm'));
+  log('WASM loaded');
+
+  log('Creating pose landmarker...');
+  poseLandmarker = await PoseLandmarker.createFromOptions(vision, {
+    baseOptions: {
+      modelAssetPath: assetUrl('mediapipe/pose_landmarker_lite.task'),
+      delegate: 'GPU',
+    },
+    runningMode: 'VIDEO',
+    numPoses: 1,
+  });
+  log('Pose landmarker ready');
+}
+
 export function detectPose(videoEl) {
   if (!poseLandmarker || !videoEl.videoWidth) return null;
 
@@ -54,8 +67,8 @@ export function detectPose(videoEl) {
 
   if (result.landmarks && result.landmarks.length > 0) {
     return {
-      landmarks: result.landmarks[0],          // 2D normalized
-      worldLandmarks: result.worldLandmarks[0], // 3D world coords
+      landmarks: result.landmarks[0],
+      worldLandmarks: result.worldLandmarks[0],
     };
   }
   return null;
