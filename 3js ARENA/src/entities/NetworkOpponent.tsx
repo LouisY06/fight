@@ -3,10 +3,11 @@
 // Position and rotation are interpolated from WebSocket updates.
 // =============================================================================
 
-import { useRef } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { RigidBody, CapsuleCollider } from '@react-three/rapier';
 import * as THREE from 'three';
+import { DeathEffect } from './DeathEffect';
 import { useNetwork } from '../networking/NetworkProvider';
 import { useGameStore } from '../game/GameState';
 import { GAME_CONFIG } from '../game/GameConfig';
@@ -20,6 +21,30 @@ export function NetworkOpponent({ color = '#ff4444' }: NetworkOpponentProps) {
   const groupRef = useRef<THREE.Group>(null!);
   const phase = useGameStore((s) => s.phase);
   const { opponentState } = useNetwork();
+  const player2 = useGameStore((s) => s.player2);
+  
+  const [isDead, setIsDead] = useState(false);
+  const [deathPosition, setDeathPosition] = useState<[number, number, number]>([0, 0, 0]);
+  const previousHealthRef = useRef(player2.health);
+
+  // Detect when opponent dies
+  useEffect(() => {
+    if (previousHealthRef.current > 0 && player2.health <= 0) {
+      // Opponent just died
+      setIsDead(true);
+      if (groupRef.current) {
+        setDeathPosition([
+          groupRef.current.position.x,
+          groupRef.current.position.y,
+          groupRef.current.position.z,
+        ]);
+      }
+    } else if (player2.health > 0 && isDead) {
+      // Opponent respawned
+      setIsDead(false);
+    }
+    previousHealthRef.current = player2.health;
+  }, [player2.health, isDead]);
 
   // Smoothly interpolate opponent position/rotation
   const targetPos = useRef(new THREE.Vector3(0, 0, GAME_CONFIG.playerSpawnDistance / 2));
@@ -27,7 +52,7 @@ export function NetworkOpponent({ color = '#ff4444' }: NetworkOpponentProps) {
   const currentPos = useRef(new THREE.Vector3(0, 0, GAME_CONFIG.playerSpawnDistance / 2));
 
   useFrame(() => {
-    if (!groupRef.current) return;
+    if (!groupRef.current || isDead) return;
 
     const isGameplay =
       phase === 'playing' ||
@@ -57,51 +82,64 @@ export function NetworkOpponent({ color = '#ff4444' }: NetworkOpponentProps) {
   const isSwinging = opponentState.isSwinging;
 
   return (
-    <group ref={groupRef} position={[0, 0, GAME_CONFIG.playerSpawnDistance / 2]} userData={{ isOpponent: true }}>
-      <RigidBody type="kinematicPosition" colliders={false}>
-        <CapsuleCollider args={[0.5, 0.3]} position={[0, 1, 0]} />
+    <>
+      <group ref={groupRef} position={[0, 0, GAME_CONFIG.playerSpawnDistance / 2]} userData={{ isOpponent: true }}>
+        {/* Only show opponent if not dead */}
+        {!isDead && (
+          <RigidBody type="kinematicPosition" colliders={false}>
+            <CapsuleCollider args={[0.5, 0.3]} position={[0, 1, 0]} />
 
-        {/* Body */}
-        <mesh position={[0, 1, 0]} castShadow>
-          <capsuleGeometry args={[0.3, 1, 8, 16]} />
-          <meshStandardMaterial color={color} roughness={0.5} metalness={0.3} />
-        </mesh>
+            {/* Body */}
+            <mesh position={[0, 1, 0]} castShadow>
+              <capsuleGeometry args={[0.3, 1, 8, 16]} />
+              <meshStandardMaterial color={color} roughness={0.5} metalness={0.3} />
+            </mesh>
 
-        {/* Head */}
-        <mesh position={[0, 1.9, 0]} castShadow>
-          <sphereGeometry args={[0.2, 16, 16]} />
-          <meshStandardMaterial color={color} roughness={0.5} metalness={0.3} />
-        </mesh>
+            {/* Head */}
+            <mesh position={[0, 1.9, 0]} castShadow>
+              <sphereGeometry args={[0.2, 16, 16]} />
+              <meshStandardMaterial color={color} roughness={0.5} metalness={0.3} />
+            </mesh>
 
-        {/* Hitbox visualization */}
-        <OpponentHitbox />
+            {/* Hitbox visualization */}
+            <OpponentHitbox />
 
-        {/* Opponent's sword — simple representation */}
-        <group
-          position={[0.4, 1.2, -0.3]}
-          rotation={[
-            isSwinging ? -0.8 : -0.3,
-            0,
-            isSwinging ? -1.2 : -0.4,
-          ]}
-        >
-          {/* Handle */}
-          <mesh>
-            <cylinderGeometry args={[0.02, 0.025, 0.18, 8]} />
-            <meshStandardMaterial color="#5C3317" roughness={0.85} />
-          </mesh>
-          {/* Guard */}
-          <mesh position={[0, 0.11, 0]}>
-            <boxGeometry args={[0.12, 0.02, 0.04]} />
-            <meshStandardMaterial color="#888" roughness={0.3} metalness={0.8} />
-          </mesh>
-          {/* Blade */}
-          <mesh position={[0, 0.45, 0]}>
-            <boxGeometry args={[0.03, 0.55, 0.01]} />
-            <meshStandardMaterial color="#ddd" roughness={0.1} metalness={0.95} />
-          </mesh>
-        </group>
-      </RigidBody>
-    </group>
+            {/* Opponent's sword — simple representation */}
+            <group
+              position={[0.4, 1.2, -0.3]}
+              rotation={[
+                isSwinging ? -0.8 : -0.3,
+                0,
+                isSwinging ? -1.2 : -0.4,
+              ]}
+            >
+              {/* Handle */}
+              <mesh>
+                <cylinderGeometry args={[0.02, 0.025, 0.18, 8]} />
+                <meshStandardMaterial color="#5C3317" roughness={0.85} />
+              </mesh>
+              {/* Guard */}
+              <mesh position={[0, 0.11, 0]}>
+                <boxGeometry args={[0.12, 0.02, 0.04]} />
+                <meshStandardMaterial color="#888" roughness={0.3} metalness={0.8} />
+              </mesh>
+              {/* Blade */}
+              <mesh position={[0, 0.45, 0]}>
+                <boxGeometry args={[0.03, 0.55, 0.01]} />
+                <meshStandardMaterial color="#ddd" roughness={0.1} metalness={0.95} />
+              </mesh>
+            </group>
+          </RigidBody>
+        )}
+      </group>
+      
+      {/* Death effect */}
+      {isDead && (
+        <DeathEffect 
+          position={deathPosition}
+          color={color}
+        />
+      )}
+    </>
   );
 }
