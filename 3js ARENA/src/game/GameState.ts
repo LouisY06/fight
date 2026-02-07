@@ -31,6 +31,12 @@ interface GameState {
   prePausePhase: GamePhase | null;
   setPhase: (phase: GamePhase) => void;
 
+  // Username
+  username: string;
+  opponentName: string;
+  setUsername: (name: string) => void;
+  setOpponentName: (name: string) => void;
+
   // Multiplayer
   isMultiplayer: boolean;
   isHost: boolean;
@@ -76,6 +82,10 @@ const defaultPlayerState = (spawnX: number): PlayerState => ({
 export const useGameStore = create<GameState>((set, get) => ({
   phase: 'menu',
   prePausePhase: null,
+  username: '',
+  opponentName: '',
+  setUsername: (name) => set({ username: name }),
+  setOpponentName: (name) => set({ opponentName: name }),
   isMultiplayer: false,
   isHost: false,
   roomId: null,
@@ -188,6 +198,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     set({
       phase: 'menu',
       prePausePhase: null,
+      opponentName: '',
       isMultiplayer: false,
       isHost: false,
       roomId: null,

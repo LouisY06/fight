@@ -159,6 +159,17 @@ wss.on('connection', (ws: WebSocket) => {
         break;
       }
 
+      case 'set_username': {
+        const opponent = getOpponent(ws);
+        if (opponent) {
+          send(opponent, {
+            type: 'opponent_username',
+            username: msg.username,
+          });
+        }
+        break;
+      }
+
       default:
         send(ws, { type: 'error', message: `Unknown message type` });
     }

@@ -33,9 +33,15 @@ export interface RoundEndMsg {
   winner: 'player1' | 'player2' | 'draw';
 }
 
+export interface SetUsernameMsg {
+  type: 'set_username';
+  username: string;
+}
+
 export type ClientMessage =
   | CreateRoomMsg | JoinRoomMsg | FindMatchMsg | CancelMatchMsg
-  | PlayerInputMsg | DamageEventMsg | GameStartMsg | RoundEndMsg;
+  | PlayerInputMsg | DamageEventMsg | GameStartMsg | RoundEndMsg
+  | SetUsernameMsg;
 
 // ---- Messages client receives ----
 
@@ -76,7 +82,13 @@ export interface OpponentRoundEndMsg {
   winner: 'player1' | 'player2' | 'draw';
 }
 
+export interface OpponentUsernameMsg {
+  type: 'opponent_username';
+  username: string;
+}
+
 export type ServerMessage =
   | RoomCreatedMsg | RoomJoinedMsg | MatchFoundMsg
   | OpponentJoinedMsg | OpponentLeftMsg | ErrorMsg
-  | OpponentInputMsg | OpponentDamageMsg | OpponentGameStartMsg | OpponentRoundEndMsg;
+  | OpponentInputMsg | OpponentDamageMsg | OpponentGameStartMsg | OpponentRoundEndMsg
+  | OpponentUsernameMsg;

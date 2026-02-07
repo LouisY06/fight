@@ -12,6 +12,8 @@ export function MainMenu() {
   const phase = useGameStore((s) => s.phase);
   const goToLobby = useGameStore((s) => s.goToLobby);
   const startGame = useGameStore((s) => s.startGame);
+  const username = useGameStore((s) => s.username);
+  const setUsername = useGameStore((s) => s.setUsername);
   const { connect } = useNetwork();
   const { cvEnabled, setCvEnabled } = useCVContext();
 
@@ -68,7 +70,41 @@ export function MainMenu() {
         </span>
       </h1>
 
-      <div style={{ height: '40px' }} />
+      <div style={{ height: '32px' }} />
+
+      {/* Username input */}
+      <div style={{ position: 'relative', width: '280px', marginBottom: '24px' }}>
+        <input
+          type="text"
+          value={username}
+          onChange={(e) => setUsername(e.target.value.slice(0, 16))}
+          placeholder="ENTER NAME"
+          maxLength={16}
+          style={{
+            width: '100%',
+            padding: '12px 16px',
+            fontSize: '18px',
+            fontWeight: 'bold',
+            fontFamily: "'Impact', 'Arial Black', sans-serif",
+            textTransform: 'uppercase',
+            letterSpacing: '3px',
+            textAlign: 'center',
+            color: '#ffffff',
+            background: 'rgba(255, 255, 255, 0.06)',
+            border: '1px solid rgba(255, 255, 255, 0.15)',
+            borderRadius: '4px',
+            outline: 'none',
+            caretColor: '#ff4488',
+            transition: 'border-color 0.2s ease',
+          }}
+          onFocus={(e) => {
+            e.currentTarget.style.borderColor = 'rgba(255, 68, 136, 0.5)';
+          }}
+          onBlur={(e) => {
+            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+          }}
+        />
+      </div>
 
       {/* Online 1v1 */}
       <MenuButton onClick={handleOnlinePlay} primary>

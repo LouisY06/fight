@@ -13,6 +13,9 @@ export function HUD() {
   const phase = useGameStore((s) => s.phase);
   const player1 = useGameStore((s) => s.player1);
   const player2 = useGameStore((s) => s.player2);
+  const username = useGameStore((s) => s.username);
+  const opponentName = useGameStore((s) => s.opponentName);
+  const playerSlot = useGameStore((s) => s.playerSlot);
   const { numbers } = useDamageIndicators();
 
   // Only show HUD during gameplay phases
@@ -23,6 +26,15 @@ export function HUD() {
     phase === 'roundEnd';
 
   if (!showHUD) return null;
+
+  // Determine which name goes on which side
+  const isPlayer1 = playerSlot === 'player1' || playerSlot === null;
+  const leftName = isPlayer1
+    ? (username || 'PLAYER 1')
+    : (opponentName || 'PLAYER 1');
+  const rightName = isPlayer1
+    ? (opponentName || 'PLAYER 2')
+    : (username || 'PLAYER 2');
 
   return (
     <div
@@ -47,7 +59,7 @@ export function HUD() {
           <HealthBar
             health={player1.health}
             side="left"
-            playerName="Player 1"
+            playerName={leftName}
           />
           <WinTracker wins={player1.roundsWon} side="left" />
         </div>
@@ -58,7 +70,7 @@ export function HUD() {
           <HealthBar
             health={player2.health}
             side="right"
-            playerName="Player 2"
+            playerName={rightName}
           />
           <WinTracker wins={player2.roundsWon} side="right" />
         </div>
