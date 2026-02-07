@@ -8,6 +8,7 @@ export interface ElectronAPI {
     base64Data: string
   ) => Promise<{ success: boolean; path?: string; error?: string }>;
   listArenaImages: () => Promise<string[]>;
+  quit?: () => void;
   platform: string;
 }
 

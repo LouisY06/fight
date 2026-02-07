@@ -10,5 +10,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   listArenaImages: () => ipcRenderer.invoke('list-arena-images'),
 
+  quit: () => ipcRenderer.send('quit-app'),
+
   platform: process.platform,
 });

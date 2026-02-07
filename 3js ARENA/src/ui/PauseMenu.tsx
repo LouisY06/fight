@@ -1,5 +1,6 @@
 // =============================================================================
 // PauseMenu.tsx — Universal ESC menu for all game phases
+// Shows cursor and provides Resume, Quit to Menu, and Quit Game options
 // =============================================================================
 
 import { useEffect } from 'react';
@@ -36,7 +37,31 @@ export function PauseMenu() {
     return () => window.removeEventListener('keydown', handleKey);
   }, [phase, pauseGame, resumeGame, resetToMenu]);
 
+  // Show/hide cursor when paused
+  useEffect(() => {
+    if (phase === 'paused') {
+      document.body.style.cursor = 'default';
+    } else {
+      document.body.style.cursor = 'none';
+    }
+    
+    return () => {
+      document.body.style.cursor = 'default';
+    };
+  }, [phase]);
+
   if (phase !== 'paused') return null;
+
+  // Quit game function (closes Electron app or browser tab)
+  const handleQuitGame = () => {
+    // Check if running in Electron
+    if (window.electronAPI) {
+      window.electronAPI.quit?.();
+    } else {
+      // In browser, close the tab/window
+      window.close();
+    }
+  };
 
   // Determine which label to show based on what we paused from
   const isFromGameOver = prePausePhase === 'gameOver';
@@ -77,8 +102,12 @@ export function PauseMenu() {
         <MenuButton onClick={resumeGame}>Resume</MenuButton>
       )}
 
-      <MenuButton onClick={resetToMenu} variant="danger">
-        Quit to Menu
+      <MenuButton onClick={resetToMenu} variant="secondary">
+        Return to Main Menu
+      </MenuButton>
+
+      <MenuButton onClick={handleQuitGame} variant="danger">
+        Quit Game
       </MenuButton>
 
       <p
@@ -103,18 +132,27 @@ function MenuButton({
 }: {
   onClick: () => void;
   children: React.ReactNode;
-  variant?: 'default' | 'danger';
+  variant?: 'default' | 'secondary' | 'danger';
 }) {
-  const isDanger = variant === 'danger';
-  const bgDefault = isDanger
-    ? 'rgba(255, 40, 60, 0.15)'
-    : 'rgba(255, 255, 255, 0.1)';
-  const bgHover = isDanger
-    ? 'rgba(255, 40, 60, 0.3)'
-    : 'rgba(255, 255, 255, 0.2)';
-  const border = isDanger
-    ? '1px solid rgba(255, 40, 60, 0.35)'
-    : '1px solid rgba(255, 255, 255, 0.2)';
+  // Style based on variant
+  let bgDefault, bgHover, border;
+  
+  switch (variant) {
+    case 'danger':
+      bgDefault = 'rgba(255, 40, 60, 0.15)';
+      bgHover = 'rgba(255, 40, 60, 0.35)';
+      border = '1px solid rgba(255, 40, 60, 0.4)';
+      break;
+    case 'secondary':
+      bgDefault = 'rgba(200, 200, 200, 0.08)';
+      bgHover = 'rgba(200, 200, 200, 0.15)';
+      border = '1px solid rgba(200, 200, 200, 0.2)';
+      break;
+    default:
+      bgDefault = 'rgba(100, 200, 255, 0.12)';
+      bgHover = 'rgba(100, 200, 255, 0.25)';
+      border = '1px solid rgba(100, 200, 255, 0.3)';
+  }
 
   return (
     <button
@@ -130,15 +168,17 @@ function MenuButton({
         border,
         borderRadius: '4px',
         cursor: 'pointer',
-        transition: 'background 0.15s ease',
+        transition: 'all 0.15s ease',
         fontFamily: "'Impact', 'Arial Black', sans-serif",
-        minWidth: '220px',
+        minWidth: '280px',
       }}
       onMouseEnter={(e) => {
         e.currentTarget.style.background = bgHover;
+        e.currentTarget.style.transform = 'translateY(-2px)';
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.background = bgDefault;
+        e.currentTarget.style.transform = 'translateY(0)';
       }}
     >
       {children}
