@@ -1,6 +1,6 @@
 // =============================================================================
 // MechaGeometry.ts — Shared materials + procedural geometry builders for mecha
-// Gunmetal gray armor + hot orange energy accents. Angular, aggressive plates.
+// Gunmetal gray armor + hot orange energy accents. HEAVY pilotable-mech proportions.
 // Used by both MechaArms.tsx (first-person) and MechaEntity.tsx (third-person).
 // =============================================================================
 
@@ -47,82 +47,87 @@ function enableShadows(g: THREE.Group) {
 export function makeUpperArm(): THREE.Group {
   const g = new THREE.Group();
 
-  // Core structure — octagonal feel
-  const core = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.05, 0.34, 8), matDark);
+  // Thick core cylinder
+  const core = new THREE.Mesh(new THREE.CylinderGeometry(0.10, 0.09, 0.40, 8), matDark);
   g.add(core);
 
-  // Large swept-back pauldron (angular wedge shape)
-  const pauldronMain = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.06, 0.12), matBlue);
-  pauldronMain.position.set(0, 0.17, -0.01);
-  pauldronMain.rotation.x = -0.15; // swept back
-  g.add(pauldronMain);
+  // MASSIVE pauldron — wide angular shoulder shield
+  const pauldronBase = new THREE.Mesh(new THREE.BoxGeometry(0.30, 0.10, 0.22), matBlue);
+  pauldronBase.position.set(0, 0.18, -0.02);
+  pauldronBase.rotation.x = -0.1;
+  g.add(pauldronBase);
 
-  // Pauldron top fin (aggressive swept-back blade)
-  const pauldronFin = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.04, 0.14), matBlue);
-  pauldronFin.position.set(0, 0.20, -0.03);
+  // Pauldron top layer (stacked armor)
+  const pauldronTop = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.06, 0.18), matBlue);
+  pauldronTop.position.set(0, 0.24, -0.03);
+  pauldronTop.rotation.x = -0.15;
+  g.add(pauldronTop);
+
+  // Pauldron swept-back fin
+  const pauldronFin = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.04, 0.20), matBlue);
+  pauldronFin.position.set(0, 0.27, -0.06);
   pauldronFin.rotation.x = -0.25;
   g.add(pauldronFin);
 
-  // Pauldron accent edge — orange glow strip on leading edge
-  const pauldronGlow = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.008, 0.008), matGlow);
-  pauldronGlow.position.set(0, 0.175, 0.058);
+  // Pauldron leading edge glow
+  const pauldronGlow = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.008, 0.008), matGlow);
+  pauldronGlow.position.set(0, 0.19, 0.10);
   g.add(pauldronGlow);
 
   // Pauldron chrome trim
-  const pauldronTrim = new THREE.Mesh(new THREE.BoxGeometry(0.155, 0.012, 0.005), matChrome);
-  pauldronTrim.position.set(0, 0.145, 0.062);
+  const pauldronTrim = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.012, 0.005), matChrome);
+  pauldronTrim.position.set(0, 0.14, 0.11);
   g.add(pauldronTrim);
 
-  // Angular front plate (layered, swept)
-  const frontOuter = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.18, 0.02), matBlue);
-  frontOuter.position.set(0, 0.0, 0.065);
-  frontOuter.rotation.x = -0.06;
+  // Heavy front plate
+  const frontOuter = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.24, 0.03), matBlue);
+  frontOuter.position.set(0, -0.02, 0.09);
+  frontOuter.rotation.x = -0.04;
   g.add(frontOuter);
 
-  const frontInner = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.13, 0.015), matPanel);
-  frontInner.position.set(0, -0.01, 0.078);
+  const frontInner = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.18, 0.02), matPanel);
+  frontInner.position.set(0, -0.03, 0.105);
   g.add(frontInner);
 
-  // Side flares (angular swept-back)
+  // Thick side armor plates
   for (const side of [-1, 1]) {
-    const flare = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.22, 0.09), matBlue);
-    flare.position.set(side * 0.072, -0.02, -0.01);
-    flare.rotation.y = side * 0.2;
-    flare.rotation.x = -0.05;
+    const flare = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.28, 0.14), matBlue);
+    flare.position.set(side * 0.10, -0.02, -0.01);
+    flare.rotation.y = side * 0.12;
     g.add(flare);
 
-    const inset = new THREE.Mesh(new THREE.BoxGeometry(0.018, 0.16, 0.07), matPanel);
-    inset.position.set(side * 0.076, -0.03, -0.01);
-    inset.rotation.y = side * 0.2;
+    const inset = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.20, 0.10), matPanel);
+    inset.position.set(side * 0.11, -0.03, -0.01);
+    flare.rotation.y = side * 0.12;
     g.add(inset);
 
-    // Orange vent slits on side plates
+    // Orange vent slits
     for (let i = 0; i < 3; i++) {
-      const vent = new THREE.Mesh(new THREE.BoxGeometry(0.003, 0.022, 0.04), matGlow);
-      vent.position.set(side * 0.085, -0.06 + i * 0.04, -0.01);
+      const vent = new THREE.Mesh(new THREE.BoxGeometry(0.004, 0.028, 0.06), matGlow);
+      vent.position.set(side * 0.12, -0.08 + i * 0.05, -0.01);
       g.add(vent);
     }
   }
 
-  // Back plate
-  const backPlate = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.20, 0.02), matDark);
-  backPlate.position.set(0, -0.02, -0.06);
+  // Heavy back plate
+  const backPlate = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.28, 0.03), matDark);
+  backPlate.position.set(0, -0.02, -0.085);
   g.add(backPlate);
 
-  // Hydraulic pistons
+  // Hydraulic pistons (thick)
   for (const side of [-1, 1]) {
-    const piston = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.24, 6), matPiston);
-    piston.position.set(side * 0.048, -0.04, -0.035);
+    const piston = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.28, 6), matPiston);
+    piston.position.set(side * 0.065, -0.05, -0.05);
     g.add(piston);
 
-    const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.08, 6), matChrome);
-    sleeve.position.set(side * 0.048, -0.10, -0.035);
+    const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.10, 6), matChrome);
+    sleeve.position.set(side * 0.065, -0.12, -0.05);
     g.add(sleeve);
   }
 
-  // Orange energy bands (angular torus)
-  for (const yOff of [-0.10, 0.0, 0.08]) {
-    const band = new THREE.Mesh(new THREE.TorusGeometry(0.065, 0.004, 4, 8), matAccent);
+  // Orange energy bands
+  for (const yOff of [-0.12, 0.0, 0.08]) {
+    const band = new THREE.Mesh(new THREE.TorusGeometry(0.10, 0.005, 4, 8), matAccent);
     band.position.y = yOff;
     band.rotation.x = Math.PI / 2;
     g.add(band);
@@ -130,16 +135,9 @@ export function makeUpperArm(): THREE.Group {
 
   // Back vents — orange glow
   for (let i = 0; i < 4; i++) {
-    const vent = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.012, 0.008), matGlow);
-    vent.position.set(0, -0.08 + i * 0.04, -0.068);
+    const vent = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.016, 0.010), matGlow);
+    vent.position.set(0, -0.10 + i * 0.05, -0.098);
     g.add(vent);
-  }
-
-  // Panel line grooves
-  for (const yOff of [-0.06, 0.06]) {
-    const groove = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.005, 0.025), matPanel);
-    groove.position.set(0, yOff, 0.075);
-    g.add(groove);
   }
 
   enableShadows(g);
@@ -149,108 +147,101 @@ export function makeUpperArm(): THREE.Group {
 export function makeForearm(): THREE.Group {
   const g = new THREE.Group();
 
-  // Core cylinder
-  const core = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.042, 0.32, 8), matDark);
+  // Thick core
+  const core = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.07, 0.36, 8), matDark);
   g.add(core);
 
-  // Angular elbow guard (swept-back wedge)
-  const elbowMain = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.10, 0.10), matBlue);
-  elbowMain.position.set(0, 0.14, 0.02);
-  elbowMain.rotation.x = 0.15;
+  // Heavy elbow guard
+  const elbowMain = new THREE.Mesh(new THREE.BoxGeometry(0.20, 0.12, 0.16), matBlue);
+  elbowMain.position.set(0, 0.16, 0.02);
+  elbowMain.rotation.x = 0.12;
   g.add(elbowMain);
 
-  const elbowBlade = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.06, 0.12), matBlue);
-  elbowBlade.position.set(0, 0.15, -0.04);
-  elbowBlade.rotation.x = -0.2; // swept back
-  g.add(elbowBlade);
+  // Elbow back fin
+  const elbowFin = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.08, 0.16), matBlue);
+  elbowFin.position.set(0, 0.17, -0.06);
+  elbowFin.rotation.x = -0.2;
+  g.add(elbowFin);
 
-  const elbowInset = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.05, 0.06), matPanel);
-  elbowInset.position.set(0, 0.15, 0.03);
-  elbowInset.rotation.x = 0.12;
+  const elbowInset = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.06, 0.10), matPanel);
+  elbowInset.position.set(0, 0.16, 0.04);
   g.add(elbowInset);
 
   // Elbow glow slit
-  const elbowGlow = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.006, 0.008), matGlow);
-  elbowGlow.position.set(0, 0.10, 0.06);
+  const elbowGlow = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.008, 0.010), matGlow);
+  elbowGlow.position.set(0, 0.11, 0.09);
   g.add(elbowGlow);
 
   // Chrome ring
-  const elbowRing = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.006, 4, 8), matChrome);
-  elbowRing.position.y = 0.10;
+  const elbowRing = new THREE.Mesh(new THREE.TorusGeometry(0.09, 0.008, 4, 8), matChrome);
+  elbowRing.position.y = 0.11;
   elbowRing.rotation.x = Math.PI / 2;
   g.add(elbowRing);
 
-  // Angular front plate
-  const frontOuter = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.20, 0.018), matBlue);
-  frontOuter.position.set(0, -0.02, 0.055);
+  // Heavy front plate
+  const frontOuter = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.26, 0.025), matBlue);
+  frontOuter.position.set(0, -0.02, 0.08);
   g.add(frontOuter);
 
-  const frontInner = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.14, 0.012), matPanel);
-  frontInner.position.set(0, -0.03, 0.066);
+  const frontInner = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.18, 0.018), matPanel);
+  frontInner.position.set(0, -0.03, 0.09);
   g.add(frontInner);
 
-  // Side plates (angular)
+  // Side armor
   for (const side of [-1, 1]) {
-    const sidePlate = new THREE.Mesh(new THREE.BoxGeometry(0.020, 0.24, 0.07), matBlue);
-    sidePlate.position.set(side * 0.058, -0.01, -0.005);
-    sidePlate.rotation.y = side * 0.08;
+    const sidePlate = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.30, 0.10), matBlue);
+    sidePlate.position.set(side * 0.085, -0.01, 0);
+    sidePlate.rotation.y = side * 0.06;
     g.add(sidePlate);
 
-    const sideInset = new THREE.Mesh(new THREE.BoxGeometry(0.014, 0.16, 0.05), matPanel);
-    sideInset.position.set(side * 0.062, -0.02, -0.005);
+    const sideInset = new THREE.Mesh(new THREE.BoxGeometry(0.020, 0.20, 0.07), matPanel);
+    sideInset.position.set(side * 0.09, -0.02, 0);
     g.add(sideInset);
   }
 
   // Hydraulic line
-  const hLine = new THREE.Mesh(new THREE.CylinderGeometry(0.010, 0.010, 0.24, 6), matPiston);
-  hLine.position.set(0.042, -0.02, -0.038);
+  const hLine = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.28, 6), matPiston);
+  hLine.position.set(0.06, -0.02, -0.05);
   g.add(hLine);
 
-  const hSleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.06, 6), matChrome);
-  hSleeve.position.set(0.042, -0.08, -0.038);
+  const hSleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.08, 6), matChrome);
+  hSleeve.position.set(0.06, -0.10, -0.05);
   g.add(hSleeve);
 
   // Side vent slits — orange glow
   for (const side of [-1, 1]) {
     for (let i = 0; i < 4; i++) {
-      const vent = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.018, 0.030), matGlow);
-      vent.position.set(side * 0.065, -0.04 + i * 0.035, 0);
+      const vent = new THREE.Mesh(new THREE.BoxGeometry(0.006, 0.022, 0.04), matGlow);
+      vent.position.set(side * 0.095, -0.04 + i * 0.04, 0);
       g.add(vent);
     }
   }
 
-  // Wrist cuff
-  const cuff = new THREE.Mesh(new THREE.CylinderGeometry(0.052, 0.058, 0.04, 8), matBlue);
-  cuff.position.y = -0.155;
+  // Wrist cuff (thick)
+  const cuff = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.085, 0.05, 8), matBlue);
+  cuff.position.y = -0.175;
   g.add(cuff);
 
-  const cuffRing = new THREE.Mesh(new THREE.TorusGeometry(0.055, 0.005, 4, 8), matChrome);
-  cuffRing.position.y = -0.14;
+  const cuffRing = new THREE.Mesh(new THREE.TorusGeometry(0.082, 0.006, 4, 8), matChrome);
+  cuffRing.position.y = -0.155;
   cuffRing.rotation.x = Math.PI / 2;
   g.add(cuffRing);
 
   // Front energy conduit — orange glow line
-  const conduit = new THREE.Mesh(new THREE.BoxGeometry(0.010, 0.20, 0.006), matGlow);
-  conduit.position.set(0, -0.03, 0.074);
+  const conduit = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.24, 0.008), matGlow);
+  conduit.position.set(0, -0.03, 0.095);
   g.add(conduit);
 
-  // Energy nodes along conduit
-  for (const yOff of [-0.10, 0.04]) {
-    const node = new THREE.Mesh(new THREE.SphereGeometry(0.010, 6, 4), matGlow);
-    node.position.set(0, yOff, 0.074);
+  // Energy nodes
+  for (const yOff of [-0.12, 0.05]) {
+    const node = new THREE.Mesh(new THREE.SphereGeometry(0.014, 6, 4), matGlow);
+    node.position.set(0, yOff, 0.095);
     g.add(node);
   }
 
-  // Panel grooves
-  for (const yOff of [-0.08, 0.02]) {
-    const groove = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.004, 0.020), matPanel);
-    groove.position.set(0, yOff, 0.060);
-    g.add(groove);
-  }
-
   // Back plate
-  const backPlate = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.24, 0.018), matDark);
-  backPlate.position.set(0, -0.01, -0.050);
+  const backPlate = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.30, 0.025), matDark);
+  backPlate.position.set(0, -0.01, -0.072);
   g.add(backPlate);
 
   enableShadows(g);
@@ -260,69 +251,64 @@ export function makeForearm(): THREE.Group {
 export function makeHand(): THREE.Group {
   const g = new THREE.Group();
 
-  // Palm block
-  const palm = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.055, 0.055), matDark);
+  // Big mechanical palm
+  const palm = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.08, 0.09), matDark);
   g.add(palm);
 
-  // Back plate — angular
-  const backPlate = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.048, 0.022), matBlue);
-  backPlate.position.set(0, 0, -0.035);
+  // Back plate
+  const backPlate = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.07, 0.03), matBlue);
+  backPlate.position.set(0, 0, -0.05);
   g.add(backPlate);
 
   // Knuckle ridge
-  const knuckle = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.022, 0.065), matBlue);
-  knuckle.position.set(0, 0.035, 0);
+  const knuckle = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.03, 0.10), matBlue);
+  knuckle.position.set(0, 0.05, 0);
   g.add(knuckle);
 
-  const knuckleEdge = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.010, 0.050), matChrome);
-  knuckleEdge.position.set(0, 0.044, 0);
+  const knuckleEdge = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.015, 0.08), matChrome);
+  knuckleEdge.position.set(0, 0.06, 0);
   g.add(knuckleEdge);
 
-  // Finger segments
+  // Thick fingers
   for (let i = 0; i < 4; i++) {
-    const seg1 = new THREE.Mesh(new THREE.BoxGeometry(0.020, 0.028, 0.026), matBlue);
-    seg1.position.set(-0.036 + i * 0.024, 0.058, 0);
+    const seg1 = new THREE.Mesh(new THREE.BoxGeometry(0.032, 0.04, 0.038), matBlue);
+    seg1.position.set(-0.054 + i * 0.036, 0.08, 0);
     g.add(seg1);
 
-    const seg2 = new THREE.Mesh(new THREE.BoxGeometry(0.016, 0.022, 0.022), matDark);
-    seg2.position.set(-0.036 + i * 0.024, 0.082, 0);
+    const seg2 = new THREE.Mesh(new THREE.BoxGeometry(0.026, 0.032, 0.032), matDark);
+    seg2.position.set(-0.054 + i * 0.036, 0.115, 0);
     g.add(seg2);
 
-    const joint = new THREE.Mesh(new THREE.SphereGeometry(0.006, 4, 4), matChrome);
-    joint.position.set(-0.036 + i * 0.024, 0.070, 0.011);
+    const joint = new THREE.Mesh(new THREE.SphereGeometry(0.010, 4, 4), matChrome);
+    joint.position.set(-0.054 + i * 0.036, 0.098, 0.016);
     g.add(joint);
   }
 
   // Thumb
-  const thumbBase = new THREE.Mesh(new THREE.BoxGeometry(0.022, 0.032, 0.026), matBlue);
-  thumbBase.position.set(-0.060, 0.01, 0.02);
+  const thumbBase = new THREE.Mesh(new THREE.BoxGeometry(0.034, 0.045, 0.038), matBlue);
+  thumbBase.position.set(-0.09, 0.01, 0.03);
   thumbBase.rotation.z = 0.5;
   g.add(thumbBase);
 
-  const thumbTip = new THREE.Mesh(new THREE.BoxGeometry(0.018, 0.025, 0.020), matDark);
-  thumbTip.position.set(-0.075, 0.033, 0.02);
+  const thumbTip = new THREE.Mesh(new THREE.BoxGeometry(0.028, 0.035, 0.030), matDark);
+  thumbTip.position.set(-0.11, 0.045, 0.03);
   thumbTip.rotation.z = 0.6;
   g.add(thumbTip);
 
   // Wrist connector
-  const connector = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.050, 0.022, 8), matChrome);
-  connector.position.y = -0.032;
+  const connector = new THREE.Mesh(new THREE.CylinderGeometry(0.070, 0.075, 0.03, 8), matChrome);
+  connector.position.y = -0.045;
   g.add(connector);
 
-  // Under plate
-  const underPlate = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.038, 0.018), matPanel);
-  underPlate.position.set(0, 0, 0.032);
-  g.add(underPlate);
-
-  // Knuckle glow strip — orange
-  const glowStrip = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.005, 0.045), matGlow);
-  glowStrip.position.set(0, 0.050, 0);
+  // Knuckle glow strip
+  const glowStrip = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.006, 0.07), matGlow);
+  glowStrip.position.set(0, 0.068, 0);
   g.add(glowStrip);
 
   // Side accent strips
   for (const side of [-1, 1]) {
-    const strip = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.045, 0.035), matAccent);
-    strip.position.set(side * 0.054, 0, 0);
+    const strip = new THREE.Mesh(new THREE.BoxGeometry(0.006, 0.06, 0.05), matAccent);
+    strip.position.set(side * 0.082, 0, 0);
     g.add(strip);
   }
 
@@ -342,7 +328,7 @@ export function makeJoint(radius: number): THREE.Group {
   g.add(shell);
 
   // Orange accent ring
-  const ring = new THREE.Mesh(new THREE.TorusGeometry(radius * 1.1, radius * 0.07, 4, 10), matAccent);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(radius * 1.1, radius * 0.08, 4, 10), matAccent);
   ring.rotation.x = Math.PI / 2;
   g.add(ring);
 
@@ -365,7 +351,7 @@ export function makeSword(): THREE.Group {
     g.add(bevel);
   }
 
-  // Tip — angular
+  // Tip
   const tip = new THREE.Mesh(new THREE.ConeGeometry(0.10, 0.30, 4), matBlade);
   tip.position.y = 2.24;
   tip.rotation.y = Math.PI / 4;
@@ -381,7 +367,7 @@ export function makeSword(): THREE.Group {
   energyLine.position.set(0, 0.9, 0.014);
   g.add(energyLine);
 
-  // Energy nodes along blade — orange
+  // Energy nodes along blade
   for (let i = 0; i < 7; i++) {
     const node = new THREE.Mesh(new THREE.SphereGeometry(0.014, 6, 4), matGlow);
     node.position.set(0, 0.25 + i * 0.28, 0.014);
@@ -394,30 +380,26 @@ export function makeSword(): THREE.Group {
   g.add(guardMain);
 
   for (const side of [-1, 1]) {
-    // Swept-back guard wings
     const wing = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.07, 0.04), matGuard);
     wing.position.set(side * 0.22, 0.10, -0.01);
     wing.rotation.z = side * -0.35;
-    wing.rotation.x = -0.15; // swept back
+    wing.rotation.x = -0.15;
     g.add(wing);
   }
 
-  // Guard chrome trim
   const guardTrim = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.012, 0.065), matChrome);
   guardTrim.position.y = 0.045;
   g.add(guardTrim);
 
-  // Guard gem — orange glow
   const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.030, 0), matGlow);
   gem.position.set(0, 0.07, 0.038);
   g.add(gem);
 
-  // Handle — dark grip
+  // Handle
   const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.024, 0.32, 8), matHandle);
   handle.position.y = -0.10;
   g.add(handle);
 
-  // Handle wraps — chrome
   for (let i = 0; i < 5; i++) {
     const wrap = new THREE.Mesh(new THREE.TorusGeometry(0.032, 0.005, 4, 8), matChrome);
     wrap.position.y = -0.22 + i * 0.06;
@@ -425,7 +407,6 @@ export function makeSword(): THREE.Group {
     g.add(wrap);
   }
 
-  // Pommel — orange accent
   const pommel = new THREE.Mesh(new THREE.SphereGeometry(0.040, 8, 6), matPommel);
   pommel.position.y = -0.28;
   g.add(pommel);
@@ -625,92 +606,89 @@ export function makeShield(): THREE.Group {
 }
 
 // ============================================================================
-// Body segment builders (third-person mecha body)
+// Body segment builders (third-person mecha body — HEAVY proportions)
 // ============================================================================
 
-/** Head: angular helmet, visor slit, swept-back fins, side vents. ~0.30 tall. */
+/** Head: small sensor pod relative to massive body. */
 export function makeHead(): THREE.Group {
   const g = new THREE.Group();
 
-  // Main helmet — angular (box-based, not sphere)
-  const helmet = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.16, 0.18), matBlue);
+  // Compact angular helmet
+  const helmet = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.16, 0.20), matBlue);
   helmet.position.y = 0.02;
   g.add(helmet);
 
-  // Helmet top ridge — aggressive swept-back crest
-  const crest = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.04, 0.16), matBlue);
+  // Crest (swept back)
+  const crest = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.04, 0.18), matBlue);
   crest.position.set(0, 0.10, -0.02);
   crest.rotation.x = -0.15;
   g.add(crest);
 
-  const crestTip = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.03, 0.08), matChrome);
-  crestTip.position.set(0, 0.12, -0.06);
+  const crestTip = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.03, 0.10), matChrome);
+  crestTip.position.set(0, 0.12, -0.07);
   crestTip.rotation.x = -0.2;
   g.add(crestTip);
 
-  // Face plate (angular, tapered at chin)
-  const face = new THREE.Mesh(new THREE.BoxGeometry(0.20, 0.14, 0.12), matDark);
+  // Face plate
+  const face = new THREE.Mesh(new THREE.BoxGeometry(0.20, 0.14, 0.14), matDark);
   face.position.y = -0.01;
   g.add(face);
 
-  // Lower face / chin (narrower)
-  const chin = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.05, 0.10), matBlue);
+  // Chin
+  const chin = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.05, 0.12), matBlue);
   chin.position.set(0, -0.08, 0.01);
   g.add(chin);
 
-  // Chin guard plate
-  const chinGuard = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.04, 0.04), matPanel);
-  chinGuard.position.set(0, -0.09, 0.05);
+  const chinGuard = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.04, 0.05), matPanel);
+  chinGuard.position.set(0, -0.09, 0.06);
   g.add(chinGuard);
 
-  // Visor slit — orange glow (angry narrow slit)
+  // Visor slit — orange glow
   const visor = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.020, 0.005), matGlow);
-  visor.position.set(0, 0.02, 0.092);
+  visor.position.set(0, 0.02, 0.102);
   g.add(visor);
 
-  // Visor frame — chrome
   const visorFrame = new THREE.Mesh(new THREE.BoxGeometry(0.19, 0.032, 0.004), matChrome);
-  visorFrame.position.set(0, 0.02, 0.091);
+  visorFrame.position.set(0, 0.02, 0.101);
   g.add(visorFrame);
 
-  // Side swept-back fins (angular antenna-like)
+  // Side fins
   for (const side of [-1, 1]) {
-    const fin = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.04, 0.12), matBlue);
+    const fin = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.04, 0.14), matBlue);
     fin.position.set(side * 0.12, 0.05, -0.04);
     fin.rotation.y = side * 0.2;
     fin.rotation.x = -0.1;
     g.add(fin);
 
-    const finTip = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.02, 0.04), matChrome);
-    finTip.position.set(side * 0.14, 0.06, -0.10);
+    const finTip = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.02, 0.05), matChrome);
+    finTip.position.set(side * 0.14, 0.06, -0.11);
     g.add(finTip);
 
-    const finGlow = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.008, 0.03), matGlow);
-    finGlow.position.set(side * 0.14, 0.06, -0.08);
+    const finGlow = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.008, 0.04), matGlow);
+    finGlow.position.set(side * 0.14, 0.06, -0.09);
     g.add(finGlow);
   }
 
-  // Side vents — orange glow (3 per side)
+  // Side vents
   for (const side of [-1, 1]) {
     for (let i = 0; i < 3; i++) {
-      const vent = new THREE.Mesh(new THREE.BoxGeometry(0.004, 0.014, 0.035), matGlow);
+      const vent = new THREE.Mesh(new THREE.BoxGeometry(0.004, 0.014, 0.04), matGlow);
       vent.position.set(side * 0.112, -0.02 + i * 0.025, 0);
       g.add(vent);
     }
   }
 
-  // Forehead panel lines
+  // Brow line
   const browLine = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.005, 0.005), matAccent);
-  browLine.position.set(0, 0.05, 0.090);
+  browLine.position.set(0, 0.05, 0.100);
   g.add(browLine);
 
-  // Neck connector
-  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.06, 8), matPiston);
-  neck.position.y = -0.13;
+  // Neck connector (thick)
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 0.08, 8), matPiston);
+  neck.position.y = -0.14;
   g.add(neck);
 
-  // Neck glow ring
-  const neckRing = new THREE.Mesh(new THREE.TorusGeometry(0.055, 0.004, 4, 8), matAccent);
+  const neckRing = new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.005, 4, 8), matAccent);
   neckRing.position.y = -0.10;
   neckRing.rotation.x = Math.PI / 2;
   g.add(neckRing);
@@ -719,122 +697,133 @@ export function makeHead(): THREE.Group {
   return g;
 }
 
-/** Torso: angular chest plates, reactor core, shoulder mounts. ~0.55 tall. */
+/** Torso: MASSIVE cockpit-sized chest. Wide shoulders, heavy reactor. */
 export function makeTorso(): THREE.Group {
   const g = new THREE.Group();
 
-  // Main chest — wider at top, narrower at waist (aggressive taper)
-  const chestUpper = new THREE.Mesh(new THREE.BoxGeometry(0.40, 0.18, 0.20), matBlue);
-  chestUpper.position.y = 0.14;
+  // Main chest — very wide and deep (cockpit housing)
+  const chestUpper = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.22, 0.32), matBlue);
+  chestUpper.position.y = 0.16;
   g.add(chestUpper);
 
-  const chestLower = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.16, 0.18), matBlue);
-  chestLower.position.y = -0.02;
+  const chestMid = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.14, 0.30), matBlue);
+  chestMid.position.y = 0.02;
+  g.add(chestMid);
+
+  const chestLower = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.12, 0.26), matDark);
+  chestLower.position.y = -0.10;
   g.add(chestLower);
 
-  // Front chest armor plates (layered angular panels)
-  const chestPlateL = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.14, 0.02), matBlue);
-  chestPlateL.position.set(-0.08, 0.14, 0.11);
-  chestPlateL.rotation.y = 0.08;
-  g.add(chestPlateL);
-
-  const chestPlateR = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.14, 0.02), matBlue);
-  chestPlateR.position.set(0.08, 0.14, 0.11);
-  chestPlateR.rotation.y = -0.08;
-  g.add(chestPlateR);
-
-  // Chest plate insets (darker panel)
-  const chestInsetL = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.10, 0.015), matPanel);
-  chestInsetL.position.set(-0.08, 0.14, 0.12);
-  g.add(chestInsetL);
-
-  const chestInsetR = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.10, 0.015), matPanel);
-  chestInsetR.position.set(0.08, 0.14, 0.12);
-  g.add(chestInsetR);
-
-  // Reactor core — orange glow sphere with ring
-  const reactor = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 6), matGlow);
-  reactor.position.set(0, 0.10, 0.12);
-  g.add(reactor);
-
-  const reactorRing = new THREE.Mesh(new THREE.TorusGeometry(0.050, 0.006, 4, 10), matChrome);
-  reactorRing.position.set(0, 0.10, 0.12);
-  g.add(reactorRing);
-
-  const reactorOuter = new THREE.Mesh(new THREE.TorusGeometry(0.045, 0.003, 4, 10), matAccent);
-  reactorOuter.position.set(0, 0.10, 0.13);
-  g.add(reactorOuter);
-
-  // Collar — angular, aggressive
-  const collar = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.035, 0.16), matChrome);
-  collar.position.y = 0.24;
-  g.add(collar);
-
-  // Collar flares (swept up and back)
+  // Front chest armor — layered angular plates
   for (const side of [-1, 1]) {
-    const flare = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.08, 0.12), matBlue);
-    flare.position.set(side * 0.20, 0.24, -0.01);
-    flare.rotation.z = side * 0.18;
-    flare.rotation.x = -0.1;
-    g.add(flare);
+    const chestPlate = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.20, 0.03), matBlue);
+    chestPlate.position.set(side * 0.12, 0.14, 0.17);
+    chestPlate.rotation.y = side * 0.06;
+    g.add(chestPlate);
 
-    // Orange glow on collar edge
-    const flareGlow = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.005, 0.008), matGlow);
-    flareGlow.position.set(side * 0.20, 0.20, 0.06);
-    g.add(flareGlow);
+    const chestInset = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.14, 0.02), matPanel);
+    chestInset.position.set(side * 0.12, 0.14, 0.185);
+    g.add(chestInset);
+
+    // Chest vent slits
+    for (let i = 0; i < 3; i++) {
+      const vent = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.006, 0.008), matGlow);
+      vent.position.set(side * 0.12, 0.08 + i * 0.04, 0.19);
+      g.add(vent);
+    }
   }
 
-  // Ab plates (3 segments, tapering down)
+  // Reactor core — large orange glow
+  const reactor = new THREE.Mesh(new THREE.SphereGeometry(0.05, 10, 8), matGlow);
+  reactor.position.set(0, 0.10, 0.18);
+  g.add(reactor);
+
+  const reactorRing = new THREE.Mesh(new THREE.TorusGeometry(0.065, 0.008, 6, 12), matChrome);
+  reactorRing.position.set(0, 0.10, 0.18);
+  g.add(reactorRing);
+
+  const reactorOuter = new THREE.Mesh(new THREE.TorusGeometry(0.060, 0.004, 4, 12), matAccent);
+  reactorOuter.position.set(0, 0.10, 0.19);
+  g.add(reactorOuter);
+
+  // Heavy collar — angular frame around head
+  const collar = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.05, 0.24), matChrome);
+  collar.position.y = 0.28;
+  g.add(collar);
+
+  // Collar uprights (frame around head mounting)
+  for (const side of [-1, 1]) {
+    const upright = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.12, 0.18), matBlue);
+    upright.position.set(side * 0.28, 0.28, -0.02);
+    upright.rotation.z = side * 0.10;
+    g.add(upright);
+
+    const uprightGlow = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.006, 0.010), matGlow);
+    uprightGlow.position.set(side * 0.28, 0.22, 0.08);
+    g.add(uprightGlow);
+  }
+
+  // Ab plates (tapered, heavy)
   for (let i = 0; i < 3; i++) {
     const ab = new THREE.Mesh(
-      new THREE.BoxGeometry(0.26 - i * 0.04, 0.038, 0.15 - i * 0.02),
+      new THREE.BoxGeometry(0.38 - i * 0.06, 0.045, 0.22 - i * 0.03),
       i % 2 === 0 ? matBlue : matPanel
     );
-    ab.position.y = -0.12 - i * 0.05;
+    ab.position.y = -0.16 - i * 0.06;
     g.add(ab);
   }
 
-  // Ab glow lines between segments
+  // Ab glow lines
   for (let i = 0; i < 2; i++) {
-    const abGlow = new THREE.Mesh(new THREE.BoxGeometry(0.22 - i * 0.04, 0.004, 0.008), matGlow);
-    abGlow.position.set(0, -0.14 - i * 0.05, 0.075);
+    const abGlow = new THREE.Mesh(new THREE.BoxGeometry(0.30 - i * 0.06, 0.005, 0.010), matGlow);
+    abGlow.position.set(0, -0.18 - i * 0.06, 0.11);
     g.add(abGlow);
   }
 
-  // Back plate
-  const backPlate = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.38, 0.02), matDark);
-  backPlate.position.set(0, 0.05, -0.10);
+  // Massive back plate
+  const backPlate = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.44, 0.03), matDark);
+  backPlate.position.set(0, 0.06, -0.16);
   g.add(backPlate);
 
+  // Back thrusters / exhaust blocks
+  for (const side of [-1, 1]) {
+    const thruster = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.18, 0.08), matDark);
+    thruster.position.set(side * 0.18, 0.10, -0.20);
+    g.add(thruster);
+
+    const thrusterGlow = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.12, 0.006), matGlow);
+    thrusterGlow.position.set(side * 0.18, 0.10, -0.24);
+    g.add(thrusterGlow);
+  }
+
   // Spine column
-  const spine = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.42, 6), matPiston);
-  spine.position.set(0, 0.02, -0.11);
+  const spine = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.48, 6), matPiston);
+  spine.position.set(0, 0.02, -0.17);
   g.add(spine);
 
-  // Spine nodes
-  for (let i = 0; i < 4; i++) {
-    const node = new THREE.Mesh(new THREE.SphereGeometry(0.013, 4, 4), matChrome);
-    node.position.set(0, -0.12 + i * 0.10, -0.11);
+  for (let i = 0; i < 5; i++) {
+    const node = new THREE.Mesh(new THREE.SphereGeometry(0.018, 4, 4), matChrome);
+    node.position.set(0, -0.16 + i * 0.10, -0.17);
     g.add(node);
   }
 
   // Side exhaust vents — orange glow
   for (const side of [-1, 1]) {
-    for (let i = 0; i < 4; i++) {
-      const vent = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.020, 0.05), matGlow);
-      vent.position.set(side * 0.205, 0.02 + i * 0.035, 0);
+    for (let i = 0; i < 5; i++) {
+      const vent = new THREE.Mesh(new THREE.BoxGeometry(0.006, 0.025, 0.07), matGlow);
+      vent.position.set(side * 0.315, 0.0 + i * 0.04, 0);
       g.add(vent);
     }
   }
 
-  // Shoulder mount platforms (raised, angular)
+  // Shoulder mount platforms (massive, raised)
   for (const side of [-1, 1]) {
-    const mount = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.04, 0.12), matDark);
-    mount.position.set(side * 0.21, 0.20, -0.01);
+    const mount = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.06, 0.18), matDark);
+    mount.position.set(side * 0.32, 0.24, -0.02);
     g.add(mount);
 
-    const mountCap = new THREE.Mesh(new THREE.CylinderGeometry(0.038, 0.038, 0.02, 8), matChrome);
-    mountCap.position.set(side * 0.21, 0.23, 0);
+    const mountCap = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.03, 8), matChrome);
+    mountCap.position.set(side * 0.32, 0.28, 0);
     g.add(mountCap);
   }
 
@@ -842,181 +831,185 @@ export function makeTorso(): THREE.Group {
   return g;
 }
 
-/** Hips/pelvis connector. ~0.12 tall. */
+/** Hips: heavy waist connector. */
 export function makeHips(): THREE.Group {
   const g = new THREE.Group();
 
-  // Central pelvis — angular
-  const pelvis = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.10, 0.15), matDark);
+  // Wide central pelvis
+  const pelvis = new THREE.Mesh(new THREE.BoxGeometry(0.40, 0.14, 0.24), matDark);
   g.add(pelvis);
 
   // Waist band — orange accent
-  const band = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.010, 4, 8), matAccent);
-  band.position.y = 0.05;
+  const band = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.012, 4, 8), matAccent);
+  band.position.y = 0.07;
   band.rotation.x = Math.PI / 2;
   g.add(band);
 
-  // Hip joint mounts
+  // Hip joint mounts (big spheres)
   for (const side of [-1, 1]) {
-    const mount = new THREE.Mesh(new THREE.SphereGeometry(0.038, 8, 6), matChrome);
-    mount.position.set(side * 0.11, -0.02, 0);
+    const mount = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 6), matChrome);
+    mount.position.set(side * 0.18, -0.02, 0);
     g.add(mount);
   }
 
+  // Skirt armor plates (hanging armor around hips)
+  for (const side of [-1, 1]) {
+    const skirt = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.10, 0.18), matBlue);
+    skirt.position.set(side * 0.22, -0.06, 0);
+    g.add(skirt);
+
+    const skirtGlow = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.005, 0.010), matGlow);
+    skirtGlow.position.set(side * 0.22, -0.01, 0.09);
+    g.add(skirtGlow);
+  }
+
   // Front crotch plate
-  const crotch = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.07, 0.04), matPanel);
-  crotch.position.set(0, -0.06, 0.055);
+  const crotch = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.10, 0.06), matPanel);
+  crotch.position.set(0, -0.08, 0.09);
   g.add(crotch);
 
   // Front glow slit
-  const frontGlow = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.004, 0.006), matGlow);
-  frontGlow.position.set(0, -0.02, 0.076);
+  const frontGlow = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.005, 0.008), matGlow);
+  frontGlow.position.set(0, -0.02, 0.12);
   g.add(frontGlow);
 
   // Back plate
-  const back = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.08, 0.02), matDark);
-  back.position.set(0, 0, -0.075);
+  const back = new THREE.Mesh(new THREE.BoxGeometry(0.30, 0.10, 0.03), matDark);
+  back.position.set(0, 0, -0.12);
   g.add(back);
-
-  // Side armor panels
-  for (const side of [-1, 1]) {
-    const sidePanel = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.08, 0.10), matBlue);
-    sidePanel.position.set(side * 0.14, -0.01, 0);
-    g.add(sidePanel);
-  }
 
   enableShadows(g);
   return g;
 }
 
-/** Upper leg (thigh armor). ~0.40 tall, origin at top (hip pivot). */
+/** Upper leg (thick thigh). ~0.44 tall, origin at top (hip pivot). */
 export function makeUpperLeg(): THREE.Group {
   const g = new THREE.Group();
 
-  // Core
-  const core = new THREE.Mesh(new THREE.CylinderGeometry(0.058, 0.048, 0.38, 8), matDark);
-  core.position.y = -0.19;
+  // Thick core
+  const core = new THREE.Mesh(new THREE.CylinderGeometry(0.10, 0.085, 0.42, 8), matDark);
+  core.position.y = -0.21;
   g.add(core);
 
-  // Front thigh plate — angular, swept
-  const frontPlate = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.24, 0.02), matBlue);
-  frontPlate.position.set(0, -0.14, 0.055);
-  frontPlate.rotation.x = -0.05;
+  // Heavy front thigh plate
+  const frontPlate = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.30, 0.03), matBlue);
+  frontPlate.position.set(0, -0.16, 0.09);
+  frontPlate.rotation.x = -0.04;
   g.add(frontPlate);
 
-  const frontInset = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.18, 0.015), matPanel);
-  frontInset.position.set(0, -0.15, 0.064);
+  const frontInset = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.22, 0.02), matPanel);
+  frontInset.position.set(0, -0.17, 0.10);
   g.add(frontInset);
 
-  // Side armor (angular flares)
+  // Side armor (thick plates)
   for (const side of [-1, 1]) {
-    const sidePlate = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.26, 0.08), matBlue);
-    sidePlate.position.set(side * 0.058, -0.15, -0.005);
-    sidePlate.rotation.y = side * 0.06;
+    const sidePlate = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.32, 0.12), matBlue);
+    sidePlate.position.set(side * 0.095, -0.16, 0);
+    sidePlate.rotation.y = side * 0.04;
     g.add(sidePlate);
 
-    // Side vent slits — orange glow
+    // Side vent slits
     for (let i = 0; i < 3; i++) {
-      const vent = new THREE.Mesh(new THREE.BoxGeometry(0.003, 0.020, 0.03), matGlow);
-      vent.position.set(side * 0.068, -0.10 + i * 0.06, 0);
+      const vent = new THREE.Mesh(new THREE.BoxGeometry(0.004, 0.025, 0.05), matGlow);
+      vent.position.set(side * 0.11, -0.10 + i * 0.07, 0);
       g.add(vent);
     }
   }
 
-  // Hydraulic pistons
+  // Hydraulic pistons (heavy)
   for (const side of [-1, 1]) {
-    const piston = new THREE.Mesh(new THREE.CylinderGeometry(0.010, 0.010, 0.22, 6), matPiston);
-    piston.position.set(side * 0.038, -0.20, -0.038);
+    const piston = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.26, 6), matPiston);
+    piston.position.set(side * 0.06, -0.22, -0.06);
     g.add(piston);
 
-    const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.06, 6), matChrome);
-    sleeve.position.set(side * 0.038, -0.28, -0.038);
+    const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.024, 0.024, 0.08, 6), matChrome);
+    sleeve.position.set(side * 0.06, -0.30, -0.06);
     g.add(sleeve);
   }
 
-  // Energy bands — orange
-  for (const yOff of [-0.10, -0.26]) {
-    const band = new THREE.Mesh(new THREE.TorusGeometry(0.058, 0.004, 4, 8), matAccent);
-    band.position.y = yOff;
-    band.rotation.x = Math.PI / 2;
-    g.add(band);
+  // Energy bands
+  for (const yOff of [-0.12, -0.28]) {
+    const bandMesh = new THREE.Mesh(new THREE.TorusGeometry(0.095, 0.005, 4, 8), matAccent);
+    bandMesh.position.y = yOff;
+    bandMesh.rotation.x = Math.PI / 2;
+    g.add(bandMesh);
   }
 
-  // Front conduit line — orange glow
-  const conduit = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.16, 0.005), matGlow);
-  conduit.position.set(0, -0.18, 0.072);
+  // Front conduit
+  const conduit = new THREE.Mesh(new THREE.BoxGeometry(0.010, 0.22, 0.006), matGlow);
+  conduit.position.set(0, -0.20, 0.11);
   g.add(conduit);
 
   // Back plate
-  const backPlate = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.24, 0.015), matDark);
-  backPlate.position.set(0, -0.16, -0.048);
+  const backPlate = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.30, 0.02), matDark);
+  backPlate.position.set(0, -0.16, -0.075);
   g.add(backPlate);
 
   enableShadows(g);
   return g;
 }
 
-/** Lower leg (shin guard). ~0.40 tall, origin at top (knee pivot). */
+/** Lower leg (heavy shin). ~0.44 tall, origin at top (knee pivot). */
 export function makeLowerLeg(): THREE.Group {
   const g = new THREE.Group();
 
-  // Core cylinder
-  const core = new THREE.Mesh(new THREE.CylinderGeometry(0.048, 0.042, 0.38, 8), matDark);
-  core.position.y = -0.19;
+  // Thick core
+  const core = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.07, 0.42, 8), matDark);
+  core.position.y = -0.21;
   g.add(core);
 
-  // Knee cap — angular, aggressive
-  const kneeCap = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.08, 0.09), matBlue);
-  kneeCap.position.set(0, -0.02, 0.03);
+  // Massive knee cap
+  const kneeCap = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.12, 0.14), matBlue);
+  kneeCap.position.set(0, -0.02, 0.04);
   kneeCap.rotation.x = 0.05;
   g.add(kneeCap);
 
-  const kneeGlow = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.005, 0.008), matGlow);
-  kneeGlow.position.set(0, -0.06, 0.072);
+  const kneeGlow = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.006, 0.010), matGlow);
+  kneeGlow.position.set(0, -0.08, 0.10);
   g.add(kneeGlow);
 
-  // Shin guard — angular plate
-  const shin = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.28, 0.025), matBlue);
-  shin.position.set(0, -0.18, 0.048);
+  // Heavy shin guard
+  const shin = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.32, 0.035), matBlue);
+  shin.position.set(0, -0.20, 0.07);
   shin.rotation.x = -0.03;
   g.add(shin);
 
-  const shinInset = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.22, 0.015), matPanel);
-  shinInset.position.set(0, -0.19, 0.058);
+  const shinInset = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.24, 0.02), matPanel);
+  shinInset.position.set(0, -0.21, 0.085);
   g.add(shinInset);
 
-  // Shin energy conduit — orange glow line
-  const shinConduit = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.20, 0.005), matGlow);
-  shinConduit.position.set(0, -0.18, 0.065);
+  // Shin energy conduit
+  const shinConduit = new THREE.Mesh(new THREE.BoxGeometry(0.010, 0.24, 0.006), matGlow);
+  shinConduit.position.set(0, -0.20, 0.095);
   g.add(shinConduit);
 
   // Calf plate
-  const calf = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.24, 0.015), matDark);
-  calf.position.set(0, -0.18, -0.042);
+  const calf = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.28, 0.025), matDark);
+  calf.position.set(0, -0.20, -0.06);
   g.add(calf);
 
   // Side armor
   for (const side of [-1, 1]) {
-    const sidePlate = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.26, 0.06), matBlue);
-    sidePlate.position.set(side * 0.048, -0.18, 0);
-    sidePlate.rotation.y = side * 0.04;
+    const sidePlate = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.30, 0.10), matBlue);
+    sidePlate.position.set(side * 0.08, -0.20, 0);
+    sidePlate.rotation.y = side * 0.03;
     g.add(sidePlate);
 
-    // Side vents — orange glow
+    // Side vents
     for (let i = 0; i < 3; i++) {
-      const vent = new THREE.Mesh(new THREE.BoxGeometry(0.003, 0.016, 0.025), matGlow);
-      vent.position.set(side * 0.056, -0.12 + i * 0.06, 0);
+      const vent = new THREE.Mesh(new THREE.BoxGeometry(0.004, 0.020, 0.04), matGlow);
+      vent.position.set(side * 0.09, -0.14 + i * 0.07, 0);
       g.add(vent);
     }
   }
 
-  // Ankle cuff
-  const ankle = new THREE.Mesh(new THREE.CylinderGeometry(0.046, 0.050, 0.03, 8), matBlue);
-  ankle.position.y = -0.37;
+  // Heavy ankle cuff
+  const ankle = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.08, 0.04, 8), matBlue);
+  ankle.position.y = -0.40;
   g.add(ankle);
 
-  const ankleRing = new THREE.Mesh(new THREE.TorusGeometry(0.048, 0.005, 4, 8), matChrome);
-  ankleRing.position.y = -0.36;
+  const ankleRing = new THREE.Mesh(new THREE.TorusGeometry(0.078, 0.006, 4, 8), matChrome);
+  ankleRing.position.y = -0.39;
   ankleRing.rotation.x = Math.PI / 2;
   g.add(ankleRing);
 
@@ -1024,39 +1017,46 @@ export function makeLowerLeg(): THREE.Group {
   return g;
 }
 
-/** Foot: armored boot. ~0.10 tall, origin at top (ankle pivot). */
+/** Foot: big stomping boot. ~0.12 tall, origin at top (ankle pivot). */
 export function makeFoot(): THREE.Group {
   const g = new THREE.Group();
 
-  // Sole (slightly larger, aggressive)
-  const sole = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.028, 0.19), matDark);
-  sole.position.set(0, -0.058, 0.02);
+  // Large sole
+  const sole = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.04, 0.28), matDark);
+  sole.position.set(0, -0.07, 0.03);
   g.add(sole);
 
-  // Toe cap — angular
-  const toe = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.038, 0.06), matBlue);
-  toe.position.set(0, -0.038, 0.09);
-  toe.rotation.x = 0.08;
+  // Toe cap — heavy, angular
+  const toe = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.06, 0.10), matBlue);
+  toe.position.set(0, -0.05, 0.13);
+  toe.rotation.x = 0.06;
   g.add(toe);
 
   // Toe glow slit
-  const toeGlow = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.004, 0.006), matGlow);
-  toeGlow.position.set(0, -0.02, 0.118);
+  const toeGlow = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.005, 0.008), matGlow);
+  toeGlow.position.set(0, -0.025, 0.175);
   g.add(toeGlow);
 
-  // Heel guard
-  const heel = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.045, 0.04), matPanel);
-  heel.position.set(0, -0.035, -0.06);
+  // Heel — heavy block
+  const heel = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.06, 0.08), matPanel);
+  heel.position.set(0, -0.045, -0.08);
   g.add(heel);
 
   // Top armor
-  const top = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.028, 0.12), matBlue);
-  top.position.set(0, -0.018, 0.02);
+  const top = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.04, 0.18), matBlue);
+  top.position.set(0, -0.02, 0.03);
   g.add(top);
 
   // Ankle connector
-  const ankleJoint = new THREE.Mesh(new THREE.SphereGeometry(0.024, 6, 4), matChrome);
+  const ankleJoint = new THREE.Mesh(new THREE.SphereGeometry(0.035, 6, 4), matChrome);
   g.add(ankleJoint);
+
+  // Side glow strips
+  for (const side of [-1, 1]) {
+    const strip = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.04, 0.12), matAccent);
+    strip.position.set(side * 0.075, -0.04, 0.03);
+    g.add(strip);
+  }
 
   enableShadows(g);
   return g;

@@ -13,26 +13,26 @@ import {
   makeUpperLeg, makeLowerLeg, makeFoot,
 } from './MechaGeometry';
 
-// ---- Animation constants (matching RobotEntity timing) ----
-const WALK_SPEED = 5;
-const WALK_LEG_AMP = 0.45;
-const WALK_KNEE_AMP = 0.35;
-const WALK_ARM_AMP = 0.35;
-const WALK_TORSO_TWIST = 0.03;
-const WALK_BOB = 0.02;
+// ---- Animation constants (heavy mech — slower, more deliberate) ----
+const WALK_SPEED = 3.8;
+const WALK_LEG_AMP = 0.38;
+const WALK_KNEE_AMP = 0.30;
+const WALK_ARM_AMP = 0.25;
+const WALK_TORSO_TWIST = 0.025;
+const WALK_BOB = 0.03;
 
-const SWING_DURATION = 0.35;
-const SWING_UPPER_PITCH = -0.8;
-const SWING_LOWER_PITCH = -0.45;
+const SWING_DURATION = 0.40;
+const SWING_UPPER_PITCH = -0.9;
+const SWING_LOWER_PITCH = -0.50;
 
-// ---- Body layout (total height ~2.0 units, feet at y=0) ----
+// ---- Body layout (heavy mech — wide stance, total height ~2.0 units) ----
 const HIP_Y = 0.90;
-const UPPER_LEG_LEN = 0.40;
-const LOWER_LEG_LEN = 0.40;
-const HIP_SPREAD_X = 0.10;
+const UPPER_LEG_LEN = 0.44;
+const LOWER_LEG_LEN = 0.44;
+const HIP_SPREAD_X = 0.18;
 const SHOULDER_Y = 0.42; // relative to torso pivot
-const SHOULDER_SPREAD_X = 0.24;
-const NECK_Y = 0.28; // relative to torso pivot
+const SHOULDER_SPREAD_X = 0.38;
+const NECK_Y = 0.30; // relative to torso pivot
 const HEAD_OFFSET_Y = 0.08;
 
 // Slerp helper temps
@@ -61,9 +61,9 @@ function buildMechaBody() {
   const hipsMesh = makeHips();
   hipsGroup.add(hipsMesh);
 
-  // ---- Torso (pivots at hips top) ----
+  // ---- Torso (pivots at hips top — raised slightly for taller torso) ----
   const torsoGroup = new THREE.Group();
-  torsoGroup.position.y = 0.06;
+  torsoGroup.position.y = 0.08;
   hipsGroup.add(torsoGroup);
 
   const torsoMesh = makeTorso();
@@ -87,8 +87,8 @@ function buildMechaBody() {
     shoulderGroup.position.set(sign * SHOULDER_SPREAD_X, SHOULDER_Y, 0);
     torsoGroup.add(shoulderGroup);
 
-    // Shoulder joint sphere
-    const shoulderJoint = makeJoint(0.05);
+    // Shoulder joint sphere (big pauldron joint)
+    const shoulderJoint = makeJoint(0.08);
     shoulderGroup.add(shoulderJoint);
 
     // Upper arm pivot (rotates at shoulder)
@@ -96,16 +96,16 @@ function buildMechaBody() {
     shoulderGroup.add(upperArmPivot);
 
     const upperArmMesh = makeUpperArm();
-    upperArmMesh.position.y = -0.17; // offset so pivot is at shoulder
+    upperArmMesh.position.y = -0.20; // offset so pivot is at shoulder
     if (side === 'left') upperArmMesh.scale.x = -1; // mirror left arm
     upperArmPivot.add(upperArmMesh);
 
     // Elbow joint
     const elbowGroup = new THREE.Group();
-    elbowGroup.position.y = -0.34;
+    elbowGroup.position.y = -0.42;
     upperArmPivot.add(elbowGroup);
 
-    const elbowJoint = makeJoint(0.04);
+    const elbowJoint = makeJoint(0.07);
     elbowGroup.add(elbowJoint);
 
     // Forearm pivot (rotates at elbow)
@@ -113,21 +113,21 @@ function buildMechaBody() {
     elbowGroup.add(forearmPivot);
 
     const forearmMesh = makeForearm();
-    forearmMesh.position.y = -0.16;
+    forearmMesh.position.y = -0.18;
     if (side === 'left') forearmMesh.scale.x = -1;
     forearmPivot.add(forearmMesh);
 
     // Wrist joint
     const wristGroup = new THREE.Group();
-    wristGroup.position.y = -0.32;
+    wristGroup.position.y = -0.36;
     forearmPivot.add(wristGroup);
 
-    const wristJoint = makeJoint(0.03);
+    const wristJoint = makeJoint(0.05);
     wristGroup.add(wristJoint);
 
     // Hand
     const handMesh = makeHand();
-    handMesh.position.y = -0.06;
+    handMesh.position.y = -0.07;
     handMesh.rotation.x = 0.1; // slight natural angle
     if (side === 'left') handMesh.scale.x = -1;
     wristGroup.add(handMesh);
@@ -141,11 +141,11 @@ function buildMechaBody() {
     };
   }
 
-  // ---- Sword on right hand ----
+  // ---- Sword on right hand (scaled up for heavy mech) ----
   const swordGroup = new THREE.Group();
-  swordGroup.scale.setScalar(0.4);
+  swordGroup.scale.setScalar(0.55);
   swordGroup.rotation.set(-0.3, 0, 0.15);
-  swordGroup.position.y = -0.08;
+  swordGroup.position.y = -0.10;
   const swordMesh = makeSword();
   swordGroup.add(swordMesh);
   armPivots.right.wrist.add(swordGroup);
@@ -160,7 +160,7 @@ function buildMechaBody() {
     hipJointGroup.position.set(sign * HIP_SPREAD_X, 0, 0);
     hipsGroup.add(hipJointGroup);
 
-    const hipJoint = makeJoint(0.04);
+    const hipJoint = makeJoint(0.07);
     hipJointGroup.add(hipJoint);
 
     // Upper leg pivot (rotates at hip)
@@ -176,7 +176,7 @@ function buildMechaBody() {
     kneeGroup.position.y = -UPPER_LEG_LEN;
     upperLegPivot.add(kneeGroup);
 
-    const kneeJoint = makeJoint(0.035);
+    const kneeJoint = makeJoint(0.06);
     kneeGroup.add(kneeJoint);
 
     // Lower leg pivot (rotates at knee)

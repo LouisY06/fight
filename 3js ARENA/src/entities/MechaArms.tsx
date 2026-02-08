@@ -19,10 +19,11 @@ import {
 } from '../avatars/MechaGeometry';
 
 // ============================================================================
-// Cockpit anchor & tracking constants
+// Cockpit anchors & tracking constants
 // ============================================================================
 
 const R_SHOULDER = new THREE.Vector3(0.5, -0.45, -0.55);
+const L_SHOULDER = new THREE.Vector3(-0.5, -0.45, -0.55);
 const ARM_SCALE = 3.5;
 const DEPTH_SCALE = 8.0;
 /** Forward bias so the arm's resting position sits slightly extended,
@@ -36,10 +37,17 @@ const SMOOTH_HAND = 0.3;
 const SMOOTH_SWORD_POS = 0.3;
 const SMOOTH_SWORD_ROT = 0.15;
 
+// Right arm landmark indices
 const R_SHOULDER_IDX = 12;
 const R_ELBOW_IDX = 14;
 const R_WRIST_IDX = 16;
 const R_INDEX_IDX = 20;
+
+// Left arm landmark indices
+const L_SHOULDER_IDX = 11;
+const L_ELBOW_IDX = 13;
+const L_WRIST_IDX = 15;
+const L_INDEX_IDX = 19;
 
 function getDelta(
   lm: { x: number; y: number; z: number },
@@ -84,11 +92,17 @@ function positionLimb(
   obj.quaternion.slerp(_tmpQuat, 0.35);
 }
 
-// Raw target positions
+// Raw target positions — right arm
 const _tRShoulder = new THREE.Vector3();
 const _tRElbow = new THREE.Vector3();
 const _tRWrist = new THREE.Vector3();
 const _tRHand = new THREE.Vector3();
+
+// Raw target positions — left arm
+const _tLShoulder = new THREE.Vector3();
+const _tLElbow = new THREE.Vector3();
+const _tLWrist = new THREE.Vector3();
+const _tLHand = new THREE.Vector3();
 
 // ============================================================================
 // Component
@@ -102,16 +116,24 @@ export function MechaArms() {
   const cvInputRef = cvBridge.cvInputRef;
   const worldLandmarksRef = cvBridge.worldLandmarksRef;
 
-  // Build detailed geometry once
-  const upperArm = useMemo(() => makeUpperArm(), []);
-  const forearm = useMemo(() => makeForearm(), []);
-  const hand = useMemo(() => makeHand(), []);
-  const shoulderJoint = useMemo(() => makeJoint(0.08), []);
-  const elbowJoint = useMemo(() => makeJoint(0.06), []);
-  const wristJoint = useMemo(() => makeJoint(0.05), []);
+  // ---- Right arm geometry (+ sword) ----
+  const rUpperArm = useMemo(() => makeUpperArm(), []);
+  const rForearm = useMemo(() => makeForearm(), []);
+  const rHand = useMemo(() => makeHand(), []);
+  const rShoulderJoint = useMemo(() => makeJoint(0.08), []);
+  const rElbowJoint = useMemo(() => makeJoint(0.06), []);
+  const rWristJoint = useMemo(() => makeJoint(0.05), []);
   const sword = useMemo(() => makeSword(), []);
   const gun = useMemo(() => makeGun(), []);
   const shield = useMemo(() => makeShield(), []);
+
+  // ---- Left arm geometry (no sword) ----
+  const lUpperArm = useMemo(() => makeUpperArm(), []);
+  const lForearm = useMemo(() => makeForearm(), []);
+  const lHand = useMemo(() => makeHand(), []);
+  const lShoulderJoint = useMemo(() => makeJoint(0.08), []);
+  const lElbowJoint = useMemo(() => makeJoint(0.06), []);
+  const lWristJoint = useMemo(() => makeJoint(0.05), []);
 
   const groupRef = useRef<THREE.Group>(null!);
   const swordGroupRef = useRef<THREE.Group>(null!);
@@ -119,11 +141,18 @@ export function MechaArms() {
   const shieldGroupRef = useRef<THREE.Group>(null!);
 
   const smoothJoints = useRef({
+    // Right arm
     rShoulder: new THREE.Vector3(),
     rElbow: new THREE.Vector3(),
     rWrist: new THREE.Vector3(),
     rHand: new THREE.Vector3(),
     swordQuat: new THREE.Quaternion(),
+    // Left arm
+    lShoulder: new THREE.Vector3(),
+    lElbow: new THREE.Vector3(),
+    lWrist: new THREE.Vector3(),
+    lHand: new THREE.Vector3(),
+    // State
     initialized: false,
   });
 
@@ -163,47 +192,66 @@ export function MechaArms() {
     }
 
     const s = smoothJoints.current;
+    const camQuat = camera.quaternion;
+    const camPos = camera.position;
+    const toWorld = (v: THREE.Vector3) => v.applyQuaternion(camQuat).add(camPos);
+
+    // ==== RIGHT ARM ====
     const wlRS = worldLandmarks[R_SHOULDER_IDX];
 
-    // Compute raw right arm joint positions in camera-local space
     _tRShoulder.copy(R_SHOULDER);
     _tRElbow.copy(_tRShoulder).add(getDelta(worldLandmarks[R_ELBOW_IDX], wlRS));
     _tRWrist.copy(_tRShoulder).add(getDelta(worldLandmarks[R_WRIST_IDX], wlRS));
     _tRHand.copy(_tRShoulder).add(getDelta(worldLandmarks[R_INDEX_IDX], wlRS));
-
-    // Transform from camera-local to world space
-    const camQuat = camera.quaternion;
-    const camPos = camera.position;
-    const toWorld = (v: THREE.Vector3) => v.applyQuaternion(camQuat).add(camPos);
 
     toWorld(_tRShoulder);
     toWorld(_tRElbow);
     toWorld(_tRWrist);
     toWorld(_tRHand);
 
-    // Lerp smoothing
+    // ==== LEFT ARM ====
+    const wlLS = worldLandmarks[L_SHOULDER_IDX];
+
+    _tLShoulder.copy(L_SHOULDER);
+    _tLElbow.copy(_tLShoulder).add(getDelta(worldLandmarks[L_ELBOW_IDX], wlLS));
+    _tLWrist.copy(_tLShoulder).add(getDelta(worldLandmarks[L_WRIST_IDX], wlLS));
+    _tLHand.copy(_tLShoulder).add(getDelta(worldLandmarks[L_INDEX_IDX], wlLS));
+
+    toWorld(_tLShoulder);
+    toWorld(_tLElbow);
+    toWorld(_tLWrist);
+    toWorld(_tLHand);
+
+    // ==== LERP SMOOTHING ====
     if (!s.initialized) {
       s.rShoulder.copy(_tRShoulder);
       s.rElbow.copy(_tRElbow);
       s.rWrist.copy(_tRWrist);
       s.rHand.copy(_tRHand);
+      s.lShoulder.copy(_tLShoulder);
+      s.lElbow.copy(_tLElbow);
+      s.lWrist.copy(_tLWrist);
+      s.lHand.copy(_tLHand);
       s.initialized = true;
     } else {
       s.rShoulder.lerp(_tRShoulder, SMOOTH_SHOULDER);
       s.rElbow.lerp(_tRElbow, SMOOTH_ELBOW);
       s.rWrist.lerp(_tRWrist, SMOOTH_WRIST);
       s.rHand.lerp(_tRHand, SMOOTH_HAND);
+      s.lShoulder.lerp(_tLShoulder, SMOOTH_SHOULDER);
+      s.lElbow.lerp(_tLElbow, SMOOTH_ELBOW);
+      s.lWrist.lerp(_tLWrist, SMOOTH_WRIST);
+      s.lHand.lerp(_tLHand, SMOOTH_HAND);
     }
 
-    // Apply to joints
-    shoulderJoint.position.copy(s.rShoulder);
-    elbowJoint.position.copy(s.rElbow);
-    wristJoint.position.copy(s.rWrist);
+    // ==== APPLY RIGHT ARM ====
+    rShoulderJoint.position.copy(s.rShoulder);
+    rElbowJoint.position.copy(s.rElbow);
+    rWristJoint.position.copy(s.rWrist);
 
-    // Apply to arm segments
-    positionLimb(upperArm, s.rShoulder, s.rElbow, dims.upper);
-    positionLimb(forearm, s.rElbow, s.rWrist, dims.fore);
-    positionLimb(hand, s.rWrist, s.rHand, dims.hand);
+    positionLimb(rUpperArm, s.rShoulder, s.rElbow, dims.upper);
+    positionLimb(rForearm, s.rElbow, s.rWrist, dims.fore);
+    positionLimb(rHand, s.rWrist, s.rHand, dims.hand);
 
     // Weapon at right hand, oriented along forearm
     const weaponDir = _tmpDir.subVectors(s.rHand, s.rWrist);
@@ -251,14 +299,26 @@ export function MechaArms() {
         }
       }
     }
+
+    // ==== APPLY LEFT ARM ====
+    lShoulderJoint.position.copy(s.lShoulder);
+    lElbowJoint.position.copy(s.lElbow);
+    lWristJoint.position.copy(s.lWrist);
+
+    positionLimb(lUpperArm, s.lShoulder, s.lElbow, dims.upper);
+    positionLimb(lForearm, s.lElbow, s.lWrist, dims.fore);
+    positionLimb(lHand, s.lWrist, s.lHand, dims.hand);
   });
 
   return (
     <group ref={groupRef}>
-      {/* Detailed joint spheres */}
-      <primitive object={shoulderJoint} />
-      <primitive object={elbowJoint} />
-      <primitive object={wristJoint} />
+      {/* ---- Right arm ---- */}
+      <primitive object={rShoulderJoint} />
+      <primitive object={rElbowJoint} />
+      <primitive object={rWristJoint} />
+      <primitive object={rUpperArm} />
+      <primitive object={rForearm} />
+      <primitive object={rHand} />
 
       {/* Detailed armored limbs */}
       <primitive object={upperArm} />
