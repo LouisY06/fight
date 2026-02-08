@@ -92,7 +92,7 @@ const CVContext = createContext<CVContextType>({
 // ---- Provider ----
 
 export function CVProvider({ children }: { children: ReactNode }) {
-  const [cvEnabled, setCvEnabled] = useState(false);
+  const [cvEnabled, setCvEnabled] = useState(true);
   const [isTracking, setIsTracking] = useState(false);
   const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null);
 

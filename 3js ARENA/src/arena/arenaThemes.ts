@@ -20,6 +20,12 @@ export interface ArenaTheme {
   skyGradient: { top: string; bottom: string };
   /** Show stars in the sky */
   stars: boolean;
+  /** Use physically-based daytime sky instead of gradient */
+  daySky?: boolean;
+  /** Sun elevation in degrees (0 = horizon, 90 = noon) */
+  sunElevation?: number;
+  /** Sun azimuth in degrees */
+  sunAzimuth?: number;
 }
 
 export const ARENA_THEMES: ArenaTheme[] = [
@@ -37,8 +43,9 @@ export const ARENA_THEMES: ArenaTheme[] = [
     fog: { color: '#06001a', near: 25, far: 70 },
     particleColor: '#00ffff',
     ambientSound: '/assets/audio/crowd-ambience.mp3',
-    skyGradient: { top: '#050018', bottom: '#1a0040' },
+    skyGradient: { top: '#050018', bottom: '#220044' },
     stars: true,
+    daySky: false,
   },
 
   // ---- SPACE STATION (indoor docking bay — no visible sky) ----
@@ -55,8 +62,9 @@ export const ARENA_THEMES: ArenaTheme[] = [
     fog: { color: '#05050a', near: 20, far: 55 },
     particleColor: '#4488ff',
     ambientSound: '/assets/audio/crowd-ambience.mp3',
-    skyGradient: { top: '#020204', bottom: '#08080e' },
+    skyGradient: { top: '#020206', bottom: '#0a0a14' },
     stars: false,
+    daySky: false,
   },
 
   // ---- MEDIEVAL VILLAGE (dusk / sunset) ----
@@ -75,6 +83,9 @@ export const ARENA_THEMES: ArenaTheme[] = [
     ambientSound: '/assets/audio/crowd-ambience.mp3',
     skyGradient: { top: '#0a1530', bottom: '#cc6622' },
     stars: false,
+    daySky: true,
+    sunElevation: 8,
+    sunAzimuth: 220,
   },
 
   // ---- CASTLE SIEGE (daytime) ----
@@ -93,6 +104,9 @@ export const ARENA_THEMES: ArenaTheme[] = [
     ambientSound: '/assets/audio/crowd-ambience.mp3',
     skyGradient: { top: '#3366aa', bottom: '#88aacc' },
     stars: false,
+    daySky: true,
+    sunElevation: 35,
+    sunAzimuth: 160,
   },
 
   // ---- GRAVEYARD (foggy night) ----
@@ -109,8 +123,9 @@ export const ARENA_THEMES: ArenaTheme[] = [
     fog: { color: '#0a0a12', near: 15, far: 50 },
     particleColor: '#6688aa',
     ambientSound: '/assets/audio/crowd-ambience.mp3',
-    skyGradient: { top: '#0a0a15', bottom: '#1a1a28' },
+    skyGradient: { top: '#0a0a18', bottom: '#1a1a30' },
     stars: true,
+    daySky: false,
   },
 
   // ---- MECH HANGAR (industrial interior) ----
@@ -127,8 +142,9 @@ export const ARENA_THEMES: ArenaTheme[] = [
     fog: { color: '#0a0805', near: 20, far: 60 },
     particleColor: '#ffaa44',
     ambientSound: '/assets/audio/crowd-ambience.mp3',
-    skyGradient: { top: '#080605', bottom: '#1a1510' },
+    skyGradient: { top: '#0a0805', bottom: '#1a1510' },
     stars: false,
+    daySky: false,
   },
 ];
 

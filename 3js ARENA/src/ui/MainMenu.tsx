@@ -151,15 +151,6 @@ export function MainMenu() {
         </MenuButton>
       </div>
 
-      <div style={{ height: '12px' }} />
-
-      {/* 2v2 — coming soon */}
-      <div style={{ animation: 'fadeInUp 0.5s 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards', opacity: 1 }}>
-        <MenuButton onClick={() => {}} disabled>
-          2v2 (COMING SOON)
-        </MenuButton>
-      </div>
-
       <div style={{ height: '24px' }} />
 
       {/* CV Toggle */}

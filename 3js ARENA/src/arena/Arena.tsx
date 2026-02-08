@@ -46,6 +46,9 @@ function ArenaInner({ theme }: ArenaComponentProps) {
         skyTop={theme.skyGradient.top}
         skyBottom={theme.skyGradient.bottom}
         stars={theme.stars}
+        daySky={theme.daySky}
+        sunElevation={theme.sunElevation}
+        sunAzimuth={theme.sunAzimuth}
       />
       <ArenaPlatform edgeColor={theme.particleColor} />
       <ArenaLighting theme={theme} />
