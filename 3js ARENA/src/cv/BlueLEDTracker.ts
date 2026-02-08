@@ -21,19 +21,26 @@ const PROCESS_W = 160;
 const PROCESS_H = 120;
 
 // OpenCV HSV thresholds for blue (H: 0-180, S: 0-255, V: 0-255)
-const CV_HUE_LOW = 90;
-const CV_HUE_HIGH = 130;
-const CV_SAT_MIN = 30;
-const CV_VAL_MIN = 30;
+// Widened range to catch LEDs that appear cyan-ish or slightly purple.
+// Lowered saturation/value minimums — bright LEDs often saturate the camera
+// sensor, appearing whitish-blue with low saturation.
+const CV_HUE_LOW = 85;
+const CV_HUE_HIGH = 135;
+const CV_SAT_MIN = 15;
+const CV_VAL_MIN = 15;
 
 // Manual HSV thresholds (H: 0-360, S: 0-1, V: 0-1)
-const BLUE_HUE_LOW = 180;
-const BLUE_HUE_HIGH = 260;
-const BLUE_SAT_MIN = 0.12;
-const BLUE_VAL_MIN = 0.12;
+// Widened to match OpenCV sensitivity.
+const BLUE_HUE_LOW = 170;
+const BLUE_HUE_HIGH = 270;
+const BLUE_SAT_MIN = 0.06;
+const BLUE_VAL_MIN = 0.06;
 
-const MIN_BLUE_PIXELS = 80;
-const MIN_CONTOUR_AREA = 80;
+// 20% of frame area — blue must cover at least 20% of the frame to count as detected.
+// Prevents false positives from ambient blue in the scene.
+const BLUE_AREA_THRESHOLD = 0.20;
+const MIN_BLUE_PIXELS = Math.floor(PROCESS_W * PROCESS_H * BLUE_AREA_THRESHOLD);
+const MIN_CONTOUR_AREA = Math.floor(PROCESS_W * PROCESS_H * BLUE_AREA_THRESHOLD);
 
 let canvas: HTMLCanvasElement | null = null;
 let ctx: CanvasRenderingContext2D | null = null;
@@ -46,6 +53,12 @@ let lastResult: BlueLEDData = {
 };
 
 let frameCounter = 0;
+let debugLogTimer = 0;
+
+// Temporal hold: keep reporting detected=true for N frames after last real detection.
+// Prevents single-frame dropouts from killing tracking on a small LED.
+const HOLD_FRAMES = 4; // ~130ms at 30fps (processed every 2nd frame)
+let holdCounter = 0;
 
 export function getBlueLEDData(): BlueLEDData {
   return lastResult;
@@ -108,7 +121,9 @@ function detectWithOpenCV(imageData: ImageData): BlueLEDData {
   const high = new cv.Mat(PROCESS_H, PROCESS_W, cv.CV_8UC3, new cv.Scalar(CV_HUE_HIGH, 255, 255, 0));
 
   cv.inRange(cvHsv, low, high, cvMask);
-  cv.morphologyEx(cvMask, cvMask, cv.MORPH_OPEN, cvMorphKernel);
+  // CLOSE only (fills small gaps). OPEN is intentionally omitted:
+  // it erodes small blobs, which destroys a tiny LED that's only
+  // a few pixels wide at 160×120.
   cv.morphologyEx(cvMask, cvMask, cv.MORPH_CLOSE, cvMorphKernel);
 
   cvContours.delete();
@@ -131,6 +146,14 @@ function detectWithOpenCV(imageData: ImageData): BlueLEDData {
   }
 
   const pixelCount = cv.countNonZero(cvMask);
+
+  // Debug
+  const now = performance.now();
+  if (now - debugLogTimer > 2000) {
+    debugLogTimer = now;
+    const pct = ((pixelCount / (PROCESS_W * PROCESS_H)) * 100).toFixed(1);
+    console.log(`[BlueLED/CV] pixels=${pixelCount} (${pct}%) contours=${cvContours.size()} largest=${maxArea.toFixed(0)} threshold=${MIN_BLUE_PIXELS}`);
+  }
 
   if (maxIdx < 0 || maxArea < MIN_CONTOUR_AREA) {
     return { detected: false, centerX: 0.5, centerY: 0.5, pixelCount: 0 };
@@ -170,6 +193,14 @@ function detectManual(pixels: Uint8ClampedArray): BlueLEDData {
     }
   }
 
+  // Debug
+  const now = performance.now();
+  if (now - debugLogTimer > 2000) {
+    debugLogTimer = now;
+    const pct = ((count / (PROCESS_W * PROCESS_H)) * 100).toFixed(1);
+    console.log(`[BlueLED/Manual] blue pixels: ${count} (${pct}%) threshold=${MIN_BLUE_PIXELS}`);
+  }
+
   if (count < MIN_BLUE_PIXELS) {
     return { detected: false, centerX: 0.5, centerY: 0.5, pixelCount: 0 };
   }
@@ -206,16 +237,33 @@ export function detectBlueLED(): BlueLEDData {
   ctx.drawImage(video, 0, 0, PROCESS_W, PROCESS_H);
   const imageData = ctx.getImageData(0, 0, PROCESS_W, PROCESS_H);
 
+  let frameResult: BlueLEDData;
   const cv = getCv();
   if (cv) {
     try {
-      lastResult = detectWithOpenCV(imageData);
+      frameResult = detectWithOpenCV(imageData);
     } catch (err) {
       console.warn('[BlueLED] OpenCV error, falling back to manual:', err);
-      lastResult = detectManual(imageData.data);
+      frameResult = detectManual(imageData.data);
     }
   } else {
-    lastResult = detectManual(imageData.data);
+    frameResult = detectManual(imageData.data);
+  }
+
+  // Temporal hold: if blue was detected this frame, update lastResult and
+  // reset the hold counter. If NOT detected, keep reporting the previous
+  // good detection for up to HOLD_FRAMES frames before giving up.
+  // This prevents single-frame dropouts from flickering the detection.
+  if (frameResult.detected) {
+    lastResult = frameResult;
+    holdCounter = HOLD_FRAMES;
+  } else if (holdCounter > 0) {
+    // Keep the previous good detection alive
+    holdCounter--;
+    // lastResult stays as-is (previous good detection)
+  } else {
+    // Hold expired — truly lost the blue LED
+    lastResult = frameResult;
   }
 
   return lastResult;

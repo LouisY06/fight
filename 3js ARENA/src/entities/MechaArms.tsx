@@ -199,6 +199,39 @@ export function MechaArms() {
     }
     groupRef.current.visible = true;
 
+    // Clamp delta to avoid large jumps when tab is backgrounded
+    const dt = Math.min(delta, 0.1);
+
+    // ==== Color-based weapon switching + blue LED shooting ====
+    // These don't require body landmarks — only webcam color detection.
+    // Placed before the landmarks check so the gun fires even without
+    // full body tracking (e.g. when only the LED/gun tape is visible).
+    const stick = getRedStickData();
+    const greenGun = getGreenGunData();
+    const blueLED = getBlueLEDData();
+    if ((greenGun.detected || blueLED.detected) && activeWeapon !== 'gun') {
+      useWeaponStore.getState().setActiveWeapon('gun');
+    } else if (stick.detected && !greenGun.detected && !blueLED.detected && activeWeapon !== 'sword') {
+      useWeaponStore.getState().setActiveWeapon('sword');
+    }
+
+    // --- Blue LED → Single-Shot Trigger (Rising-Edge Detection) ---
+    // Fires exactly ONE bullet the moment blue light turns ON (off→on).
+    // Will NOT fire again until blue turns OFF and back ON.
+    if (blueLED.detected && !prevBlueDetected.current && activeWeapon === 'gun') {
+      const gamePhase = useGameStore.getState().phase;
+      if (gamePhase === 'playing') {
+        const _muzzleDir = new THREE.Vector3();
+        const _muzzlePos = new THREE.Vector3();
+        camera.getWorldDirection(_muzzleDir);
+        _muzzlePos.copy(camera.position).addScaledVector(_muzzleDir, 0.5);
+        spawnBullet(_muzzlePos, _muzzleDir);
+        useScreenShakeStore.getState().trigger(0.15, 80);
+      }
+    }
+    prevBlueDetected.current = blueLED.detected;
+
+    // ==== Body tracking-dependent code below ====
     const cvInput = cvInputRef.current;
     const worldLandmarks = worldLandmarksRef.current;
 
@@ -212,9 +245,6 @@ export function MechaArms() {
       groupRef.current.visible = false;
       return;
     }
-
-    // Clamp delta to avoid large jumps when tab is backgrounded
-    const dt = Math.min(delta, 0.1);
 
     const s = smoothJoints.current;
     const camQuat = camera.quaternion;
@@ -311,30 +341,6 @@ export function MechaArms() {
     }
 
     const weaponPosAlpha = la(SMOOTH_SWORD_POS);
-
-    // --- Color-based weapon switching: green → gun (priority), yellow → sword ---
-    const stick = getRedStickData();
-    const greenGun = getGreenGunData();
-    const blueLED = getBlueLEDData();
-    if (greenGun.detected && activeWeapon !== 'gun') {
-      useWeaponStore.getState().setActiveWeapon('gun');
-    } else if (stick.detected && !greenGun.detected && activeWeapon !== 'sword') {
-      useWeaponStore.getState().setActiveWeapon('sword');
-    }
-
-    // --- Blue LED → fire one bullet per appearance ---
-    if (blueLED.detected && !prevBlueDetected.current && activeWeapon === 'gun') {
-      const gamePhase = useGameStore.getState().phase;
-      if (gamePhase === 'playing') {
-        const _muzzleDir = new THREE.Vector3();
-        const _muzzlePos = new THREE.Vector3();
-        camera.getWorldDirection(_muzzleDir);
-        _muzzlePos.copy(camera.position).addScaledVector(_muzzleDir, 0.5);
-        spawnBullet(_muzzlePos, _muzzleDir);
-        useScreenShakeStore.getState().trigger(0.15, 80);
-      }
-    }
-    prevBlueDetected.current = blueLED.detected;
 
     // --- Sword ---
     if (swordGroupRef.current) {

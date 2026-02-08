@@ -20,20 +20,24 @@ import { detectBlueLED } from './BlueLEDTracker';
  */
 export function CVSync() {
   useFrame(() => {
-    if (!cvBridge.cvEnabled || !cvBridge.mapperRef) return;
+    if (!cvBridge.cvEnabled) return;
 
-    const data = poseTracker.detect();
-    if (data) {
-      cvBridge.cvInputRef.current = cvBridge.mapperRef.current.process(
-        data.landmarks,
-        data.worldLandmarks,
-        data.timestamp
-      );
-      cvBridge.worldLandmarksRef.current = data.worldLandmarks;
-      cvBridge.landmarksRef.current = data.landmarks;
+    // Pose detection (requires mapper to be registered by CVProvider)
+    if (cvBridge.mapperRef) {
+      const data = poseTracker.detect();
+      if (data) {
+        cvBridge.cvInputRef.current = cvBridge.mapperRef.current.process(
+          data.landmarks,
+          data.worldLandmarks,
+          data.timestamp
+        );
+        cvBridge.worldLandmarksRef.current = data.worldLandmarks;
+        cvBridge.landmarksRef.current = data.landmarks;
+      }
     }
 
-    // Color detection (each runs on its own skip-frame schedule)
+    // Color detection runs independently of pose tracking —
+    // only needs the webcam video element (each tracker checks internally).
     detectRedStick();
     detectGreenGun();
     detectBlueLED();
