@@ -12,6 +12,8 @@ import { GameEngine } from './game/GameEngine';
 import { IntroSequencer } from './game/IntroSequencer';
 import { Arena } from './arena/Arena';
 import { SceneBackground } from './arena/SceneBackground';
+import { MechHangar } from './arena/MechHangar';
+import { MenuSceneCamera } from './arena/MenuSceneCamera';
 import { getThemeById, ARENA_THEMES } from './arena/arenaThemes';
 import { NetworkOpponent } from './entities/NetworkOpponent';
 import { BotOpponent } from './entities/BotOpponent';
@@ -66,9 +68,9 @@ function GameApp() {
     phase === 'paused' ||
     phase === 'roundEnd';
 
-  // Defer Canvas until game starts — avoids WebGL/Physics init during menu
-  // (can cause black screen in Electron / some GPUs)
+  // Canvas: menu (hangar) + game. Menu scene is lightweight (no Physics).
   const showCanvas =
+    phase === 'menu' ||
     phase === 'arenaLoading' ||
     phase === 'intro' ||
     phase === 'countdown' ||
@@ -107,46 +109,48 @@ function GameApp() {
         style={{ position: 'absolute', inset: 0, zIndex: 0 }}
       >
         <Suspense fallback={null}>
-          <Physics gravity={[0, -9.81, 0]}>
-            {/* Game logic loop */}
-            <GameEngine />
-
-            {/* Glambot intro: orbit mech + Power On visor (runs during intro phase) */}
-            <IntroSequencer />
-
-            {/* CV pose detection (runs every frame inside render loop) */}
-            <CVSync />
-
-            {/* First-person camera + viewmodel weapons + input sync + combat */}
-            <FirstPersonCamera />
-            <ViewmodelSword />
-            <MechaArms />
-            <MeleeCombat />
-            <HitEffectManager />
-            <InputSyncBridge />
-
-            {/* Arena environment */}
-            {showArena && <Arena theme={theme} />}
-
-            {/* Opponent */}
-            {showPlayers && (
-              isMultiplayer ? (
-                <NetworkOpponent color="#CC00FF" />
-              ) : (
-                <BotOpponent color="#CC00FF" />
-              )
-            )}
-          </Physics>
+          {phase === 'menu' ? (
+            <>
+              <MenuSceneCamera />
+              <SceneBackground />
+              <MechHangar position={[0, 0, 0]} scale={4} rotation={[0, 0, 0]} />
+              <ambientLight intensity={0.5} color="#ffffff" />
+              <directionalLight position={[5, 12, 5]} intensity={2} castShadow />
+              <spotLight position={[0, 10, 0]} angle={0.6} penumbra={0.5} intensity={3} castShadow target-position={[0, 0, 0]} />
+              <pointLight position={[4, 8, 4]} intensity={1.5} color="#ff8866" />
+              <pointLight position={[-4, 6, -2]} intensity={0.8} color="#aaccff" />
+            </>
+          ) : (
+            <>
+              <Physics gravity={[0, -9.81, 0]}>
+                <GameEngine />
+                <IntroSequencer />
+                <CVSync />
+                <FirstPersonCamera />
+                <ViewmodelSword />
+                <MechaArms />
+                <MeleeCombat />
+                <HitEffectManager />
+                <InputSyncBridge />
+                {showArena && <Arena theme={theme} />}
+                {showPlayers && (
+                  isMultiplayer ? (
+                    <NetworkOpponent color="#CC00FF" />
+                  ) : (
+                    <BotOpponent color="#CC00FF" />
+                  )
+                )}
+              </Physics>
+              {(phase === 'lobby' || phase === 'waiting') && (
+                <>
+                  <SceneBackground />
+                  <ambientLight intensity={0.3} color="#220033" />
+                  <pointLight position={[0, 8, 0]} intensity={2} color="#ff0066" />
+                </>
+              )}
+            </>
+          )}
         </Suspense>
-
-        {/* Fallback lighting + background for menu/lobby (no Arena yet) */}
-        {(phase === 'menu' || phase === 'lobby' || phase === 'waiting') && (
-          <>
-            <SceneBackground />
-            <ambientLight intensity={0.3} color="#220033" />
-            <pointLight position={[0, 8, 0]} intensity={2} color="#ff0066" />
-          </>
-        )}
       </Canvas>
       )}
 

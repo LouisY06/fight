@@ -8,7 +8,9 @@ import { ArenaPlatform } from './ArenaPlatform';
 import { ArenaLighting } from './ArenaLighting';
 import { ArenaEffects } from './ArenaEffects';
 import { ArenaProps } from './ArenaProps';
+import { MechHangar } from './MechHangar';
 import { EnemyRimLight } from './EnemyRimLight';
+import { GAME_CONFIG } from '../game/GameConfig';
 import { useGameStore } from '../game/GameState';
 import type { ArenaTheme } from './arenaThemes';
 
@@ -27,6 +29,7 @@ function ArenaInner({ theme }: ArenaComponentProps) {
     }
   }, [phase, setPhase]);
 
+  const radius = GAME_CONFIG.arenaRadius;
   return (
     <group>
       <ArenaEnvironment skyboxPath={theme.skybox} fogColor={theme.fog.color} />
@@ -37,6 +40,12 @@ function ArenaInner({ theme }: ArenaComponentProps) {
       )}
       <ArenaEffects theme={theme} />
       <ArenaProps accentColor={theme.particleColor} />
+      {/* Mech hangar on one side of the arena */}
+      <MechHangar
+        position={[radius + 6, 0, 0]}
+        scale={2.5}
+        rotation={[0, -Math.PI / 2, 0]}
+      />
     </group>
   );
 }

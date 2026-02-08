@@ -38,7 +38,7 @@ export function ArenaEnvironment({ skyboxPath, fogColor = '#0a0a0a' }: ArenaEnvi
     );
   }
 
-  // Image doesn't exist — use procedural fallback
+  // Image doesn't exist — use procedural fallback (no remote HDR; avoids CSP/fetch errors)
   return <FallbackSky color={fogColor} />;
 }
 

@@ -42,7 +42,7 @@ export function MainMenu() {
         flexDirection: 'row',
         alignItems: 'stretch',
         background:
-          'radial-gradient(ellipse at center, rgba(20,0,40,0.95) 0%, rgba(0,0,0,0.98) 100%)',
+          'radial-gradient(ellipse at center, rgba(20,0,40,0.75) 0%, rgba(0,0,0,0.85) 100%)',
         zIndex: 200,
       }}
     >
