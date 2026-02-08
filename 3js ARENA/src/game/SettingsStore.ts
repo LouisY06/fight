@@ -15,6 +15,9 @@ interface SettingsState {
   mouseSensitivity: number;
   invertY: boolean;
 
+  // Camera
+  cameraDeviceId: string; // '' = browser default
+
   // Display
   screenShakeIntensity: number;
   damageNumbersEnabled: boolean;
@@ -27,6 +30,7 @@ interface SettingsState {
   setHeadSensitivity: (v: number) => void;
   setMouseSensitivity: (v: number) => void;
   setInvertY: (v: boolean) => void;
+  setCameraDeviceId: (v: string) => void;
   setScreenShakeIntensity: (v: number) => void;
   setDamageNumbersEnabled: (v: boolean) => void;
   setPostProcessingEnabled: (v: boolean) => void;
@@ -58,6 +62,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   headSensitivity: saved.headSensitivity ?? 1.0,
   mouseSensitivity: saved.mouseSensitivity ?? 1.0,
   invertY: saved.invertY ?? false,
+  cameraDeviceId: saved.cameraDeviceId ?? '',
   screenShakeIntensity: saved.screenShakeIntensity ?? 1.0,
   damageNumbersEnabled: saved.damageNumbersEnabled ?? true,
   postProcessingEnabled: saved.postProcessingEnabled ?? true,
@@ -68,6 +73,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   setHeadSensitivity: (v) => { persist({ headSensitivity: v }); set({ headSensitivity: v }); },
   setMouseSensitivity: (v) => { persist({ mouseSensitivity: v }); set({ mouseSensitivity: v }); },
   setInvertY: (v) => { persist({ invertY: v }); set({ invertY: v }); },
+  setCameraDeviceId: (v) => { persist({ cameraDeviceId: v }); set({ cameraDeviceId: v }); },
   setScreenShakeIntensity: (v) => { persist({ screenShakeIntensity: v }); set({ screenShakeIntensity: v }); },
   setDamageNumbersEnabled: (v) => { persist({ damageNumbersEnabled: v }); set({ damageNumbersEnabled: v }); },
   setPostProcessingEnabled: (v) => { persist({ postProcessingEnabled: v }); set({ postProcessingEnabled: v }); },

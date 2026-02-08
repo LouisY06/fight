@@ -10,7 +10,7 @@ import * as THREE from 'three';
 // Spell types
 // ---------------------------------------------------------------------------
 
-export type SpellType = 'fireball' | 'laser' | 'ice_blast';
+export type SpellType = 'fireball' | 'laser' | 'ice_blast' | 'forcefield';
 
 export type SpellDebuff = 'none' | 'stun' | 'slow';
 
@@ -70,6 +70,18 @@ export const SPELL_CONFIGS: Record<SpellType, SpellConfig> = {
     debuff: 'slow',
     debuffDurationMs: 3500,
   },
+  forcefield: {
+    name: 'Force Field',
+    voiceTriggers: ['forcefield', 'force field', 'shield', 'barrier', 'protect', 'defense'],
+    damage: 0,
+    cooldownMs: 10000,
+    speed: 0,
+    range: 0,
+    color: '#00ffcc',
+    emissive: '#44ffdd',
+    debuff: 'none',
+    debuffDurationMs: 0,
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -102,7 +114,7 @@ let spellIdCounter = 0;
 
 export const useSpellStore = create<SpellStore>((set, get) => ({
   activeSpells: [],
-  cooldowns: { fireball: 0, laser: 0, ice_blast: 0 },
+  cooldowns: { fireball: 0, laser: 0, ice_blast: 0, forcefield: 0 },
 
   castSpell: (type, caster, origin, direction) => {
     const now = Date.now();
@@ -180,6 +192,45 @@ export function getDebuffRemaining(target: 'player1' | 'player2'): number {
 export function clearDebuffs(): void {
   delete activeDebuffs['player1'];
   delete activeDebuffs['player2'];
+}
+
+// ---------------------------------------------------------------------------
+// Forcefield buff — blocks projectiles (bullets + spells) for a duration
+// ---------------------------------------------------------------------------
+
+const FORCEFIELD_DURATION_MS = 3500; // 3.5 seconds of protection
+
+/** Forcefield expiry time per player slot */
+const forceFieldExpiry: Record<string, number> = {};
+
+/** Activate forcefield for a player */
+export function activateForceField(target: 'player1' | 'player2'): void {
+  forceFieldExpiry[target] = Date.now() + FORCEFIELD_DURATION_MS;
+}
+
+/** Check if forcefield is currently active for a player */
+export function isForceFieldActive(target: 'player1' | 'player2'): boolean {
+  const expiry = forceFieldExpiry[target];
+  if (!expiry) return false;
+  if (Date.now() > expiry) {
+    delete forceFieldExpiry[target];
+    return false;
+  }
+  return true;
+}
+
+/** Get remaining forcefield duration in seconds (0 if not active) */
+export function getForceFieldRemaining(target: 'player1' | 'player2'): number {
+  const expiry = forceFieldExpiry[target];
+  if (!expiry) return 0;
+  const remaining = expiry - Date.now();
+  return remaining > 0 ? remaining / 1000 : 0;
+}
+
+/** Clear all forcefields (call on round reset alongside clearDebuffs) */
+export function clearForceFields(): void {
+  delete forceFieldExpiry['player1'];
+  delete forceFieldExpiry['player2'];
 }
 
 // ---------------------------------------------------------------------------

@@ -10,12 +10,13 @@ import { useGameStore } from '../game/GameState';
 import { useSpellStore, SPELL_CONFIGS, getDebuff, getDebuffRemaining, type SpellType } from '../combat/SpellSystem';
 import { isVoiceAvailable, isVoiceActive } from '../audio/VoiceCommands';
 
-const SPELL_ORDER: SpellType[] = ['fireball', 'laser', 'ice_blast'];
+const SPELL_ORDER: SpellType[] = ['fireball', 'laser', 'ice_blast', 'forcefield'];
 
 const SPELL_KEYS: Record<SpellType, string> = {
   fireball: 'Q',
   laser: 'E',
   ice_blast: 'R',
+  forcefield: 'F',
 };
 
 // ---------------------------------------------------------------------------
@@ -58,10 +59,23 @@ function CrystalIcon({ color, size = 18 }: { color: string; size?: number }) {
   );
 }
 
+function ShieldIcon({ color, size = 18 }: { color: string; size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path
+        d="M12 2L3 7v5c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z"
+        fill={color}
+        opacity={0.9}
+      />
+    </svg>
+  );
+}
+
 const SPELL_ICON_COMPONENTS: Record<SpellType, (props: { color: string; size?: number }) => JSX.Element> = {
   fireball: FireIcon,
   laser: BoltIcon,
   ice_blast: CrystalIcon,
+  forcefield: ShieldIcon,
 };
 
 // ---------------------------------------------------------------------------

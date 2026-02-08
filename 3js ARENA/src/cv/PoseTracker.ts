@@ -72,10 +72,40 @@ class PoseTracker {
         console.log('[PoseTracker] Using CPU delegate');
       }
 
-      // Open webcam
+      // Open webcam — use stored device preference, or auto-detect FaceTime camera
       console.log('[PoseTracker] Requesting webcam...');
+      let targetDeviceId = '';
+      try {
+        const raw = localStorage.getItem('smf-settings');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          targetDeviceId = parsed.cameraDeviceId ?? '';
+        }
+      } catch { /* ignore */ }
+
+      // If no explicit device saved, try to find the FaceTime camera as default
+      if (!targetDeviceId) {
+        try {
+          // Brief getUserMedia so the browser grants device label access
+          const tempStream = await navigator.mediaDevices.getUserMedia({ video: true });
+          tempStream.getTracks().forEach((t) => t.stop());
+          const devices = await navigator.mediaDevices.enumerateDevices();
+          const facetime = devices.find(
+            (d) => d.kind === 'videoinput' && /facetime/i.test(d.label),
+          );
+          if (facetime) {
+            targetDeviceId = facetime.deviceId;
+            console.log(`[PoseTracker] Auto-selected FaceTime camera: ${facetime.label}`);
+          }
+        } catch { /* ignore — will fall back to facingMode */ }
+      }
+
+      const videoConstraints: MediaTrackConstraints = targetDeviceId
+        ? { deviceId: { exact: targetDeviceId }, width: 640, height: 480 }
+        : { width: 640, height: 480, facingMode: 'user' };
+
       this.stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: 640, height: 480, facingMode: 'user' },
+        video: videoConstraints,
         audio: false,
       });
 

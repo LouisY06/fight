@@ -1,7 +1,7 @@
 // =============================================================================
 // MechaArms.tsx — First-person cockpit RIGHT arm driven by CV pose tracking
 // Left arm removed (left hand is on keyboard for WASD movement).
-// Right hand holds a weapon (sword / gun / shield) based on WeaponState.
+// Right hand holds a weapon (sword / gun) based on WeaponState.
 // All joints interpolated for smooth motion.
 // Geometry builders and materials live in MechaGeometry.ts (shared with MechaEntity).
 // =============================================================================
@@ -15,7 +15,7 @@ import { useWeaponStore } from '../game/WeaponState';
 import { fireSwing } from '../combat/SwingEvent';
 import { updateSwordTransform } from '../combat/SwordState';
 import {
-  makeUpperArm, makeForearm, makeHand, makeJoint, makeSword, makeGun, makeShield,
+  makeUpperArm, makeForearm, makeHand, makeJoint, makeSword, makeGun,
 } from '../avatars/MechaGeometry';
 import { updateDashSpell, getDashState, getDashCharge } from '../combat/DashSpell';
 import { getRedStickData } from '../cv/RedStickTracker';
@@ -136,7 +136,6 @@ export function MechaArms() {
   const rWristJoint = useMemo(() => makeJoint(0.05), []);
   const sword = useMemo(() => makeSword(), []);
   const gun = useMemo(() => makeGun(), []);
-  const shield = useMemo(() => makeShield(), []);
 
   // ---- Left arm geometry (no sword) ----
   const lUpperArm = useMemo(() => makeUpperArm(), []);
@@ -149,7 +148,6 @@ export function MechaArms() {
   const groupRef = useRef<THREE.Group>(null!);
   const swordGroupRef = useRef<THREE.Group>(null!);
   const gunGroupRef = useRef<THREE.Group>(null!);
-  const shieldGroupRef = useRef<THREE.Group>(null!);
 
   const smoothJoints = useRef({
     // Right arm
@@ -336,16 +334,6 @@ export function MechaArms() {
       }
     }
 
-    // --- Shield ---
-    if (shieldGroupRef.current) {
-      shieldGroupRef.current.visible = activeWeapon === 'shield';
-      if (activeWeapon === 'shield') {
-        shieldGroupRef.current.position.lerp(s.rHand, weaponPosAlpha);
-        if (weaponTargetQuat) {
-          shieldGroupRef.current.quaternion.copy(s.swordQuat);
-        }
-      }
-    }
 
     // ==== APPLY LEFT ARM ====
     lShoulderJoint.position.copy(s.lShoulder);
@@ -422,10 +410,6 @@ export function MechaArms() {
         <primitive object={gun} />
       </group>
 
-      {/* Shield — visible when shield is active */}
-      <group ref={shieldGroupRef} scale={0.45}>
-        <primitive object={shield} />
-      </group>
     </group>
   );
 }

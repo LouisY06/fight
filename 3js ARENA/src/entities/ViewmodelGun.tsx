@@ -52,7 +52,8 @@ export function ViewmodelGun() {
     if (activeWeapon !== 'gun') return;
 
     const onMouseDown = (e: MouseEvent) => {
-      if (e.button === 0 && document.pointerLockElement) {
+      // Fire on left-click: pointer-lock (keyboard mode) OR CV mode (no pointer lock needed)
+      if (e.button === 0 && (document.pointerLockElement || cvBridge.cvEnabled)) {
         const now = performance.now() / 1000;
         if (now - lastFireTime.current >= FIRE_COOLDOWN) {
           const gamePhase = useGameStore.getState().phase;

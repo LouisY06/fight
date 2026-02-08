@@ -212,9 +212,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     // Guard: only deal damage during active gameplay
     if (state.phase !== 'playing' && state.phase !== 'countdown') return;
     const player = state[target];
-    const effectiveAmount = player.isBlocking
-      ? amount * (1 - GAME_CONFIG.blockDamageReduction)
-      : amount;
+    const effectiveAmount = amount;
     const newHealth = Math.max(0, player.health - effectiveAmount);
     // #region agent log
     fetch('http://127.0.0.1:7243/ingest/d3f7d08b-6cb2-4350-808e-89b409b0090c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'GameState.ts:dealDamage',message:'dealDamage called',data:{target,amount,isBlocking:player.isBlocking,effectiveAmount,oldHealth:player.health,newHealth,phase:state.phase},timestamp:Date.now(),hypothesisId:'C,D'})}).catch(()=>{});

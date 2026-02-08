@@ -23,6 +23,7 @@ const KEYTERMS = [
   'mechabot fireball', 'mechabot fire', 'fireball', 'fire ball', 'fire',
   'mechabot laser', 'laser', 'laser beam', 'beam', 'electric', 'lightning', 'shock', 'zap',
   'mechabot ice blast', 'ice blast', 'ice', 'freeze', 'frost', 'blizzard', 'cold', 'icy', 'blast',
+  'mechabot forcefield', 'forcefield', 'force field', 'shield', 'barrier', 'protect', 'defense',
   'mechabot turn around', 'turn around', 'turnaround', 'flip', 'about face',
   'mechabot aimlock', 'aimlock', 'aim lock', 'calibrate', 'recenter',
 ];
@@ -366,7 +367,7 @@ const BLAST_FUZZY = [
 ];
 
 function matchSpell(transcript: string): SpellType | null {
-  // First try exact trigger matching (order: fireball first, then laser, then ice)
+  // First try exact trigger matching (order: fireball first, then laser, then ice, then forcefield)
   // Check fireball triggers
   for (const trigger of SPELL_CONFIGS.fireball.voiceTriggers) {
     if (transcript.includes(trigger)) return 'fireball';
@@ -380,6 +381,11 @@ function matchSpell(transcript: string): SpellType | null {
   // Check ice_blast triggers
   for (const trigger of SPELL_CONFIGS.ice_blast.voiceTriggers) {
     if (transcript.includes(trigger)) return 'ice_blast';
+  }
+
+  // Check forcefield triggers
+  for (const trigger of SPELL_CONFIGS.forcefield.voiceTriggers) {
+    if (transcript.includes(trigger)) return 'forcefield';
   }
 
   // Fuzzy matching for ice blast (commonly misheard)

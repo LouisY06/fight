@@ -21,7 +21,6 @@ import { GAME_CONFIG } from './game/GameConfig';
 import { FirstPersonCamera } from './game/FirstPersonCamera';
 import { ViewmodelSword } from './entities/ViewmodelSword';
 import { ViewmodelGun } from './entities/ViewmodelGun';
-import { ViewmodelShield } from './entities/ViewmodelShield';
 import { MechaArms } from './entities/MechaArms';
 import { NetworkProvider } from './networking/NetworkProvider';
 import { InputSyncBridge } from './networking/InputSyncBridge';
@@ -133,7 +132,7 @@ function GameApp() {
   const currentThemeId = useGameStore((s) => s.currentThemeId);
   const isMultiplayer = useGameStore((s) => s.isMultiplayer);
 
-  // Init weapon key listener (1=shield, 2=sword, 3=gun)
+  // Init weapon key listener (1=sword, 2=gun)
   useEffect(() => {
     return initWeaponKeyListener();
   }, []);
@@ -223,7 +222,6 @@ function GameApp() {
                 <FirstPersonCamera />
                 <ViewmodelSword />
                 <ViewmodelGun />
-                <ViewmodelShield />
                 <MechaArms />
                 <MeleeCombat />
                 <HitEffectManager />

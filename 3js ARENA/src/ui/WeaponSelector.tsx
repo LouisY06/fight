@@ -6,14 +6,6 @@
 import { useWeaponStore, type ActiveWeapon } from '../game/WeaponState';
 import { COLORS, FONTS, CLIP } from './theme';
 
-// SVG weapon silhouettes (inline path data for cross-platform consistency)
-const ShieldSVG = () => (
-  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke={COLORS.steel} strokeWidth="1.5">
-    <path d="M12 2L3 7v5c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z" />
-    <path d="M12 6l-5 3v3c0 3.33 2.13 6.44 5 7.5" strokeOpacity="0.4" />
-  </svg>
-);
-
 const SwordSVG = () => (
   <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke={COLORS.amber} strokeWidth="1.5">
     <path d="M14.5 3L21 9.5 9.5 21 3 14.5 14.5 3z" />
@@ -31,9 +23,8 @@ const GunSVG = () => (
 );
 
 const WEAPONS: { key: string; name: string; id: ActiveWeapon; Icon: React.FC }[] = [
-  { key: '1', name: 'SHIELD', id: 'shield', Icon: ShieldSVG },
-  { key: '2', name: 'SWORD', id: 'sword', Icon: SwordSVG },
-  { key: '3', name: 'GUN', id: 'gun', Icon: GunSVG },
+  { key: '1', name: 'SWORD', id: 'sword', Icon: SwordSVG },
+  { key: '2', name: 'GUN', id: 'gun', Icon: GunSVG },
 ];
 
 export function WeaponSelector() {

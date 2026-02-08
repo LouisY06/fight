@@ -14,6 +14,8 @@ import {
   SPELL_CONFIGS,
   fireSpellHit,
   applyDebuff,
+  isForceFieldActive,
+  getForceFieldRemaining,
   type ActiveSpell,
 } from './SpellSystem';
 import { useGameStore } from '../game/GameState';
@@ -59,6 +61,7 @@ export function SpellEffects() {
       {spells.map((spell) => (
         <SpellProjectile key={spell.id} spell={spell} />
       ))}
+      <ForceFieldVFX />
     </>
   );
 }
@@ -169,6 +172,14 @@ function SpellProjectile({ spell }: { spell: ActiveSpell }) {
     const { dealDamage, playerSlot, isMultiplayer } = useGameStore.getState();
     const opponentSlot: 'player1' | 'player2' =
       (playerSlot ?? 'player1') === 'player1' ? 'player2' : 'player1';
+
+    // Forcefield blocks all spell damage
+    if (isForceFieldActive(opponentSlot)) {
+      fireHitEvent({ point: ref.current?.position.clone() ?? new THREE.Vector3(), amount: 0, isBlocked: true });
+      removeSpell(sp.id);
+      return;
+    }
+
     const config = SPELL_CONFIGS[sp.type];
     const dmg = config.damage;
     dealDamage(opponentSlot, dmg);
@@ -187,7 +198,15 @@ function SpellProjectile({ spell }: { spell: ActiveSpell }) {
 
   function handleSpellHitOnPlayer(sp: ActiveSpell) {
     const { dealDamage, playerSlot } = useGameStore.getState();
-    const mySlot = playerSlot ?? 'player1';
+    const mySlot = (playerSlot ?? 'player1') as 'player1' | 'player2';
+
+    // Forcefield blocks all spell damage
+    if (isForceFieldActive(mySlot)) {
+      fireHitEvent({ point: ref.current?.position.clone() ?? new THREE.Vector3(), amount: 0, isBlocked: true });
+      removeSpell(sp.id);
+      return;
+    }
+
     const config = SPELL_CONFIGS[sp.type];
     const dmg = config.damage;
     dealDamage(mySlot, dmg);
@@ -315,6 +334,71 @@ function IceBlastVFX() {
           <meshStandardMaterial color="#bbddff" emissive="#88ccff" emissiveIntensity={2} transparent opacity={0.6} roughness={0.05} metalness={0.5} />
         </mesh>
       ))}
+    </group>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Force Field VFX — translucent dome around the player when active
+// ---------------------------------------------------------------------------
+
+function ForceFieldVFX() {
+  const { camera } = useThree();
+  const groupRef = useRef<THREE.Group>(null!);
+  const matRef = useRef<THREE.MeshStandardMaterial>(null!);
+
+  useFrame(() => {
+    if (!groupRef.current) return;
+    const playerSlot = (useGameStore.getState().playerSlot ?? 'player1') as 'player1' | 'player2';
+    const active = isForceFieldActive(playerSlot);
+
+    groupRef.current.visible = active;
+    if (!active) return;
+
+    // Follow camera (player) position
+    groupRef.current.position.set(camera.position.x, camera.position.y - 0.3, camera.position.z);
+
+    // Pulse the opacity
+    if (matRef.current) {
+      const remaining = getForceFieldRemaining(playerSlot);
+      const fade = remaining < 1 ? remaining : 1; // fade out in last second
+      const pulse = 0.12 + Math.sin(Date.now() * 0.006) * 0.04;
+      matRef.current.opacity = pulse * fade;
+      matRef.current.emissiveIntensity = 1.5 * fade;
+    }
+
+    // Slow rotation for visual interest
+    groupRef.current.rotation.y += 0.003;
+  });
+
+  return (
+    <group ref={groupRef} visible={false}>
+      <mesh>
+        <sphereGeometry args={[1.6, 16, 12]} />
+        <meshStandardMaterial
+          ref={matRef}
+          color="#00ffcc"
+          emissive="#00ffcc"
+          emissiveIntensity={1.5}
+          transparent
+          opacity={0.12}
+          side={THREE.DoubleSide}
+          depthWrite={false}
+        />
+      </mesh>
+      {/* Inner glow layer */}
+      <mesh>
+        <sphereGeometry args={[1.55, 12, 10]} />
+        <meshStandardMaterial
+          color="#44ffdd"
+          emissive="#44ffdd"
+          emissiveIntensity={0.8}
+          transparent
+          opacity={0.05}
+          side={THREE.BackSide}
+          depthWrite={false}
+        />
+      </mesh>
     </group>
   );
 }

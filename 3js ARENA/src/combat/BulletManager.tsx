@@ -10,6 +10,7 @@ import * as THREE from 'three';
 import { useGameStore } from '../game/GameState';
 import { GAME_CONFIG } from '../game/GameConfig';
 import { fireHitEvent } from './HitEvent';
+import { isForceFieldActive } from './SpellSystem';
 import { useScreenShakeStore } from '../game/useScreenShake';
 import { gameSocket } from '../networking/socket';
 
@@ -187,6 +188,13 @@ export function BulletManager() {
           const { playerSlot, isMultiplayer, dealDamage } = useGameStore.getState();
           const opponentSlot: 'player1' | 'player2' =
             playerSlot === 'player2' ? 'player1' : 'player2';
+
+          // Forcefield blocks bullets
+          if (isForceFieldActive(opponentSlot)) {
+            fireHitEvent({ point: _hitPoint.clone(), amount: 0, isBlocked: true });
+            return; // bullet absorbed — exit traverse callback
+          }
+
           const amount = GAME_CONFIG.damage.gunShot;
 
           dealDamage(opponentSlot, amount);

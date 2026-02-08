@@ -8,7 +8,7 @@ import { useEffect, useCallback, useRef } from 'react';
 import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from '../game/GameState';
-import { useSpellStore, fireSpellCast, clearDebuffs, type SpellType } from './SpellSystem';
+import { useSpellStore, fireSpellCast, clearDebuffs, clearForceFields, activateForceField, type SpellType } from './SpellSystem';
 import { startVoiceListening, stopVoiceListening, onVoiceSpell, isVoiceAvailable } from '../audio/VoiceCommands';
 import { gameSocket } from '../networking/socket';
 
@@ -17,6 +17,7 @@ const KEY_SPELL_MAP: Record<string, SpellType> = {
   q: 'fireball',
   e: 'laser',
   r: 'ice_blast',
+  f: 'forcefield',
 };
 
 /**
@@ -33,7 +34,23 @@ export function SpellCaster() {
       const store = useGameStore.getState();
       if (store.phase !== 'playing') return;
 
-      const playerSlot = store.playerSlot ?? 'player1';
+      const playerSlot = (store.playerSlot ?? 'player1') as 'player1' | 'player2';
+
+      // Forcefield is a self-buff, not a projectile
+      if (spellType === 'forcefield') {
+        // Check cooldown manually
+        const now = Date.now();
+        const cooldowns = useSpellStore.getState().cooldowns;
+        const config = { cooldownMs: 10000 }; // match SPELL_CONFIGS.forcefield.cooldownMs
+        if (now - cooldowns.forcefield < config.cooldownMs) return;
+        // Update cooldown
+        useSpellStore.setState((s) => ({
+          cooldowns: { ...s.cooldowns, forcefield: now },
+        }));
+        activateForceField(playerSlot);
+        console.log(`[SpellCaster] Forcefield activated!`);
+        return;
+      }
 
       // Get camera position and forward direction
       const origin = camera.position.clone();
@@ -107,6 +124,7 @@ export function SpellCaster() {
       if (state.phase === 'countdown') {
         useSpellStore.getState().clearAll();
         clearDebuffs();
+        clearForceFields();
       }
     });
     return unsub;

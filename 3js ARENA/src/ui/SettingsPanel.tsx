@@ -2,15 +2,40 @@
 // SettingsPanel.tsx — Centralized settings panel (Audio, Controls, Display)
 // =============================================================================
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSettingsStore } from '../game/SettingsStore';
 import { COLORS, FONTS, CLIP, PANEL_STYLE, LABEL_STYLE } from './theme';
+
+/** Enumerate available video input devices */
+async function listCameras(): Promise<MediaDeviceInfo[]> {
+  try {
+    // Need a brief getUserMedia call first so the browser grants device labels
+    const tempStream = await navigator.mediaDevices.getUserMedia({ video: true });
+    tempStream.getTracks().forEach((t) => t.stop());
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    return devices.filter((d) => d.kind === 'videoinput');
+  } catch {
+    return [];
+  }
+}
 
 type Tab = 'audio' | 'controls' | 'display';
 
 export function SettingsPanel({ onClose }: { onClose: () => void }) {
   const [tab, setTab] = useState<Tab>('audio');
   const settings = useSettingsStore();
+  const [cameras, setCameras] = useState<MediaDeviceInfo[]>([]);
+
+  // Enumerate cameras when controls tab opens
+  useEffect(() => {
+    if (tab === 'controls') {
+      listCameras().then(setCameras);
+    }
+  }, [tab]);
+
+  const handleCameraChange = useCallback((deviceId: string) => {
+    settings.setCameraDeviceId(deviceId);
+  }, [settings]);
 
   // Close on Escape
   useEffect(() => {
@@ -145,6 +170,40 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
               value={settings.invertY}
               onChange={settings.setInvertY}
             />
+            {/* Camera device selector */}
+            {cameras.length > 0 && (
+              <div>
+                <div style={{ marginBottom: '6px' }}>
+                  <span style={LABEL_STYLE}>CAMERA</span>
+                </div>
+                <select
+                  value={settings.cameraDeviceId}
+                  onChange={(e) => handleCameraChange(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '8px 10px',
+                    fontSize: '11px',
+                    fontFamily: FONTS.mono,
+                    color: COLORS.textPrimary,
+                    background: 'rgba(0, 0, 0, 0.6)',
+                    border: `1px solid ${COLORS.borderFaint}`,
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    outline: 'none',
+                  }}
+                >
+                  <option value="">Default Camera</option>
+                  {cameras.map((cam) => (
+                    <option key={cam.deviceId} value={cam.deviceId}>
+                      {cam.label || `Camera ${cam.deviceId.slice(0, 8)}...`}
+                    </option>
+                  ))}
+                </select>
+                <div style={{ marginTop: '4px', fontSize: '9px', fontFamily: FONTS.mono, color: COLORS.textDim }}>
+                  Restart CV to apply camera change
+                </div>
+              </div>
+            )}
           </div>
         )}
 
