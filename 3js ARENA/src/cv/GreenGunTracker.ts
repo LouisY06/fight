@@ -79,6 +79,15 @@ let lastResult: GreenGunData = {
 // halving effective tracking rate and triggering constant discontinuations.
 let debugLogTimer = 0;
 
+// EMA (exponential moving average) smoothing to kill microjitter at the source.
+// Applied to the raw centroid BEFORE computing deltas, so tiny pixel-level
+// fluctuations never become camera movement.
+// Alpha = 0 means full smoothing (never moves), 1 = no smoothing (raw input).
+// 0.35 gives a good balance: responsive to real movement, kills tremor.
+const EMA_ALPHA = 0.35;
+let emaCenterX: number | null = null;
+let emaCenterY: number | null = null;
+
 // Delta tracking state for KrunkerStyle camera steering
 // (ported from leaning_control_system.py KrunkerStyleMouseController)
 let prevDeltaCenterX: number | null = null;
@@ -362,6 +371,27 @@ export function detectGreenGun(): GreenGunData {
     }
   } else {
     lastResult = detectManual(imageData.data, null);
+  }
+
+  // ---- EMA smooth the centroid to kill microjitter ----
+  // Raw centroid jumps ~1-3 pixels per frame from color noise. At sensitivity 18,
+  // that's 0.003 * 18 = 0.05 rad (~3°) of unwanted camera shake per frame.
+  // EMA filters this out while preserving intentional movement.
+  if (lastResult.detected) {
+    if (emaCenterX === null || emaCenterY === null) {
+      // First detection — seed the EMA
+      emaCenterX = lastResult.centerX;
+      emaCenterY = lastResult.centerY;
+    } else {
+      emaCenterX = EMA_ALPHA * lastResult.centerX + (1 - EMA_ALPHA) * emaCenterX;
+      emaCenterY = EMA_ALPHA * lastResult.centerY + (1 - EMA_ALPHA) * emaCenterY;
+    }
+    // Overwrite raw centroid with smoothed version
+    lastResult = { ...lastResult, centerX: emaCenterX, centerY: emaCenterY };
+  } else {
+    // Lost tracking — reset EMA so it re-seeds on next detection
+    emaCenterX = null;
+    emaCenterY = null;
   }
 
   // ---- Compute delta for KrunkerStyle camera steering ----

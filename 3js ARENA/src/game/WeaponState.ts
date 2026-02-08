@@ -68,11 +68,11 @@ export const GUN_AIM_CONFIG = {
    *  Cranked from 2.5 → 10.0 so physical gun movement produces meaningful
    *  camera rotation. At 320x240 resolution, a 1cm wrist flick produces
    *  ~0.02 normalized delta → 0.02 * 10 = 0.2 rad ≈ 11° of camera turn. */
-  sensitivity: 10.0,
+  sensitivity: 18.0,
   /** Minimum normalized delta magnitude to register (filters hand tremor).
    *  Shrunk from 0.004 → 0.001 so real movements aren't filtered away.
    *  Higher resolution (320x240) means sub-pixel noise is already lower. */
-  deadZone: 0.001,
+  deadZone: 0.003,
   /** Fraction of accumulated delta drained per 120Hz tick.
    *  Actual drain is frame-rate-independent: alpha = 1 - (1 - speed)^(dt * 120).
    *  Boosted from 0.15 → 0.5 for snappier, less-laggy camera response.

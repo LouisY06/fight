@@ -21,6 +21,7 @@ import { getDashVelocity, getDashState } from '../combat/DashSpell';
 import { getGreenGunData, getGreenGunDelta } from '../cv/GreenGunTracker';
 import { useWeaponStore, GUN_AIM_CONFIG } from './WeaponState';
 
+
 const EYE_HEIGHT = 1.7;
 const MOVE_SPEED = 5; // units per second (keyboard mode)
 const MOUSE_SENSITIVITY = 0.002;
