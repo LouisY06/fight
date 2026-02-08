@@ -1,10 +1,14 @@
 // =============================================================================
 // HealthBar.tsx — Animated health bar with damage flash, ghost bar, low-health pulse
+// Modern UI: Orbitron/Rajdhani fonts, slim profile, gradient fills
 // =============================================================================
 
 import { useMemo, useRef, useEffect, useState } from 'react';
 import { useGameStore } from '../game/GameState';
 import { GAME_CONFIG } from '../game/GameConfig';
+
+const FONT_HEADING = "'Orbitron', 'Rajdhani', sans-serif";
+const FONT_BODY = "'Rajdhani', 'Segoe UI', system-ui, sans-serif";
 
 interface HealthBarProps {
   health: number;
@@ -23,11 +27,9 @@ export function HealthBar({ health, side, playerName, playerKey }: HealthBarProp
   const prevHealthRef = useRef(health);
   const [ghostPercentage, setGhostPercentage] = useState(percentage);
 
-  // Damage flash: show when this player just took damage
   const showDamageFlash =
     lastDamagedPlayer === playerKey && Date.now() - lastDamageTime < DAMAGE_FLASH_MS;
 
-  // Ghost bar: delayed trailing bar when health drops
   useEffect(() => {
     if (health < prevHealthRef.current) {
       const timer = setTimeout(() => {
@@ -42,9 +44,9 @@ export function HealthBar({ health, side, playerName, playerKey }: HealthBarProp
   }, [health]);
 
   const barColor = useMemo(() => {
-    if (percentage > 60) return '#22cc44';
-    if (percentage > 30) return '#ccaa22';
-    return '#cc2222';
+    if (percentage > 60) return { main: '#22cc44', dark: '#189934', glow: 'rgba(34,204,68,0.3)' };
+    if (percentage > 30) return { main: '#e8b818', dark: '#b8920e', glow: 'rgba(232,184,24,0.3)' };
+    return { main: '#e83030', dark: '#b82020', glow: 'rgba(232,48,48,0.4)' };
   }, [percentage]);
 
   const isLowHealth = percentage <= 30;
@@ -55,32 +57,54 @@ export function HealthBar({ health, side, playerName, playerKey }: HealthBarProp
         display: 'flex',
         flexDirection: 'column',
         alignItems: side === 'left' ? 'flex-start' : 'flex-end',
-        gap: '4px',
+        gap: '5px',
         minWidth: '280px',
       }}
     >
-      {/* Player name */}
-      <span
+      {/* Player name + HP number inline */}
+      <div
         style={{
-          color: '#ffffff',
-          fontSize: '14px',
-          fontWeight: 'bold',
-          textTransform: 'uppercase',
-          letterSpacing: '2px',
-          textShadow: '0 0 10px rgba(0,0,0,0.8)',
+          display: 'flex',
+          alignItems: 'baseline',
+          gap: '8px',
+          flexDirection: side === 'right' ? 'row-reverse' : 'row',
+          width: '100%',
+          justifyContent: side === 'right' ? 'flex-end' : 'flex-start',
         }}
       >
-        {playerName}
-      </span>
+        <span
+          style={{
+            color: 'rgba(255,255,255,0.9)',
+            fontSize: '11px',
+            fontWeight: 700,
+            fontFamily: FONT_HEADING,
+            textTransform: 'uppercase',
+            letterSpacing: '2px',
+          }}
+        >
+          {playerName}
+        </span>
+        <span
+          style={{
+            color: 'rgba(255,255,255,0.4)',
+            fontSize: '11px',
+            fontWeight: 600,
+            fontFamily: FONT_BODY,
+            letterSpacing: '0.5px',
+          }}
+        >
+          {Math.ceil(health)}/{GAME_CONFIG.maxHealth}
+        </span>
+      </div>
 
       {/* Health bar container */}
       <div
         style={{
           width: '100%',
-          height: '24px',
-          background: 'rgba(0, 0, 0, 0.6)',
-          border: '2px solid rgba(255, 255, 255, 0.2)',
-          borderRadius: '4px',
+          height: '16px',
+          background: 'rgba(255, 255, 255, 0.04)',
+          border: '1px solid rgba(255, 255, 255, 0.08)',
+          borderRadius: '2px',
           overflow: 'hidden',
           position: 'relative',
           animation: isLowHealth ? 'lowHealthPulse 1.2s ease-in-out infinite' : 'none',
@@ -92,8 +116,7 @@ export function HealthBar({ health, side, playerName, playerKey }: HealthBarProp
             style={{
               position: 'absolute',
               inset: 0,
-              background: 'rgba(255, 50, 50, 0.5)',
-              borderRadius: '2px',
+              background: 'rgba(255, 50, 50, 0.4)',
               animation: 'damageFlash 0.4s ease-out forwards',
               pointerEvents: 'none',
             }}
@@ -108,7 +131,7 @@ export function HealthBar({ health, side, playerName, playerKey }: HealthBarProp
             [side === 'left' ? 'left' : 'right']: 0,
             width: `${ghostPercentage}%`,
             height: '100%',
-            background: 'rgba(200, 200, 255, 0.35)',
+            background: 'rgba(255, 255, 255, 0.12)',
             transition: 'width 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
           }}
         />
@@ -121,28 +144,23 @@ export function HealthBar({ health, side, playerName, playerKey }: HealthBarProp
             [side === 'left' ? 'left' : 'right']: 0,
             width: `${percentage}%`,
             height: '100%',
-            background: `linear-gradient(180deg, ${barColor}, ${barColor}88)`,
+            background: `linear-gradient(180deg, ${barColor.main}, ${barColor.dark})`,
             transition: 'width 0.3s ease-out, background 0.3s ease',
-            boxShadow: `0 0 10px ${barColor}66`,
+            boxShadow: `0 0 8px ${barColor.glow}`,
           }}
         />
 
-        {/* HP number */}
-        <span
+        {/* Subtle top highlight */}
+        <div
           style={{
             position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            color: '#ffffff',
-            fontSize: '12px',
-            fontWeight: 'bold',
-            textShadow: '0 0 4px rgba(0,0,0,0.8)',
-            zIndex: 1,
+            top: 0,
+            left: 0,
+            right: 0,
+            height: '1px',
+            background: 'rgba(255, 255, 255, 0.1)',
           }}
-        >
-          {Math.ceil(health)} / {GAME_CONFIG.maxHealth}
-        </span>
+        />
       </div>
     </div>
   );

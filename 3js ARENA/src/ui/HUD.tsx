@@ -1,5 +1,6 @@
 // =============================================================================
 // HUD.tsx — In-game overlay: health bars, timer, round counter, win tracker
+// Modern UI: Orbitron/Rajdhani fonts, consistent styling
 // =============================================================================
 
 import { useEffect, useState } from 'react';
@@ -21,7 +22,7 @@ export function HUD() {
   const username = useGameStore((s) => s.username);
   const opponentName = useGameStore((s) => s.opponentName);
   const playerSlot = useGameStore((s) => s.playerSlot);
-  // Only show HUD during gameplay phases
+
   const showHUD =
     phase === 'playing' ||
     phase === 'countdown' ||
@@ -30,7 +31,6 @@ export function HUD() {
 
   if (!showHUD) return null;
 
-  // Determine which name goes on which side
   const isPlayer1 = playerSlot === 'player1' || playerSlot === null;
   const leftName = isPlayer1
     ? (username || 'PLAYER 1')
@@ -55,8 +55,8 @@ export function HUD() {
           display: 'flex',
           alignItems: 'flex-start',
           justifyContent: 'space-between',
-          padding: '16px 24px',
-          gap: '20px',
+          padding: '14px 20px',
+          gap: '16px',
         }}
       >
         <div style={{ flex: 1 }}>
@@ -104,18 +104,15 @@ export function HUD() {
 }
 
 // ---------------------------------------------------------------------------
-// Win tracker dots
-// ---------------------------------------------------------------------------
-
-// ---------------------------------------------------------------------------
-// Crosshair — dot + lines, flashes on hit
+// Crosshair — minimal dot + lines, flashes green on hit
 // ---------------------------------------------------------------------------
 
 function Crosshair() {
   const [isHitFlash, setIsHitFlash] = useState(false);
+  const lineColor = isHitFlash ? 'rgba(0, 255, 136, 0.9)' : 'rgba(255, 255, 255, 0.5)';
   const lineStyle: React.CSSProperties = {
     position: 'absolute',
-    background: isHitFlash ? 'rgba(0, 255, 136, 0.95)' : 'rgba(255, 255, 255, 0.7)',
+    background: lineColor,
     transition: 'background 0.1s ease',
   };
 
@@ -146,31 +143,30 @@ function Crosshair() {
           top: '50%',
           left: '50%',
           transform: 'translate(-50%, -50%)',
-          width: '3px',
-          height: '3px',
+          width: '2px',
+          height: '2px',
           borderRadius: '50%',
-          background: isHitFlash ? '#00ff88' : '#fff',
+          background: isHitFlash ? '#00ff88' : 'rgba(255,255,255,0.8)',
           boxShadow: isHitFlash
-            ? '0 0 12px rgba(0,255,136,0.9)'
-            : '0 0 4px rgba(0,0,0,0.8)',
+            ? '0 0 8px rgba(0,255,136,0.8)'
+            : 'none',
           transition: 'background 0.1s, box-shadow 0.1s',
-          animation: isHitFlash ? 'crosshairHit 0.15s ease-out' : 'none',
         }}
       />
       {/* Top */}
-      <div style={{ ...lineStyle, top: 0, left: '50%', transform: 'translateX(-50%)', width: '1.5px', height: '6px' }} />
+      <div style={{ ...lineStyle, top: 0, left: '50%', transform: 'translateX(-50%)', width: '1px', height: '6px' }} />
       {/* Bottom */}
-      <div style={{ ...lineStyle, bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '1.5px', height: '6px' }} />
+      <div style={{ ...lineStyle, bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '1px', height: '6px' }} />
       {/* Left */}
-      <div style={{ ...lineStyle, left: 0, top: '50%', transform: 'translateY(-50%)', width: '6px', height: '1.5px' }} />
+      <div style={{ ...lineStyle, left: 0, top: '50%', transform: 'translateY(-50%)', width: '6px', height: '1px' }} />
       {/* Right */}
-      <div style={{ ...lineStyle, right: 0, top: '50%', transform: 'translateY(-50%)', width: '6px', height: '1.5px' }} />
+      <div style={{ ...lineStyle, right: 0, top: '50%', transform: 'translateY(-50%)', width: '6px', height: '1px' }} />
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Win tracker dots
+// Win tracker — small diamond indicators
 // ---------------------------------------------------------------------------
 
 function WinTracker({
@@ -184,27 +180,29 @@ function WinTracker({
     <div
       style={{
         display: 'flex',
-        gap: '6px',
+        gap: '5px',
         marginTop: '6px',
         justifyContent: side === 'left' ? 'flex-start' : 'flex-end',
       }}
     >
-      {Array.from({ length: GAME_CONFIG.roundsToWin }).map((_, i) => (
-        <div
-          key={i}
-          style={{
-            width: '10px',
-            height: '10px',
-            borderRadius: '50%',
-            background:
-              i < wins ? '#ffcc00' : 'rgba(255, 255, 255, 0.15)',
-            border: '1px solid rgba(255, 255, 255, 0.3)',
-            boxShadow:
-              i < wins ? '0 0 8px rgba(255, 200, 0, 0.6)' : 'none',
-            animation: i < wins ? 'winDotPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)' : 'none',
-          }}
-        />
-      ))}
+      {Array.from({ length: GAME_CONFIG.roundsToWin }).map((_, i) => {
+        const won = i < wins;
+        return (
+          <div
+            key={i}
+            style={{
+              width: '8px',
+              height: '8px',
+              transform: 'rotate(45deg)',
+              background: won ? '#ffcc00' : 'rgba(255, 255, 255, 0.08)',
+              border: `1px solid ${won ? 'rgba(255,200,0,0.6)' : 'rgba(255,255,255,0.12)'}`,
+              boxShadow: won ? '0 0 6px rgba(255, 200, 0, 0.5)' : 'none',
+              animation: won ? 'winDotPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)' : 'none',
+              transition: 'all 0.3s ease',
+            }}
+          />
+        );
+      })}
     </div>
   );
 }

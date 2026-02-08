@@ -171,10 +171,13 @@ export function MeleeCombat() {
         useScreenShakeStore.getState().trigger(0.25, 120); // attack landed feedback
 
         if (isMultiplayer) {
+          // Send authoritative newHealth so both clients stay in sync
+          const newHealth = useGameStore.getState()[opponentSlot].health;
           gameSocket.send({
             type: 'damage_event',
             target: opponentSlot,
             amount,
+            newHealth,
           });
         }
       }

@@ -34,3 +34,66 @@ export const GAME_CONFIG = {
 
 export type WeaponType = 'sword' | 'gun' | 'knife';
 export type AttackType = 'slash' | 'stab' | 'shoot' | 'block' | 'parry' | 'idle';
+
+// ---------------------------------------------------------------------------
+// AI Difficulty Presets
+// ---------------------------------------------------------------------------
+
+export type AIDifficulty = 'easy' | 'medium' | 'hard';
+
+export interface AIDifficultyConfig {
+  label: string;
+  moveSpeed: number;
+  attackRange: number;
+  attackCooldown: number;
+  swingDuration: number;
+  /** How often to poll LLM (ms). Lower = smarter/faster reactions */
+  decisionIntervalMs: number;
+  /** Whether to use LLM inference (true) or heuristic-only (false) */
+  useLLM: boolean;
+  /** Damage multiplier for the bot */
+  damageMultiplier: number;
+  /** Block chance (0-1) for offline heuristics */
+  blockChance: number;
+  /** Description for UI */
+  description: string;
+}
+
+export const AI_DIFFICULTY: Record<AIDifficulty, AIDifficultyConfig> = {
+  easy: {
+    label: 'EASY',
+    moveSpeed: 1.5,
+    attackRange: 1.8,
+    attackCooldown: 2.0,
+    swingDuration: 0.5,
+    decisionIntervalMs: 2500,
+    useLLM: false,
+    damageMultiplier: 0.6,
+    blockChance: 0.1,
+    description: 'Slow reflexes, predictable patterns',
+  },
+  medium: {
+    label: 'MEDIUM',
+    moveSpeed: 2.5,
+    attackRange: 2.2,
+    attackCooldown: 1.2,
+    swingDuration: 0.4,
+    decisionIntervalMs: 1500,
+    useLLM: true,
+    damageMultiplier: 0.85,
+    blockChance: 0.3,
+    description: 'Balanced fighter, uses LLM tactics',
+  },
+  hard: {
+    label: 'HARD',
+    moveSpeed: 3.5,
+    attackRange: 2.5,
+    attackCooldown: 0.7,
+    swingDuration: 0.3,
+    decisionIntervalMs: 800,
+    useLLM: true,
+    damageMultiplier: 1.0,
+    blockChance: 0.5,
+    description: 'Fast, aggressive, reads your patterns',
+  },
+} as const;

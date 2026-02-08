@@ -9,14 +9,13 @@ import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { PlayerInput } from '../game/InputManager';
 import { useGameStore } from '../game/GameState';
-import { GAME_CONFIG } from '../game/GameConfig';
+import { GAME_CONFIG, AI_DIFFICULTY } from '../game/GameConfig';
 import { VultrAI, type AICombatDecision, type GameStateSnapshot } from './VultrAIService';
 
 // ---------------------------------------------------------------------------
-// Constants
+// Constants (defaults — overridden by difficulty config)
 // ---------------------------------------------------------------------------
 
-const DECISION_INTERVAL_MS = 1500;  // How often to query the LLM
 const ATTACK_DURATION_MS = 400;     // How long an attack "swing" lasts
 const BLOCK_DURATION_MS = 600;      // How long a block hold lasts
 const DELAYED_ACTION_MS = 500;      // Extra delay for "delayed" timing
@@ -134,7 +133,8 @@ export function useAIInput(): PlayerInput {
     isFetching.current = true;
     try {
       const snapshot = getSnapshot();
-      const decision = await VultrAI.getDecision(snapshot);
+      const difficulty = store.aiDifficulty;
+      const decision = await VultrAI.getDecision(snapshot, difficulty);
       aiState.current.currentDecision = decision;
       aiState.current.decisionTimestamp = Date.now();
       aiState.current.actionScheduled = false;
@@ -296,11 +296,14 @@ export function useAIInput(): PlayerInput {
     }
   }, [trackOpponentActions, getPlayerPos]);
 
-  // Decision loop — poll LLM on interval
+  // Decision loop — poll LLM on interval (interval depends on difficulty)
   useEffect(() => {
+    const difficulty = useGameStore.getState().aiDifficulty;
+    const intervalMs = AI_DIFFICULTY[difficulty].decisionIntervalMs;
+
     decisionLoopRef.current = setInterval(() => {
       fetchDecision();
-    }, DECISION_INTERVAL_MS);
+    }, intervalMs);
 
     // Fetch first decision immediately
     fetchDecision();

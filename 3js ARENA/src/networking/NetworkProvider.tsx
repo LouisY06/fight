@@ -15,6 +15,8 @@ import { gameSocket } from './socket';
 import type { ServerMessage, ClientMessage } from './protocol';
 import { useGameStore } from '../game/GameState';
 import { useScreenShakeStore } from '../game/useScreenShake';
+import { useSpellStore, SPELL_CONFIGS, fireSpellCast, type SpellType } from '../combat/SpellSystem';
+import * as THREE from 'three';
 
 export interface OpponentState {
   position: [number, number, number];
@@ -39,8 +41,9 @@ interface NetworkContextType {
   cancelMatch: () => void;
   sendInput: (input: Omit<ClientMessage & { type: 'player_input' }, 'type'>) => void;
   sendGameStart: (themeId: string) => void;
-  sendDamage: (target: 'player1' | 'player2', amount: number) => void;
+  sendDamage: (target: 'player1' | 'player2', amount: number, newHealth: number) => void;
   sendRoundEnd: (winner: 'player1' | 'player2' | 'draw') => void;
+  sendSpellCast: (spellType: string, origin: [number, number, number], direction: [number, number, number]) => void;
 }
 
 const defaultOpponentState: OpponentState = {
@@ -65,8 +68,9 @@ const NetworkContext = createContext<NetworkContextType>({
   cancelMatch: () => {},
   sendInput: () => {},
   sendGameStart: () => {},
-  sendDamage: () => {},
+  sendDamage: () => { },
   sendRoundEnd: () => {},
+  sendSpellCast: () => {},
 });
 
 export function NetworkProvider({ children }: { children: ReactNode }) {
@@ -81,6 +85,7 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
   const setPhase = useGameStore((s) => s.setPhase);
   const startGame = useGameStore((s) => s.startGame);
   const dealDamage = useGameStore((s) => s.dealDamage);
+  const setHealth = useGameStore((s) => s.setHealth);
   const endRound = useGameStore((s) => s.endRound);
   const setOpponentName = useGameStore((s) => s.setOpponentName);
 
@@ -140,7 +145,12 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
           break;
 
         case 'opponent_damage':
-          dealDamage(msg.target, msg.amount);
+          // Use authoritative health from attacker if provided, otherwise fallback to dealDamage
+          if (msg.newHealth !== undefined) {
+            setHealth(msg.target, msg.newHealth);
+          } else {
+            dealDamage(msg.target, msg.amount);
+          }
           {
             const slot = useGameStore.getState().playerSlot;
             if (slot === msg.target) {
@@ -160,6 +170,19 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
         case 'opponent_username':
           setOpponentName(msg.username);
           break;
+
+        case 'opponent_spell_cast': {
+          // Opponent cast a spell — create it locally
+          const spellType = msg.spellType as SpellType;
+          if (SPELL_CONFIGS[spellType]) {
+            const origin = new THREE.Vector3(...msg.origin);
+            const dir = new THREE.Vector3(...msg.direction);
+            const opSlot = useGameStore.getState().playerSlot === 'player1' ? 'player2' : 'player1';
+            const spell = useSpellStore.getState().castSpell(spellType, opSlot, origin, dir);
+            if (spell) fireSpellCast(spell);
+          }
+          break;
+        }
       }
     });
 
@@ -167,7 +190,7 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
       unsubStatus();
       unsubMsg();
     };
-  }, [setPhase, startGame, dealDamage, endRound, setOpponentName]);
+  }, [setPhase, startGame, dealDamage, setHealth, endRound, setOpponentName]);
 
   // Actions
   const connect = useCallback(() => gameSocket.connect(), []);
@@ -209,12 +232,16 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
     gameSocket.send({ type: 'game_start', themeId });
   }, []);
 
-  const sendDamage = useCallback((target: 'player1' | 'player2', amount: number) => {
-    gameSocket.send({ type: 'damage_event', target, amount });
+  const sendDamage = useCallback((target: 'player1' | 'player2', amount: number, newHealth: number) => {
+    gameSocket.send({ type: 'damage_event', target, amount, newHealth });
   }, []);
 
   const sendRoundEnd = useCallback((winner: 'player1' | 'player2' | 'draw') => {
     gameSocket.send({ type: 'round_end', winner });
+  }, []);
+
+  const sendSpellCast = useCallback((spellType: string, origin: [number, number, number], direction: [number, number, number]) => {
+    gameSocket.send({ type: 'spell_cast', spellType, origin, direction });
   }, []);
 
   return (
@@ -236,6 +263,7 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
         sendGameStart,
         sendDamage,
         sendRoundEnd,
+        sendSpellCast,
       }}
     >
       {children}

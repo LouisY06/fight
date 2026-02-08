@@ -1,8 +1,11 @@
 // =============================================================================
-// RoundTimer.tsx — Countdown timer display
+// RoundTimer.tsx — Countdown timer + round label
+// Modern UI: Orbitron font, clean minimal design
 // =============================================================================
 
 import { useGameStore } from '../game/GameState';
+
+const FONT_HEADING = "'Orbitron', 'Rajdhani', sans-serif";
 
 export function RoundTimer() {
   const roundTimeRemaining = useGameStore((s) => s.roundTimeRemaining);
@@ -19,34 +22,38 @@ export function RoundTimer() {
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        gap: '2px',
+        gap: '4px',
+        minWidth: '100px',
       }}
     >
       {/* Round label */}
       <span
         style={{
-          color: '#aaaaaa',
-          fontSize: '12px',
-          fontWeight: 'bold',
+          color: 'rgba(255, 255, 255, 0.35)',
+          fontSize: '9px',
+          fontWeight: 600,
+          fontFamily: FONT_HEADING,
           textTransform: 'uppercase',
-          letterSpacing: '3px',
+          letterSpacing: '4px',
         }}
       >
-        Round {currentRound}
+        ROUND {currentRound}
       </span>
 
       {/* Timer */}
       <span
         style={{
-          color: isLow ? '#ff3333' : '#ffffff',
-          fontSize: '32px',
-          fontWeight: 'bold',
-          fontFamily: 'monospace',
+          color: isLow ? '#ff3333' : 'rgba(255, 255, 255, 0.9)',
+          fontSize: '28px',
+          fontWeight: 700,
+          fontFamily: FONT_HEADING,
+          letterSpacing: '2px',
           textShadow: isLow
-            ? '0 0 20px rgba(255,0,0,0.6), 0 0 40px rgba(255,0,0,0.3)'
-            : '0 0 10px rgba(0,0,0,0.5)',
+            ? '0 0 20px rgba(255,0,0,0.5)'
+            : 'none',
           animation: isLow ? 'pulse 0.4s ease-in-out infinite alternate' : 'none',
           transition: 'color 0.2s ease, text-shadow 0.2s ease',
+          lineHeight: 1,
         }}
       >
         {timeStr}

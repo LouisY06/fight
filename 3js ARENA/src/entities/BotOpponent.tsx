@@ -3,21 +3,19 @@
 // Uses AnimatedAvatarModel (biped_robot.glb) with walk + sword animations.
 // =============================================================================
 
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useMemo } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { RigidBody, CapsuleCollider } from '@react-three/rapier';
 import * as THREE from 'three';
 import { DeathEffect } from './DeathEffect';
 import { useGameStore } from '../game/GameState';
-import { GAME_CONFIG } from '../game/GameConfig';
+import { GAME_CONFIG, AI_DIFFICULTY } from '../game/GameConfig';
+import { getDebuff } from '../combat/SpellSystem';
+import { DebuffVFX } from '../combat/DebuffVFX';
 import { OpponentHitbox } from './OpponentHitbox';
 import { MechaEntity } from './MechaEntity';
 import { setBotSwordState } from '../combat/OpponentSwordState';
 
-const BOT_MOVE_SPEED = 2.5;
-const ATTACK_RANGE = 2.2;
-const ATTACK_COOLDOWN = 1.2;
-const SWING_DURATION = 0.4;
 const SWORD_BLADE_LENGTH = 0.7; // world-space blade length (scaled)
 
 interface BotOpponentProps {
@@ -27,6 +25,8 @@ interface BotOpponentProps {
 export function BotOpponent({ color = '#ff4444' }: BotOpponentProps) {
   const { camera } = useThree();
   const groupRef = useRef<THREE.Group>(null!);
+  const aiDifficulty = useGameStore((s) => s.aiDifficulty);
+  const diffConfig = useMemo(() => AI_DIFFICULTY[aiDifficulty], [aiDifficulty]);
 
   const phase = useGameStore((s) => s.phase);
   const player2 = useGameStore((s) => s.player2);
@@ -79,9 +79,29 @@ export function BotOpponent({ color = '#ff4444' }: BotOpponentProps) {
     const distXZ = _dirToPlayer.length();
     const now = performance.now() / 1000;
 
-    // Attack logic — swing when in range and cooldown elapsed
-    const inAttackRange = distXZ < ATTACK_RANGE;
-    const cooldownElapsed = now - lastAttackTimeRef.current > ATTACK_COOLDOWN;
+    // --- Debuff checks ---
+    const debuff = getDebuff('player2');
+    const isStunned = debuff === 'stun';
+    const isSlowed = debuff === 'slow';
+    const speedMultiplier = isSlowed ? 0.35 : 1;
+
+    // Stun-lock: can't move or attack at all
+    if (isStunned) {
+      isMovingRef.current = false;
+      // Still update sword state for visuals
+      if (swordGroupRef.current) {
+        swordGroupRef.current.getWorldPosition(_swordHilt);
+        swordGroupRef.current.getWorldQuaternion(_swordQuat);
+        _swordTipLocal.set(0, SWORD_BLADE_LENGTH, 0);
+        _swordTipLocal.applyQuaternion(_swordQuat).add(_swordHilt);
+        setBotSwordState(_swordHilt.clone(), _swordTipLocal.clone(), false);
+      }
+      return; // Skip all movement and attack logic
+    }
+
+    // Attack logic — swing when in range and cooldown elapsed (difficulty-aware)
+    const inAttackRange = distXZ < diffConfig.attackRange;
+    const cooldownElapsed = now - lastAttackTimeRef.current > diffConfig.attackCooldown;
 
     if (inAttackRange && cooldownElapsed && swingProgressRef.current <= 0) {
       swingProgressRef.current = 0.001;
@@ -90,17 +110,17 @@ export function BotOpponent({ color = '#ff4444' }: BotOpponentProps) {
     }
 
     if (swingProgressRef.current > 0) {
-      swingProgressRef.current += delta / SWING_DURATION;
+      swingProgressRef.current += delta / diffConfig.swingDuration;
       if (swingProgressRef.current >= 1) {
         swingProgressRef.current = 0;
         setIsSwinging(false);
       }
     }
 
-    // Movement — approach player when not in attack range
+    // Movement — approach player when not in attack range (difficulty-aware speed, slowed if debuffed)
     if (!inAttackRange && distXZ > 0.3) {
       _dirToPlayer.normalize();
-      const move = BOT_MOVE_SPEED * delta;
+      const move = diffConfig.moveSpeed * speedMultiplier * delta;
       groupRef.current.position.x += _dirToPlayer.x * move;
       groupRef.current.position.z += _dirToPlayer.z * move;
       isMovingRef.current = true;
@@ -158,6 +178,9 @@ export function BotOpponent({ color = '#ff4444' }: BotOpponentProps) {
 
               <OpponentHitbox />
             </RigidBody>
+
+            {/* 3D debuff status effects (electric arcs / frost crystals) */}
+            <DebuffVFX target="player2" />
           </>
         )}
       </group>

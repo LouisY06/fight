@@ -85,7 +85,9 @@ export interface AICombatDecision {
 // System prompt — defines the AI fighter personality
 // ---------------------------------------------------------------------------
 
-const SYSTEM_PROMPT = `You are the AI brain of a mecha fighting game opponent. You are an aggressive but smart fighter called "IRON WRAITH".
+// Difficulty-aware system prompts
+const SYSTEM_PROMPTS: Record<string, string> = {
+  medium: `You are the AI brain of a mecha fighting game opponent. You are a balanced fighter called "IRON WRAITH".
 
 Given the current game state, you must decide your next combat action. You MUST respond with ONLY a valid JSON object, no other text.
 
@@ -101,7 +103,32 @@ Strategy rules:
 - If opponent is blocking, hold and wait for opening
 - Vary your moves to be unpredictable
 - If time is running out and you're ahead on health, play defensive
-- If time is running out and you're behind, be aggressive`;
+- If time is running out and you're behind, be aggressive`,
+
+  hard: `You are the AI brain of a mecha fighting game opponent. You are an elite fighter called "IRON WRAITH" — the deadliest AI in the arena.
+
+Given the current game state, you must decide your next combat action. You MUST respond with ONLY a valid JSON object, no other text.
+
+Response format:
+{"move": "<advance|retreat|strafe_left|strafe_right|hold>", "action": "<attack|block|idle>", "timing": "<immediate|delayed|cautious>"}
+
+Strategy rules (EXPERT-LEVEL):
+- You have PERFECT reads on the opponent. React to their patterns instantly.
+- If opponent attacks twice in a row, ALWAYS block then counter immediately
+- If opponent is blocking, strafe to their side and attack from a new angle
+- If distance is large (>3), aggressively advance to close the gap
+- If distance is small (<1.5), unleash rapid attack combos
+- If your health is low, play cautious but punish every opening
+- If opponent health is low, relentlessly finish them with advance + attack
+- NEVER idle for more than one turn — always be doing something
+- Mix strafes with attacks to be unpredictable
+- Use delayed timing to bait opponents into attacking, then counter
+- If time is running low and you're behind, go ALL-IN aggressive`,
+};
+
+function getSystemPrompt(difficulty: string): string {
+  return SYSTEM_PROMPTS[difficulty] ?? SYSTEM_PROMPTS.medium;
+}
 
 // ---------------------------------------------------------------------------
 // Parse the LLM response into a structured decision
@@ -159,16 +186,22 @@ export const VultrAI = {
   /**
    * Request a combat decision from the Vultr-hosted LLM.
    * Returns a structured decision, or a fallback if the API fails.
+   * @param difficulty - 'easy' uses heuristics only, 'medium'/'hard' use LLM
    */
-  async getDecision(state: GameStateSnapshot): Promise<AICombatDecision> {
+  async getDecision(state: GameStateSnapshot, difficulty: string = 'medium'): Promise<AICombatDecision> {
+    // Easy mode: always use heuristics (no LLM)
+    if (difficulty === 'easy') {
+      return getOfflineDecision(state, difficulty);
+    }
+
     const apiKey = getApiKey();
     if (!apiKey || apiKey === 'your_vultr_api_key_here') {
-      return getOfflineDecision(state);
+      return getOfflineDecision(state, difficulty);
     }
 
     // If we've hit too many consecutive errors, stay offline until reset
     if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
-      return getOfflineDecision(state);
+      return getOfflineDecision(state, difficulty);
     }
 
     // Discover the model on first call
@@ -176,10 +209,13 @@ export const VultrAI = {
     if (!model) {
       console.warn('[VultrAI] No model available, using offline fallback');
       consecutiveErrors = MAX_CONSECUTIVE_ERRORS; // Don't keep retrying
-      return getOfflineDecision(state);
+      return getOfflineDecision(state, difficulty);
     }
 
     try {
+      const systemPrompt = getSystemPrompt(difficulty);
+      const temperature = difficulty === 'hard' ? 0.4 : 0.7;
+
       const response = await fetch(`${VULTR_BASE}/chat/completions`, {
         method: 'POST',
         headers: {
@@ -189,11 +225,11 @@ export const VultrAI = {
         body: JSON.stringify({
           model,
           messages: [
-            { role: 'system', content: SYSTEM_PROMPT },
+            { role: 'system', content: systemPrompt },
             { role: 'user', content: buildUserPrompt(state) },
           ],
           max_tokens: 80,
-          temperature: 0.7,
+          temperature,
         }),
       });
 
@@ -204,7 +240,7 @@ export const VultrAI = {
         if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
           console.warn(`[VultrAI] ${MAX_CONSECUTIVE_ERRORS} consecutive errors — switching to offline mode`);
         }
-        return getOfflineDecision(state);
+        return getOfflineDecision(state, difficulty);
       }
 
       // Success — reset error counter
@@ -219,7 +255,7 @@ export const VultrAI = {
       if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
         console.warn(`[VultrAI] ${MAX_CONSECUTIVE_ERRORS} consecutive errors — switching to offline mode`);
       }
-      return getOfflineDecision(state);
+      return getOfflineDecision(state, difficulty);
     }
   },
 
@@ -236,28 +272,78 @@ export const VultrAI = {
 // Offline fallback — simple heuristic when API is unavailable
 // ---------------------------------------------------------------------------
 
-function getOfflineDecision(state: GameStateSnapshot): AICombatDecision {
+function getOfflineDecision(state: GameStateSnapshot, difficulty: string = 'medium'): AICombatDecision {
   const healthAdvantage = state.myHealth - state.opponentHealth;
   const isClose = state.distance < 2;
   const isFar = state.distance > 3.5;
   const opponentAggressive = state.opponentRecentActions.filter(a => a === 'attack').length >= 2;
 
-  // Far away — close distance
-  if (isFar) {
+  // ---- EASY: predictable, slow, rarely blocks ----
+  if (difficulty === 'easy') {
+    if (isFar) return { move: 'advance', action: 'idle', timing: 'cautious' };
+    if (isClose) {
+      // Rarely blocks, mostly just attacks slowly
+      if (Math.random() < 0.1) return { move: 'hold', action: 'block', timing: 'delayed' };
+      return { move: 'hold', action: 'attack', timing: 'delayed' };
+    }
     return { move: 'advance', action: 'idle', timing: 'immediate' };
   }
 
-  // Opponent is aggressive — block then counter
+  // ---- HARD: aggressive, reads patterns, always blocks counters ----
+  if (difficulty === 'hard') {
+    if (isFar) return { move: 'advance', action: 'idle', timing: 'immediate' };
+
+    // If opponent is aggressive, always block then counter
+    if (opponentAggressive && isClose) {
+      return { move: 'hold', action: 'block', timing: 'immediate' };
+    }
+
+    // Opponent blocking → strafe and attack
+    if (state.opponentBlocking && isClose) {
+      return {
+        move: Math.random() > 0.5 ? 'strafe_left' : 'strafe_right',
+        action: 'attack',
+        timing: 'immediate',
+      };
+    }
+
+    // Winning → finish them aggressively
+    if (healthAdvantage > 15 && isClose) {
+      return { move: 'advance', action: 'attack', timing: 'immediate' };
+    }
+
+    // Losing → cautious but punish openings
+    if (healthAdvantage < -20) {
+      if (opponentAggressive) return { move: 'hold', action: 'block', timing: 'immediate' };
+      return {
+        move: Math.random() > 0.5 ? 'strafe_left' : 'strafe_right',
+        action: Math.random() > 0.4 ? 'attack' : 'block',
+        timing: 'immediate',
+      };
+    }
+
+    // Default: mix attacks and strafes
+    if (isClose) {
+      return {
+        move: Math.random() > 0.4 ? (Math.random() > 0.5 ? 'strafe_left' : 'strafe_right') : 'advance',
+        action: Math.random() > 0.2 ? 'attack' : 'block',
+        timing: 'immediate',
+      };
+    }
+    return { move: 'advance', action: 'idle', timing: 'immediate' };
+  }
+
+  // ---- MEDIUM: balanced (original behavior) ----
+  if (isFar) return { move: 'advance', action: 'idle', timing: 'immediate' };
+
   if (opponentAggressive && isClose) {
     return { move: 'hold', action: 'block', timing: 'immediate' };
   }
 
-  // We're winning and close — stay aggressive
   if (healthAdvantage > 20 && isClose) {
     return { move: 'advance', action: 'attack', timing: 'immediate' };
   }
 
-  // We're losing — be cautious
   if (healthAdvantage < -20) {
     return {
       move: Math.random() > 0.5 ? 'strafe_left' : 'strafe_right',
@@ -266,7 +352,6 @@ function getOfflineDecision(state: GameStateSnapshot): AICombatDecision {
     };
   }
 
-  // Default: advance and attack
   if (isClose) {
     return {
       move: Math.random() > 0.6 ? 'advance' : 'strafe_left',

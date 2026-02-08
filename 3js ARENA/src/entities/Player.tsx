@@ -13,6 +13,7 @@ import { useGameStore } from '../game/GameState';
 import { GAME_CONFIG } from '../game/GameConfig';
 import { OpponentHitbox } from './OpponentHitbox';
 import { MechaEntity } from './MechaEntity';
+import { DebuffVFX } from '../combat/DebuffVFX';
 
 interface PlayerProps {
   playerId: 'player1' | 'player2';
@@ -102,6 +103,9 @@ export function Player({ playerId, input, color, spawnPosition }: PlayerProps) {
               {/* Hitbox visualization (only for opponent) */}
               {isOpponent && <OpponentHitbox />}
             </RigidBody>
+
+            {/* 3D debuff status effects (electric arcs / frost crystals) */}
+            <DebuffVFX target={playerId} />
 
             {/* Weapon */}
             <Weapon

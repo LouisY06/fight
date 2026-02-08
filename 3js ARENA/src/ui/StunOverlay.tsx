@@ -1,11 +1,12 @@
 // =============================================================================
 // StunOverlay.tsx — Full-screen "SWORD CLASH!" text when swords collide
-// Fades in with a flash, holds briefly, then fades out. Includes a subtle
-// electric/stun border effect during the stun window.
+// Modern UI: Orbitron font, subtle flash + electric border
 // =============================================================================
 
 import { useState, useEffect, useCallback } from 'react';
 import { onClashEvent, STUN_DURATION_MS } from '../combat/ClashEvent';
+
+const FONT_HEADING = "'Orbitron', 'Rajdhani', sans-serif";
 
 export function StunOverlay() {
   const [visible, setVisible] = useState(false);
@@ -15,11 +16,8 @@ export function StunOverlay() {
     setVisible(true);
     setPhase('flash');
 
-    // flash → hold after 150ms
     setTimeout(() => setPhase('hold'), 150);
-    // hold → fade after stun duration - 300ms
     setTimeout(() => setPhase('fade'), STUN_DURATION_MS - 300);
-    // hide after stun duration
     setTimeout(() => setVisible(false), STUN_DURATION_MS + 200);
   }, []);
 
@@ -54,21 +52,21 @@ export function StunOverlay() {
           position: 'absolute',
           inset: 0,
           background: phase === 'flash'
-            ? 'radial-gradient(ellipse at center, rgba(255,200,50,0.3) 0%, rgba(255,100,0,0.1) 50%, transparent 80%)'
+            ? 'radial-gradient(ellipse at center, rgba(255,200,50,0.25) 0%, rgba(255,100,0,0.08) 50%, transparent 80%)'
             : 'transparent',
           transition: 'background 0.2s ease-out',
           pointerEvents: 'none',
         }}
       />
 
-      {/* Stun border glow (electric effect) */}
+      {/* Stun border glow */}
       <div
         style={{
           position: 'absolute',
           inset: 0,
           boxShadow:
             phase !== 'fade'
-              ? 'inset 0 0 80px rgba(255, 170, 0, 0.4), inset 0 0 160px rgba(255, 100, 0, 0.15)'
+              ? 'inset 0 0 60px rgba(255, 170, 0, 0.3), inset 0 0 120px rgba(255, 100, 0, 0.1)'
               : 'inset 0 0 0px transparent',
           transition: 'box-shadow 0.3s ease-out',
           pointerEvents: 'none',
@@ -83,32 +81,32 @@ export function StunOverlay() {
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          gap: '4px',
+          gap: '8px',
         }}
       >
         <div
           style={{
-            fontSize: '56px',
+            fontSize: '42px',
             fontWeight: 900,
-            fontFamily: '"Impact", "Arial Black", sans-serif',
+            fontFamily: FONT_HEADING,
             color: '#ffcc00',
             textShadow:
-              '0 0 20px rgba(255, 200, 0, 0.9), 0 0 60px rgba(255, 100, 0, 0.6), 0 4px 8px rgba(0, 0, 0, 0.8)',
-            letterSpacing: '6px',
+              '0 0 20px rgba(255, 200, 0, 0.8), 0 0 60px rgba(255, 100, 0, 0.4), 0 4px 8px rgba(0, 0, 0, 0.8)',
+            letterSpacing: '8px',
             textTransform: 'uppercase',
             animation: phase === 'flash' ? 'clashTextPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)' : 'none',
           }}
         >
-          SWORD CLASH!
+          SWORD CLASH
         </div>
         <div
           style={{
-            fontSize: '22px',
-            fontWeight: 700,
-            fontFamily: 'monospace',
-            color: '#ff6600',
-            textShadow: '0 0 12px rgba(255, 100, 0, 0.8), 0 2px 4px rgba(0, 0, 0, 0.6)',
-            letterSpacing: '4px',
+            fontSize: '14px',
+            fontWeight: 600,
+            fontFamily: FONT_HEADING,
+            color: 'rgba(255, 150, 0, 0.7)',
+            textShadow: '0 0 12px rgba(255, 100, 0, 0.6)',
+            letterSpacing: '6px',
             textTransform: 'uppercase',
             opacity: phase === 'fade' ? 0 : 0.9,
             transition: 'opacity 0.3s ease-out',
@@ -118,7 +116,6 @@ export function StunOverlay() {
         </div>
       </div>
 
-      {/* Keyframe animation injected inline */}
       <style>{`
         @keyframes clashTextPop {
           0% { transform: scale(0.3); opacity: 0; }

@@ -21,6 +21,8 @@ export interface DamageEventMsg {
   type: 'damage_event';
   target: 'player1' | 'player2';
   amount: number;
+  /** The target's new health after this damage (authoritative from attacker) */
+  newHealth: number;
 }
 
 export interface GameStartMsg {
@@ -38,10 +40,17 @@ export interface SetUsernameMsg {
   username: string;
 }
 
+export interface SpellCastMsg {
+  type: 'spell_cast';
+  spellType: string;
+  origin: [number, number, number];
+  direction: [number, number, number];
+}
+
 export type ClientMessage =
   | CreateRoomMsg | JoinRoomMsg | FindMatchMsg | CancelMatchMsg
   | PlayerInputMsg | DamageEventMsg | GameStartMsg | RoundEndMsg
-  | SetUsernameMsg;
+  | SetUsernameMsg | SpellCastMsg;
 
 // ---- Messages client receives ----
 
@@ -70,6 +79,8 @@ export interface OpponentDamageMsg {
   type: 'opponent_damage';
   target: 'player1' | 'player2';
   amount: number;
+  /** The target's new health after this damage (authoritative from attacker) */
+  newHealth: number;
 }
 
 export interface OpponentGameStartMsg {
@@ -87,8 +98,15 @@ export interface OpponentUsernameMsg {
   username: string;
 }
 
+export interface OpponentSpellCastMsg {
+  type: 'opponent_spell_cast';
+  spellType: string;
+  origin: [number, number, number];
+  direction: [number, number, number];
+}
+
 export type ServerMessage =
   | RoomCreatedMsg | RoomJoinedMsg | MatchFoundMsg
   | OpponentJoinedMsg | OpponentLeftMsg | ErrorMsg
   | OpponentInputMsg | OpponentDamageMsg | OpponentGameStartMsg | OpponentRoundEndMsg
-  | OpponentUsernameMsg;
+  | OpponentUsernameMsg | OpponentSpellCastMsg;

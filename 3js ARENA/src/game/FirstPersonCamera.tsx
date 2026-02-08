@@ -11,6 +11,7 @@ import * as THREE from 'three';
 import { useGameStore } from './GameState';
 import { GAME_CONFIG } from './GameConfig';
 import { cvBridge } from '../cv/cvBridge';
+import { getDebuff } from '../combat/SpellSystem';
 import {
   useScreenShakeStore,
   computeShakeOffset,
@@ -90,6 +91,49 @@ export function FirstPersonCamera() {
     });
     return unsub;
   }, [facingYaw]);
+
+  // ---- Auto-calibrate: fully automatic, no manual button needed ----
+  // Fires on: round start, first tracking lock during gameplay, and
+  // periodically every 30s to correct drift. The player's current
+  // sitting position always = "facing the enemy."
+  const prevPhaseForCalibrate = useRef<string>('');
+  const wasTrackingRef = useRef(false);
+  const lastAutoCalibrate = useRef(0);
+
+  const doAutoCalibrate = () => {
+    if (cvBridge.mapperRef) {
+      cvBridge.mapperRef.current.calibrate();
+      cvBridge.triggerCalibrate();
+      lastAutoCalibrate.current = Date.now();
+    }
+  };
+
+  // Calibrate on round start (countdown phase)
+  useEffect(() => {
+    if (
+      phase === 'countdown' &&
+      prevPhaseForCalibrate.current !== 'countdown' &&
+      cvEnabled
+    ) {
+      // Small delay to let pose tracker settle after scene transition
+      const timer = setTimeout(doAutoCalibrate, 300);
+      return () => clearTimeout(timer);
+    }
+    prevPhaseForCalibrate.current = phase;
+  }, [phase, cvEnabled]);
+
+  // Calibrate when tracking first locks on during gameplay
+  useEffect(() => {
+    const cvInput = cvInputRef.current;
+    const isGameplay = phase === 'playing' || phase === 'countdown';
+    const isNowTracking = cvEnabled && cvInput.isTracking;
+
+    if (isNowTracking && !wasTrackingRef.current && isGameplay) {
+      // Tracking just started mid-game — auto-calibrate
+      setTimeout(doAutoCalibrate, 200);
+    }
+    wasTrackingRef.current = isNowTracking;
+  });
 
   // ---- Pointer lock for mouse look (keyboard mode) ----
   useEffect(() => {
@@ -178,6 +222,12 @@ export function FirstPersonCamera() {
         // Movement via WASD / dance pad (below). CV only handles head look + combat.
       }
 
+      // ---- Debuff checks (stun / slow from spells) ----
+      const mySlot = (playerSlot ?? 'player1') as 'player1' | 'player2';
+      const debuff = getDebuff(mySlot);
+      const isStunned = debuff === 'stun';
+      const moveSpeedMult = debuff === 'slow' ? 0.35 : 1;
+
       // ---- WASD movement (works in both keyboard and CV mode) ----
       _forward.set(0, 0, -1);
       _right.set(1, 0, 0);
@@ -186,15 +236,17 @@ export function FirstPersonCamera() {
       _right.applyQuaternion(_yawQuat);
 
       const move = new THREE.Vector3();
-      const k = keys.current;
-      if (k.has('KeyW')) move.add(_forward);
-      if (k.has('KeyS')) move.sub(_forward);
-      if (k.has('KeyD')) move.add(_right);
-      if (k.has('KeyA')) move.sub(_right);
+      if (!isStunned) {
+        const k = keys.current;
+        if (k.has('KeyW')) move.add(_forward);
+        if (k.has('KeyS')) move.sub(_forward);
+        if (k.has('KeyD')) move.add(_right);
+        if (k.has('KeyA')) move.sub(_right);
+      }
 
       const isMoving = move.lengthSq() > 0;
       if (isMoving) {
-        move.normalize().multiplyScalar(MOVE_SPEED * delta);
+        move.normalize().multiplyScalar(MOVE_SPEED * moveSpeedMult * delta);
         camera.position.add(move);
       }
       // Head bob when moving (subtle vertical + lateral)

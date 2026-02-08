@@ -3,7 +3,7 @@
 // =============================================================================
 
 import { create } from 'zustand';
-import { GAME_CONFIG } from './GameConfig';
+import { GAME_CONFIG, type AIDifficulty } from './GameConfig';
 
 export type GamePhase =
   | 'menu'
@@ -56,6 +56,10 @@ interface GameState {
   // Arena
   currentThemeId: string | null;
 
+  // AI Difficulty
+  aiDifficulty: AIDifficulty;
+  setAIDifficulty: (d: AIDifficulty) => void;
+
   /** For health bar damage flash — which player just took damage */
   lastDamagedPlayer: 'player1' | 'player2' | null;
   lastDamageTime: number;
@@ -71,6 +75,8 @@ interface GameState {
   pauseGame: () => void;
   resumeGame: () => void;
   dealDamage: (target: 'player1' | 'player2', amount: number) => void;
+  /** Set health directly (for authoritative network sync) */
+  setHealth: (target: 'player1' | 'player2', health: number) => void;
   setRoundTime: (time: number) => void;
   setPlayerBlocking: (player: 'player1' | 'player2', blocking: boolean) => void;
   resetToMenu: () => void;
@@ -101,6 +107,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   player1: defaultPlayerState(-GAME_CONFIG.playerSpawnDistance / 2),
   player2: defaultPlayerState(GAME_CONFIG.playerSpawnDistance / 2),
   currentThemeId: null,
+  aiDifficulty: 'medium',
+  setAIDifficulty: (d) => set({ aiDifficulty: d }),
   lastDamagedPlayer: null,
   lastDamageTime: 0,
 
@@ -194,6 +202,23 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
 
     if (newHealth <= 0) {
+      const winner = target === 'player1' ? 'player2' : 'player1';
+      get().endRound(winner);
+    }
+  },
+
+  setHealth: (target, health) => {
+    const state = get();
+    const player = state[target];
+    const clampedHealth = Math.max(0, Math.min(GAME_CONFIG.maxHealth, health));
+
+    set({
+      [target]: { ...player, health: clampedHealth },
+      lastDamagedPlayer: target,
+      lastDamageTime: Date.now(),
+    });
+
+    if (clampedHealth <= 0) {
       const winner = target === 'player1' ? 'player2' : 'player1';
       get().endRound(winner);
     }

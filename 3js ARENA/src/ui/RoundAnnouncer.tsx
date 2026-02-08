@@ -1,5 +1,6 @@
 // =============================================================================
-// RoundAnnouncer.tsx — Full-screen text: "ROUND 1", "FIGHT!", "K.O." with punch effects
+// RoundAnnouncer.tsx — Full-screen text: "ROUND 1", "FIGHT!", "K.O."
+// Modern UI: Orbitron font, clean text effects
 // ElevenLabs AI announcer voice + screen shake
 // =============================================================================
 
@@ -8,6 +9,8 @@ import { useGameStore } from '../game/GameState';
 import { playKO } from '../audio/SoundManager';
 import { ElevenLabs } from '../audio/ElevenLabsService';
 import { useScreenShakeStore } from '../game/useScreenShake';
+
+const FONT_HEADING = "'Orbitron', 'Rajdhani', sans-serif";
 
 export function RoundAnnouncer() {
   const phase = useGameStore((s) => s.phase);
@@ -21,7 +24,6 @@ export function RoundAnnouncer() {
   const flashDone = useRef(false);
   const preWarmed = useRef(false);
 
-  // Pre-warm ElevenLabs cache on first render
   useEffect(() => {
     if (!preWarmed.current) {
       preWarmed.current = true;
@@ -40,7 +42,6 @@ export function RoundAnnouncer() {
       setText(`ROUND ${currentRound}`);
       requestAnimationFrame(() => setScale(1));
 
-      // ElevenLabs: announce "Round X!"
       ElevenLabs.announceRound(currentRound);
 
       const fightTimer = setTimeout(() => {
@@ -90,7 +91,6 @@ export function RoundAnnouncer() {
     setVisible(false);
   }, [phase, currentRound, roundWinner]);
 
-  // K.O. flash overlay - brief white/red flash
   useEffect(() => {
     if (!showFlash || variant !== 'ko' || flashDone.current) return;
     flashDone.current = true;
@@ -122,7 +122,7 @@ export function RoundAnnouncer() {
           style={{
             position: 'absolute',
             inset: 0,
-            background: 'radial-gradient(ellipse at center, rgba(255,255,255,0.95) 0%, rgba(255,50,50,0.5) 50%, transparent 70%)',
+            background: 'radial-gradient(ellipse at center, rgba(255,255,255,0.9) 0%, rgba(255,50,50,0.4) 50%, transparent 70%)',
             animation: 'koFlash 0.2s ease-out forwards',
           }}
         />
@@ -131,17 +131,16 @@ export function RoundAnnouncer() {
       <div
         style={{
           color: isDraw ? '#ffcc44' : '#ffffff',
-          fontSize: isFight ? '96px' : isKo ? '120px' : '80px',
-          fontWeight: '900',
-          fontFamily: "'Impact', 'Arial Black', sans-serif",
+          fontSize: isFight ? '72px' : isKo ? '88px' : '56px',
+          fontWeight: 900,
+          fontFamily: FONT_HEADING,
           textTransform: 'uppercase',
-          letterSpacing: isFight ? '16px' : isKo ? '20px' : '8px',
+          letterSpacing: isFight ? '16px' : isKo ? '20px' : '10px',
           textShadow: isDraw
-            ? '0 0 40px rgba(255,200,0,0.8), 0 4px 8px rgba(0,0,0,0.8)'
-            : '0 0 40px rgba(255,100,0,0.8), 0 0 80px rgba(255,50,0,0.4), 0 4px 8px rgba(0,0,0,0.8)',
+            ? '0 0 40px rgba(255,200,0,0.6), 0 4px 8px rgba(0,0,0,0.8)'
+            : '0 0 40px rgba(255,100,0,0.6), 0 0 80px rgba(255,50,0,0.3), 0 4px 8px rgba(0,0,0,0.8)',
           transform: `scale(${scale})`,
           transition: 'transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)',
-          WebkitTextStroke: isDraw ? '2px rgba(255,200,0,0.5)' : '2px rgba(255,100,0,0.5)',
           animation: isFight ? 'shake 0.4s ease-out' : isKo ? 'scaleInBounce 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)' : 'none',
         }}
       >

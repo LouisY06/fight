@@ -1,15 +1,17 @@
 // =============================================================================
 // DamageIndicator.tsx — Floating damage numbers that drift up and fade
-// Uses store so HitEffectManager (outside React tree) can add numbers on hit.
+// Modern UI: Rajdhani font, cleaner styling
 // =============================================================================
 
 import { useState, useEffect } from 'react';
 import { create } from 'zustand';
 
+const FONT_HEADING = "'Orbitron', 'Rajdhani', sans-serif";
+
 export interface DamageNumber {
   id: number;
   amount: number;
-  x: number; // viewport percentage (50 = center)
+  x: number;
   isCritical: boolean;
   isBlocked: boolean;
   createdAt: number;
@@ -66,7 +68,7 @@ function FloatingNumber({
     const start = Date.now();
     const animate = () => {
       const elapsed = (Date.now() - start) / 1000;
-      setOffset(elapsed * 80); // drift up
+      setOffset(elapsed * 80);
       setOpacity(Math.max(0, 1 - elapsed / 1.2));
       if (elapsed < 1.2) frame = requestAnimationFrame(animate);
     };
@@ -74,8 +76,8 @@ function FloatingNumber({
     return () => cancelAnimationFrame(frame);
   }, []);
 
-  const color = isBlocked ? '#8888ff' : isCritical ? '#ff4444' : '#ffffff';
-  const size = isCritical ? '28px' : '20px';
+  const color = isBlocked ? '#6688ff' : isCritical ? '#ff4444' : '#ffffff';
+  const size = isCritical ? '24px' : '18px';
 
   return (
     <div
@@ -86,15 +88,16 @@ function FloatingNumber({
         transform: `translate(-50%, -${offset}px)`,
         color,
         fontSize: size,
-        fontWeight: 'bold',
-        fontFamily: 'monospace',
-        textShadow: `0 0 8px ${color}88, 0 2px 4px rgba(0,0,0,0.5)`,
+        fontWeight: 700,
+        fontFamily: FONT_HEADING,
+        letterSpacing: '1px',
+        textShadow: `0 0 8px ${color}66, 0 2px 4px rgba(0,0,0,0.5)`,
         opacity,
         pointerEvents: 'none',
         animation: 'scaleInBounce 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)',
       }}
     >
-      {isBlocked ? 'BLOCKED' : ''} {Math.round(amount)}
+      {isBlocked ? 'BLOCKED ' : ''}{Math.round(amount)}
       {isCritical ? '!' : ''}
     </div>
   );

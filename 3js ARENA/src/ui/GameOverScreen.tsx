@@ -1,5 +1,6 @@
 // =============================================================================
-// GameOverScreen.tsx — Winner display with confetti, score count-up, animations
+// GameOverScreen.tsx — Winner display with confetti, score count-up
+// Modern UI: Orbitron/Rajdhani fonts, clean buttons
 // =============================================================================
 
 import { useState, useEffect, useMemo, useRef } from 'react';
@@ -7,6 +8,9 @@ import { useGameStore } from '../game/GameState';
 import { ARENA_THEMES } from '../arena/arenaThemes';
 import { randomPick } from '../utils/random';
 import { ElevenLabs } from '../audio/ElevenLabsService';
+
+const FONT_HEADING = "'Orbitron', 'Rajdhani', sans-serif";
+const FONT_BODY = "'Rajdhani', 'Segoe UI', system-ui, sans-serif";
 
 const CONFETTI_COUNT = 60;
 const CONFETTI_COLORS = ['#ff4488', '#44ccff', '#ffcc00', '#44ff88', '#ff8844', '#aa44ff'];
@@ -63,7 +67,7 @@ function CountUpNumber({ value, duration = 800 }: { value: number; duration?: nu
     const tick = () => {
       const elapsed = Date.now() - start;
       const progress = Math.min(1, elapsed / duration);
-      const eased = 1 - Math.pow(1 - progress, 2); // ease-out quad
+      const eased = 1 - Math.pow(1 - progress, 2);
       setDisplay(Math.round(value * eased));
       if (progress < 1) requestAnimationFrame(tick);
     };
@@ -88,7 +92,6 @@ export function GameOverScreen() {
   const isGameOver = phase === 'gameOver';
   const playerWon = player1.roundsWon > player2.roundsWon;
 
-  // Announce win/lose when game over screen appears
   useEffect(() => {
     if (isGameOver && !announcedRef.current) {
       announcedRef.current = true;
@@ -108,17 +111,14 @@ export function GameOverScreen() {
   const p1Wins = player1.roundsWon;
   const p2Wins = player2.roundsWon;
   const player1Won = p1Wins > p2Wins;
-  
-  // Determine winner name based on which player won more rounds
+
   let winnerName = player1Won ? 'Player 1' : 'Player 2';
-  
-  // Use actual names if available
   if (playerSlot === 'player1') {
     winnerName = player1Won ? username : opponentName;
   } else if (playerSlot === 'player2') {
     winnerName = player1Won ? opponentName : username;
   }
-  
+
   const winnerColor = player1Won ? '#4488ff' : '#ff4444';
 
   const handleRematch = () => {
@@ -135,10 +135,10 @@ export function GameOverScreen() {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'rgba(0, 0, 0, 0.85)',
-        backdropFilter: 'blur(8px)',
+        background: 'rgba(0, 0, 0, 0.88)',
+        backdropFilter: 'blur(12px)',
         zIndex: 200,
-        gap: '12px',
+        gap: '16px',
         animation: 'fadeIn 0.3s ease-out',
       }}
     >
@@ -147,46 +147,48 @@ export function GameOverScreen() {
       <h2
         style={{
           color: winnerColor,
-          fontSize: '56px',
-          fontWeight: '900',
-          fontFamily: "'Impact', 'Arial Black', sans-serif",
+          fontSize: '42px',
+          fontWeight: 900,
+          fontFamily: FONT_HEADING,
           textTransform: 'uppercase',
-          letterSpacing: '6px',
-          textShadow: `0 0 40px ${winnerColor}88`,
-          marginBottom: '8px',
+          letterSpacing: '8px',
+          textShadow: `0 0 40px ${winnerColor}66`,
+          marginBottom: '4px',
           animation: 'scaleInBounce 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
         }}
       >
-        {winnerName} WINS!
+        {winnerName} WINS
       </h2>
 
       <div
         style={{
-          color: '#888888',
-          fontSize: '18px',
-          fontFamily: 'monospace',
+          color: 'rgba(255,255,255,0.4)',
+          fontSize: '20px',
+          fontFamily: FONT_HEADING,
+          fontWeight: 500,
+          letterSpacing: '4px',
           marginBottom: '32px',
           animation: 'countUp 0.5s 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both',
         }}
       >
-        <CountUpNumber value={p1Wins} /> — <CountUpNumber value={p2Wins} />
+        <CountUpNumber value={p1Wins} /> &mdash; <CountUpNumber value={p2Wins} />
       </div>
 
       <button
         onClick={handleRematch}
         style={{
-          padding: '14px 56px',
-          fontSize: '20px',
-          fontWeight: 'bold',
+          padding: '12px 52px',
+          fontSize: '14px',
+          fontWeight: 700,
           textTransform: 'uppercase',
-          letterSpacing: '3px',
+          letterSpacing: '4px',
           color: '#ffffff',
           background: 'linear-gradient(180deg, #ff2266, #cc0044)',
-          border: '2px solid #ff4488',
+          border: '1px solid rgba(255, 68, 136, 0.4)',
           borderRadius: '4px',
           cursor: 'pointer',
-          boxShadow: '0 0 25px rgba(255,0,80,0.4)',
-          fontFamily: "'Impact', 'Arial Black', sans-serif",
+          boxShadow: '0 0 20px rgba(255,0,80,0.3)',
+          fontFamily: FONT_HEADING,
           transition: 'transform 0.15s ease, box-shadow 0.15s ease',
         }}
         onMouseDown={(e) => {
@@ -196,12 +198,12 @@ export function GameOverScreen() {
           e.currentTarget.style.transform = 'scale(1)';
         }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.transform = 'scale(1.05)';
-          e.currentTarget.style.boxShadow = '0 0 35px rgba(255,0,80,0.6)';
+          e.currentTarget.style.transform = 'scale(1.04)';
+          e.currentTarget.style.boxShadow = '0 0 30px rgba(255,0,80,0.5)';
         }}
         onMouseLeave={(e) => {
           e.currentTarget.style.transform = 'scale(1)';
-          e.currentTarget.style.boxShadow = '0 0 25px rgba(255,0,80,0.4)';
+          e.currentTarget.style.boxShadow = '0 0 20px rgba(255,0,80,0.3)';
         }}
       >
         REMATCH
@@ -210,29 +212,27 @@ export function GameOverScreen() {
       <button
         onClick={resetToMenu}
         style={{
-          padding: '10px 40px',
-          fontSize: '14px',
-          fontWeight: 'bold',
+          padding: '8px 36px',
+          fontSize: '11px',
+          fontWeight: 600,
           textTransform: 'uppercase',
-          letterSpacing: '2px',
-          color: '#888888',
+          letterSpacing: '3px',
+          color: 'rgba(255,255,255,0.4)',
           background: 'transparent',
-          border: '1px solid #444444',
+          border: '1px solid rgba(255,255,255,0.1)',
           borderRadius: '4px',
           cursor: 'pointer',
-          fontFamily: "'Impact', 'Arial Black', sans-serif",
-          marginTop: '8px',
+          fontFamily: FONT_BODY,
+          marginTop: '4px',
           transition: 'all 0.15s ease',
         }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.color = '#ffffff';
-          e.currentTarget.style.borderColor = '#666666';
-          e.currentTarget.style.transform = 'translateY(-2px)';
+          e.currentTarget.style.color = 'rgba(255,255,255,0.8)';
+          e.currentTarget.style.borderColor = 'rgba(255,255,255,0.25)';
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.color = '#888888';
-          e.currentTarget.style.borderColor = '#444444';
-          e.currentTarget.style.transform = 'translateY(0)';
+          e.currentTarget.style.color = 'rgba(255,255,255,0.4)';
+          e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
         }}
       >
         Main Menu

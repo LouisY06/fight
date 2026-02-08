@@ -9,6 +9,7 @@ import { useCVContext } from '../cv/CVProvider';
 import { MenuCharacterPreview } from './MenuCharacterPreview';
 import { CustomizationPanel } from './CustomizationPanel';
 import { MapSelector } from './MapSelector';
+import { AI_DIFFICULTY, type AIDifficulty } from '../game/GameConfig';
 
 export function MainMenu() {
   const phase = useGameStore((s) => s.phase);
@@ -17,13 +18,22 @@ export function MainMenu() {
   const username = useGameStore((s) => s.username);
   const setUsername = useGameStore((s) => s.setUsername);
   const { connect } = useNetwork();
+  const aiDifficulty = useGameStore((s) => s.aiDifficulty);
+  const setAIDifficulty = useGameStore((s) => s.setAIDifficulty);
   const { cvEnabled, setCvEnabled } = useCVContext();
   const [showCustomize, setShowCustomize] = useState(false);
   const [showMapSelector, setShowMapSelector] = useState(false);
+  const [showDifficultyPicker, setShowDifficultyPicker] = useState(false);
 
   if (phase !== 'menu') return null;
 
   const handleLocalPlay = () => {
+    setShowDifficultyPicker(true);
+  };
+
+  const handleDifficultySelected = (d: AIDifficulty) => {
+    setAIDifficulty(d);
+    setShowDifficultyPicker(false);
     setShowMapSelector(true);
   };
 
@@ -285,6 +295,14 @@ export function MainMenu() {
         <CustomizationPanel onClose={() => setShowCustomize(false)} />
       )}
 
+      {showDifficultyPicker && (
+        <DifficultyPicker
+          current={aiDifficulty}
+          onSelect={handleDifficultySelected}
+          onCancel={() => setShowDifficultyPicker(false)}
+        />
+      )}
+
       {showMapSelector && (
         <MapSelector
           mode="practice"
@@ -292,6 +310,138 @@ export function MainMenu() {
           onCancel={() => setShowMapSelector(false)}
         />
       )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Difficulty picker overlay
+// ---------------------------------------------------------------------------
+
+const DIFF_COLORS: Record<AIDifficulty, string> = {
+  easy: '#44cc66',
+  medium: '#ffaa33',
+  hard: '#ff3355',
+};
+
+function DifficultyPicker({
+  current,
+  onSelect,
+  onCancel,
+}: {
+  current: AIDifficulty;
+  onSelect: (d: AIDifficulty) => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        inset: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'rgba(0,0,0,0.85)',
+        backdropFilter: 'blur(6px)',
+        zIndex: 300,
+        gap: '16px',
+        animation: 'fadeIn 0.2s ease-out',
+      }}
+      onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}
+    >
+      <h2
+        style={{
+          color: '#ffffff',
+          fontSize: '36px',
+          fontWeight: '900',
+          fontFamily: "'Impact', 'Arial Black', sans-serif",
+          textTransform: 'uppercase',
+          letterSpacing: '6px',
+          marginBottom: '8px',
+          textShadow: '0 0 20px rgba(255,255,255,0.1)',
+        }}
+      >
+        SELECT DIFFICULTY
+      </h2>
+
+      {(['easy', 'medium', 'hard'] as AIDifficulty[]).map((d) => {
+        const cfg = AI_DIFFICULTY[d];
+        const color = DIFF_COLORS[d];
+        const isActive = d === current;
+        return (
+          <button
+            key={d}
+            onClick={() => onSelect(d)}
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '4px',
+              padding: '16px 48px',
+              minWidth: '300px',
+              fontSize: '22px',
+              fontWeight: 'bold',
+              fontFamily: "'Impact', 'Arial Black', sans-serif",
+              textTransform: 'uppercase',
+              letterSpacing: '4px',
+              color: '#ffffff',
+              background: isActive
+                ? `${color}22`
+                : 'rgba(255, 255, 255, 0.05)',
+              border: isActive
+                ? `2px solid ${color}`
+                : '1px solid rgba(255, 255, 255, 0.12)',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = `${color}33`;
+              e.currentTarget.style.borderColor = color;
+              e.currentTarget.style.transform = 'scale(1.03)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = isActive ? `${color}22` : 'rgba(255, 255, 255, 0.05)';
+              e.currentTarget.style.borderColor = isActive ? color : 'rgba(255, 255, 255, 0.12)';
+              e.currentTarget.style.transform = 'scale(1)';
+            }}
+          >
+            <span style={{ color }}>{cfg.label}</span>
+            <span
+              style={{
+                fontSize: '11px',
+                color: '#888',
+                letterSpacing: '1px',
+                fontFamily: 'monospace',
+                fontWeight: 'normal',
+                textTransform: 'none',
+              }}
+            >
+              {cfg.description}
+            </span>
+          </button>
+        );
+      })}
+
+      <button
+        onClick={onCancel}
+        style={{
+          marginTop: '12px',
+          padding: '10px 32px',
+          fontSize: '14px',
+          fontFamily: "'Impact', 'Arial Black', sans-serif",
+          textTransform: 'uppercase',
+          letterSpacing: '2px',
+          color: '#888',
+          background: 'transparent',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          borderRadius: '4px',
+          cursor: 'pointer',
+        }}
+      >
+        BACK
+      </button>
     </div>
   );
 }

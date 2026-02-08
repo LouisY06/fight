@@ -27,6 +27,8 @@ import { NetworkProvider } from './networking/NetworkProvider';
 import { InputSyncBridge } from './networking/InputSyncBridge';
 import { MeleeCombat } from './combat/MeleeCombat';
 import { HitEffectManager } from './combat/HitEffectManager';
+import { SpellEffects } from './combat/SpellEffects';
+import { SpellCaster } from './combat/SpellCaster';
 import { initWeaponKeyListener } from './game/WeaponState';
 
 import { CVProvider } from './cv/CVProvider';
@@ -40,6 +42,7 @@ import { LobbyMenu } from './ui/LobbyMenu';
 import { PauseMenu } from './ui/PauseMenu';
 import { GameOverScreen } from './ui/GameOverScreen';
 import { ArenaLoadingOverlay } from './ui/ArenaLoadingOverlay';
+import { SpellHUD } from './ui/SpellHUD';
 
 function App() {
   return (
@@ -148,6 +151,8 @@ function GameApp() {
                 <MechaArms />
                 <MeleeCombat />
                 <HitEffectManager />
+                <SpellEffects />
+                <SpellCaster />
                 <InputSyncBridge />
 
                 {/* Arena environment */}
@@ -181,6 +186,7 @@ function GameApp() {
         <LobbyMenu />
         <ArenaLoadingOverlay />
         <HUD />
+        <SpellHUD />
         <PauseMenu />
         <GameOverScreen />
         <WebcamView />
