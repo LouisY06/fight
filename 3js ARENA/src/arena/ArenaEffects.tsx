@@ -32,7 +32,7 @@ export function ArenaEffects({ theme }: ArenaEffectsProps) {
 // Ambient floating particles (dust / embers)
 // ---------------------------------------------------------------------------
 
-function AmbientParticles({ color, count = 500 }: { color: string; count?: number }) {
+function AmbientParticles({ color, count = 200 }: { color: string; count?: number }) {
   const meshRef = useRef<THREE.Points>(null!);
 
   const { positions, velocities } = useMemo(() => {

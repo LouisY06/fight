@@ -17,18 +17,20 @@ export function GameEngine() {
   const phase = useGameStore((s) => s.phase);
   const setPhase = useGameStore((s) => s.setPhase);
   const startRound = useGameStore((s) => s.startRound);
-  const roundTimeRemaining = useGameStore((s) => s.roundTimeRemaining);
   const setRoundTime = useGameStore((s) => s.setRoundTime);
   const endRound = useGameStore((s) => s.endRound);
-  const player1 = useGameStore((s) => s.player1);
-  const player2 = useGameStore((s) => s.player2);
 
   const countdownTimer = useRef(GAME_CONFIG.countdownDuration);
+  // Track time in a ref to avoid 60fps Zustand updates; only push to store ~1Hz
+  const timeRef = useRef(GAME_CONFIG.roundTime);
+  const lastPushedSecond = useRef(-1);
 
   // Handle countdown → playing transition (useFrame + safety timeout)
   useEffect(() => {
     if (phase === 'countdown') {
       countdownTimer.current = GAME_CONFIG.countdownDuration;
+      timeRef.current = useGameStore.getState().roundTimeRemaining;
+      lastPushedSecond.current = -1;
       // Safety: ensure we transition to playing even if useFrame is throttled (e.g. tab background)
       const safety = setTimeout(() => {
         if (useGameStore.getState().phase === 'countdown') {
@@ -60,10 +62,11 @@ export function GameEngine() {
     }
 
     if (phase === 'playing') {
-      // Tick down round timer
-      const newTime = roundTimeRemaining - delta;
-      if (newTime <= 0) {
+      // Tick down round timer using ref (avoids 60fps Zustand updates)
+      timeRef.current -= delta;
+      if (timeRef.current <= 0) {
         // Time's up — whoever has more health wins
+        const { player1, player2 } = useGameStore.getState();
         const winner =
           player1.health > player2.health
             ? 'player1'
@@ -72,7 +75,12 @@ export function GameEngine() {
               : 'draw';
         endRound(winner);
       } else {
-        setRoundTime(newTime);
+        // Only push to Zustand store when the displayed second changes (~1Hz)
+        const sec = Math.ceil(timeRef.current);
+        if (sec !== lastPushedSecond.current) {
+          lastPushedSecond.current = sec;
+          setRoundTime(timeRef.current);
+        }
       }
     }
   });

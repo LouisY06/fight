@@ -113,6 +113,21 @@ const _clashOnPlayer = new THREE.Vector3();
 const _clashOnBot = new THREE.Vector3();
 const _clashMidpoint = new THREE.Vector3();
 
+// Cache opponent reference to avoid scene.traverse every frame
+let _cachedOpponent: THREE.Object3D | null = null;
+let _lastOpponentSearch = 0;
+
+function findOpponent(scene: THREE.Scene): THREE.Object3D | null {
+  const now = Date.now();
+  if (_cachedOpponent && now - _lastOpponentSearch < 500) return _cachedOpponent;
+  _lastOpponentSearch = now;
+  _cachedOpponent = null;
+  scene.traverse((obj) => {
+    if (!_cachedOpponent && obj.userData?.isOpponent) _cachedOpponent = obj;
+  });
+  return _cachedOpponent;
+}
+
 export function MeleeCombat() {
   const { camera, scene } = useThree();
   const cvEnabled = cvBridge.cvEnabled;
@@ -139,15 +154,14 @@ export function MeleeCombat() {
     const isActive =
       keyboardSwingActive || (cvEnabled && swordSpeed > MIN_SWING_SPEED);
     if (!stunned && isActive && now - lastPlayerHitTime.current >= GAME_CONFIG.attackCooldownMs) {
-      // Check against all opponents
-    scene.traverse((obj) => {
-      if (!obj.userData?.isOpponent) return;
-      if (playerHitThisFrame.current) return; // already hit this frame
+      // Use cached opponent ref instead of scene.traverse every frame
+      const opponent = findOpponent(scene);
+      if (opponent) {
+      const obj = opponent;
 
       obj.getWorldPosition(_oppPos);
 
-      // Quick distance cull
-      if (camera.position.distanceTo(_oppPos) > MAX_OPPONENT_DIST) return;
+      if (camera.position.distanceTo(_oppPos) <= MAX_OPPONENT_DIST) {
 
       // Opponent capsule axis
       _capsuleBot.set(_oppPos.x, _oppPos.y + OPPONENT_CAPSULE_BOT, _oppPos.z);
@@ -173,8 +187,8 @@ export function MeleeCombat() {
         // Scale damage by swing speed: faster swings hit harder
         const speedMult = Math.max(SWING_MIN_MULT, Math.min(SWING_MAX_MULT, swordSpeed / SWING_REF_SPEED));
         const amount = GAME_CONFIG.damage.swordSlash * speedMult;
-        const opponent = opponentSlot === 'player1' ? player1 : player2;
-        const isBlocked = opponent.isBlocking;
+        const oppState = opponentSlot === 'player1' ? player1 : player2;
+        const isBlocked = oppState.isBlocking;
         const effectiveAmount = isBlocked
           ? amount * (1 - GAME_CONFIG.blockDamageReduction)
           : amount;
@@ -194,7 +208,8 @@ export function MeleeCombat() {
           });
         }
       }
-    });
+      }  // distanceTo check
+      }  // opponent found
     }
 
     // Bot sword vs player — proximity-based hit detection (works in all modes)

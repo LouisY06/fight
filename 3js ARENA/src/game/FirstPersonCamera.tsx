@@ -57,11 +57,14 @@ export function FirstPersonCamera() {
   const spawnPos = useRef(new THREE.Vector3(0, EYE_HEIGHT, spawnZ));
   const walkBobPhase = useRef(0);
 
-  // Re-usable objects to avoid per-frame allocation
-  const _forward = new THREE.Vector3();
-  const _right = new THREE.Vector3();
-  const _yawQuat = new THREE.Quaternion();
-  const _yAxis = new THREE.Vector3(0, 1, 0);
+  // Re-usable objects to avoid per-frame allocation (hoisted to refs)
+  const _forward = useRef(new THREE.Vector3()).current;
+  const _right = useRef(new THREE.Vector3()).current;
+  const _move = useRef(new THREE.Vector3()).current;
+  const _yawQuat = useRef(new THREE.Quaternion()).current;
+  const _yAxis = useRef(new THREE.Vector3(0, 1, 0)).current;
+  const _camRight = useRef(new THREE.Vector3()).current;
+  const _camUp = useRef(new THREE.Vector3()).current;
 
   // ---- 180° quick-turn: press C or say "mechabot, turn around" ----
   const yawOffset = useRef(0);
@@ -241,19 +244,19 @@ export function FirstPersonCamera() {
       _forward.applyQuaternion(_yawQuat);
       _right.applyQuaternion(_yawQuat);
 
-      const move = new THREE.Vector3();
+      _move.set(0, 0, 0);
       if (!isStunned && !movementLocked) {
         const k = keys.current;
-        if (k.has('KeyW')) move.add(_forward);
-        if (k.has('KeyS')) move.sub(_forward);
-        if (k.has('KeyD')) move.add(_right);
-        if (k.has('KeyA')) move.sub(_right);
+        if (k.has('KeyW')) _move.add(_forward);
+        if (k.has('KeyS')) _move.sub(_forward);
+        if (k.has('KeyD')) _move.add(_right);
+        if (k.has('KeyA')) _move.sub(_right);
       }
 
-      const isMoving = move.lengthSq() > 0;
+      const isMoving = _move.lengthSq() > 0;
       if (isMoving) {
-        move.normalize().multiplyScalar(MOVE_SPEED * moveSpeedMult * delta);
-        camera.position.add(move);
+        _move.normalize().multiplyScalar(MOVE_SPEED * moveSpeedMult * delta);
+        camera.position.add(_move);
       }
       // Head bob when moving (subtle vertical + lateral)
       walkBobPhase.current = isMoving ? walkBobPhase.current + delta * 12 : walkBobPhase.current * 0.9;
@@ -313,10 +316,10 @@ export function FirstPersonCamera() {
       const { intensity: si, durationMs: sd, startTime: st } =
         useScreenShakeStore.getState();
       const shake = computeShakeOffset(st, sd, si);
-      const camRight = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
-      const camUp = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
-      camera.position.addScaledVector(camRight, shake.x);
-      camera.position.addScaledVector(camUp, shake.y);
+      _camRight.set(1, 0, 0).applyQuaternion(camera.quaternion);
+      _camUp.set(0, 1, 0).applyQuaternion(camera.quaternion);
+      camera.position.addScaledVector(_camRight, shake.x);
+      camera.position.addScaledVector(_camUp, shake.y);
 
       // Clamp to arena bounds
       const r = GAME_CONFIG.arenaRadius - 0.5;

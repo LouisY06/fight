@@ -110,6 +110,8 @@ function GameApp() {
       {showCanvas && (
       <Canvas
         shadows
+        dpr={[1, 1.5]}
+        performance={{ min: 0.5 }}
         camera={{
           position: [0, 1.7, -GAME_CONFIG.playerSpawnDistance / 2],
           fov: 70,
@@ -120,6 +122,7 @@ function GameApp() {
           antialias: true,
           toneMapping: THREE.ACESFilmicToneMapping,
           toneMappingExposure: 1.5,
+          powerPreference: 'high-performance',
         }}
         style={{ position: 'absolute', inset: 0, zIndex: 0 }}
       >

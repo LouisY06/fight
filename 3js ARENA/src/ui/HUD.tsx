@@ -18,8 +18,11 @@ import { COLORS, FONTS } from './theme';
 
 export function HUD() {
   const phase = useGameStore((s) => s.phase);
-  const player1 = useGameStore((s) => s.player1);
-  const player2 = useGameStore((s) => s.player2);
+  // Granular selectors — only re-render when the specific value changes
+  const p1Health = useGameStore((s) => s.player1.health);
+  const p2Health = useGameStore((s) => s.player2.health);
+  const p1RoundsWon = useGameStore((s) => s.player1.roundsWon);
+  const p2RoundsWon = useGameStore((s) => s.player2.roundsWon);
   const username = useGameStore((s) => s.username);
   const opponentName = useGameStore((s) => s.opponentName);
   const playerSlot = useGameStore((s) => s.playerSlot);
@@ -62,24 +65,24 @@ export function HUD() {
       >
         <div style={{ flex: 1 }}>
           <HealthBar
-            health={player1.health}
+            health={p1Health}
             side="left"
             playerName={leftName}
             playerKey="player1"
           />
-          <WinTracker wins={player1.roundsWon} side="left" />
+          <WinTracker wins={p1RoundsWon} side="left" />
         </div>
 
         <RoundTimer />
 
         <div style={{ flex: 1 }}>
           <HealthBar
-            health={player2.health}
+            health={p2Health}
             side="right"
             playerName={rightName}
             playerKey="player2"
           />
-          <WinTracker wins={player2.roundsWon} side="right" />
+          <WinTracker wins={p2RoundsWon} side="right" />
         </div>
       </div>
 

@@ -61,11 +61,18 @@ export function BotOpponent({ color = '#ff4444' }: BotOpponentProps) {
   const swordGroupRef = useRef<THREE.Group | null>(null);
   const lastSpellTimeRef = useRef(0);
 
-  const _dirToPlayer = new THREE.Vector3();
-  const _playerPos = new THREE.Vector3();
-  const _swordHilt = new THREE.Vector3();
-  const _swordTipLocal = new THREE.Vector3();
-  const _swordQuat = new THREE.Quaternion();
+  // Pre-allocated temp vectors to avoid per-frame allocation
+  const _dirToPlayer = useRef(new THREE.Vector3()).current;
+  const _playerPos = useRef(new THREE.Vector3()).current;
+  const _swordHilt = useRef(new THREE.Vector3()).current;
+  const _swordTipLocal = useRef(new THREE.Vector3()).current;
+  const _swordQuat = useRef(new THREE.Quaternion()).current;
+  const _worldScale = useRef(new THREE.Vector3()).current;
+  const _spellOrigin = useRef(new THREE.Vector3()).current;
+  const _spellDir = useRef(new THREE.Vector3()).current;
+  // Reusable vectors for sword state publishing (avoid .clone() in hot loop)
+  const _hiltOut = useRef(new THREE.Vector3()).current;
+  const _tipOut = useRef(new THREE.Vector3()).current;
 
   // Reset position on round start (countdown phase)
   useEffect(() => {
@@ -121,12 +128,11 @@ export function BotOpponent({ color = '#ff4444' }: BotOpponentProps) {
       if (swordGroupRef.current) {
         swordGroupRef.current.getWorldPosition(_swordHilt);
         swordGroupRef.current.getWorldQuaternion(_swordQuat);
-        const worldScale = new THREE.Vector3();
-        swordGroupRef.current.getWorldScale(worldScale);
-        const bladeWorldLen = SWORD_BLADE_LENGTH * worldScale.y;
+        swordGroupRef.current.getWorldScale(_worldScale);
+        const bladeWorldLen = SWORD_BLADE_LENGTH * _worldScale.y;
         _swordTipLocal.set(0, bladeWorldLen, 0);
         _swordTipLocal.applyQuaternion(_swordQuat).add(_swordHilt);
-        setBotSwordState(_swordHilt.clone(), _swordTipLocal.clone(), false);
+        setBotSwordState(_hiltOut.copy(_swordHilt), _tipOut.copy(_swordTipLocal), false);
       }
       // Still face player during countdown
       if (distXZ > 0.01) {
@@ -155,12 +161,11 @@ export function BotOpponent({ color = '#ff4444' }: BotOpponentProps) {
       if (swordGroupRef.current) {
         swordGroupRef.current.getWorldPosition(_swordHilt);
         swordGroupRef.current.getWorldQuaternion(_swordQuat);
-        const worldScale = new THREE.Vector3();
-        swordGroupRef.current.getWorldScale(worldScale);
-        const bladeWorldLen = SWORD_BLADE_LENGTH * worldScale.y;
+        swordGroupRef.current.getWorldScale(_worldScale);
+        const bladeWorldLen = SWORD_BLADE_LENGTH * _worldScale.y;
         _swordTipLocal.set(0, bladeWorldLen, 0);
         _swordTipLocal.applyQuaternion(_swordQuat).add(_swordHilt);
-        setBotSwordState(_swordHilt.clone(), _swordTipLocal.clone(), false);
+        setBotSwordState(_hiltOut.copy(_swordHilt), _tipOut.copy(_swordTipLocal), false);
       }
       return; // Skip all movement and attack logic
     }
@@ -191,13 +196,13 @@ export function BotOpponent({ color = '#ff4444' }: BotOpponentProps) {
       // Pick a random spell
       const spellType = SPELL_TYPES[Math.floor(Math.random() * SPELL_TYPES.length)];
       // Aim at player from bot position
-      const origin = new THREE.Vector3(botPos.x, botPos.y + 1.2, botPos.z);
-      const direction = new THREE.Vector3(
-        _playerPos.x - origin.x,
-        _playerPos.y - origin.y,
-        _playerPos.z - origin.z
+      _spellOrigin.set(botPos.x, botPos.y + 1.2, botPos.z);
+      _spellDir.set(
+        _playerPos.x - _spellOrigin.x,
+        _playerPos.y - _spellOrigin.y,
+        _playerPos.z - _spellOrigin.z
       ).normalize();
-      const spell = useSpellStore.getState().castSpell(spellType, 'player2', origin, direction);
+      const spell = useSpellStore.getState().castSpell(spellType, 'player2', _spellOrigin, _spellDir);
       if (spell) {
         fireSpellCast(spell);
         console.log(`[Bot] Cast ${spellType}!`);
@@ -246,15 +251,12 @@ export function BotOpponent({ color = '#ff4444' }: BotOpponentProps) {
       swordGroupRef.current.updateWorldMatrix(true, false);
       swordGroupRef.current.getWorldPosition(_swordHilt);
       swordGroupRef.current.getWorldQuaternion(_swordQuat);
-
-      // Get the world scale of the sword group to compute proper blade length
-      const worldScale = new THREE.Vector3();
-      swordGroupRef.current.getWorldScale(worldScale);
-      const bladeWorldLen = SWORD_BLADE_LENGTH * worldScale.y;
+      swordGroupRef.current.getWorldScale(_worldScale);
+      const bladeWorldLen = SWORD_BLADE_LENGTH * _worldScale.y;
 
       _swordTipLocal.set(0, bladeWorldLen, 0);
       _swordTipLocal.applyQuaternion(_swordQuat).add(_swordHilt);
-      setBotSwordState(_swordHilt.clone(), _swordTipLocal.clone(), isSwinging);
+      setBotSwordState(_hiltOut.copy(_swordHilt), _tipOut.copy(_swordTipLocal), isSwinging);
     } else {
       // Fallback: if swordRef is not populated yet, place sword at bot position
       const bp = groupRef.current.position;
