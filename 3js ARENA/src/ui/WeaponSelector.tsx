@@ -1,63 +1,39 @@
 // =============================================================================
-// WeaponSelector.tsx — Bottom-center weapon bar (1=Shield, 2=Sword, 3=Gun)
-// Modern UI: SVG icons, Orbitron/Rajdhani fonts, glass-panel cards
+// WeaponSelector.tsx — Bottom-center HUD: weapon slots with SVG icons
+// Military mech HUD aesthetic
 // =============================================================================
 
 import { useWeaponStore, type ActiveWeapon } from '../game/WeaponState';
+import { COLORS, FONTS, CLIP } from './theme';
 
-const FONT_HEADING = "'Orbitron', 'Rajdhani', sans-serif";
-const FONT_BODY = "'Rajdhani', 'Segoe UI', system-ui, sans-serif";
+// SVG weapon silhouettes (inline path data for cross-platform consistency)
+const ShieldSVG = () => (
+  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke={COLORS.steel} strokeWidth="1.5">
+    <path d="M12 2L3 7v5c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z" />
+    <path d="M12 6l-5 3v3c0 3.33 2.13 6.44 5 7.5" strokeOpacity="0.4" />
+  </svg>
+);
 
-// ---------------------------------------------------------------------------
-// SVG weapon icons
-// ---------------------------------------------------------------------------
+const SwordSVG = () => (
+  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke={COLORS.amber} strokeWidth="1.5">
+    <path d="M14.5 3L21 9.5 9.5 21 3 14.5 14.5 3z" />
+    <path d="M14.5 3L21 9.5" strokeWidth="2" />
+    <path d="M6 15l3 3M8 13l3 3" strokeOpacity="0.5" />
+  </svg>
+);
 
-function ShieldIcon({ color }: { color: string }) {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-      <path
-        d="M12 2L4 6v5c0 5.25 3.4 10.15 8 11.4 4.6-1.25 8-6.15 8-11.4V6l-8-4Zm0 2.18L18 7.6v3.4c0 4.15-2.7 8.1-6 9.36-3.3-1.26-6-5.21-6-9.36V7.6l6-3.42Z"
-        fill={color}
-        opacity={0.85}
-      />
-    </svg>
-  );
-}
+const GunSVG = () => (
+  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke={COLORS.textSecondary} strokeWidth="1.5">
+    <path d="M2 12h16l2-3h2v6h-2l-2-3H2z" />
+    <path d="M10 12v5h3v-5" strokeOpacity="0.6" />
+    <circle cx="20" cy="12" r="1" fill={COLORS.textSecondary} fillOpacity="0.5" />
+  </svg>
+);
 
-function SwordIcon({ color }: { color: string }) {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-      <path
-        d="M19.07 2.93L6.34 15.66l-2.12-.71L2 17.17l2.83 2.83L7.05 17.78l-.71-2.12L19.07 2.93Zm-2.83 1.42l1.41 1.41L8.51 14.9l-1.41-1.41L16.24 4.35ZM4.24 17.17l1.41-1.41.71.71-1.42 1.41-.7-.71Z"
-        fill={color}
-        opacity={0.85}
-      />
-    </svg>
-  );
-}
-
-function GunIcon({ color }: { color: string }) {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-      <path
-        d="M21 7h-7V5h7v2Zm-2 4h-5v-2h5v2Zm-8 0V9H3v6h2v4h4v-4h2v-4h0Zm-4 4H7v-4h2v4h-2Z"
-        fill={color}
-        opacity={0.85}
-      />
-    </svg>
-  );
-}
-
-const WEAPONS: {
-  key: string;
-  name: string;
-  id: ActiveWeapon;
-  Icon: (props: { color: string }) => JSX.Element;
-  accent: string;
-}[] = [
-  { key: '1', name: 'SHIELD', id: 'shield', Icon: ShieldIcon, accent: '#44aaff' },
-  { key: '2', name: 'SWORD', id: 'sword', Icon: SwordIcon, accent: '#ff4488' },
-  { key: '3', name: 'GUN', id: 'gun', Icon: GunIcon, accent: '#44ff88' },
+const WEAPONS: { key: string; name: string; id: ActiveWeapon; Icon: React.FC }[] = [
+  { key: '1', name: 'SHIELD', id: 'shield', Icon: ShieldSVG },
+  { key: '2', name: 'SWORD', id: 'sword', Icon: SwordSVG },
+  { key: '3', name: 'GUN', id: 'gun', Icon: GunSVG },
 ];
 
 export function WeaponSelector() {
@@ -68,12 +44,16 @@ export function WeaponSelector() {
     <div
       style={{
         position: 'absolute',
-        bottom: '24px',
+        bottom: '20px',
         left: '50%',
         transform: 'translateX(-50%)',
         display: 'flex',
         gap: '4px',
         pointerEvents: 'auto',
+        padding: '4px',
+        background: 'rgba(10, 12, 16, 0.7)',
+        border: `1px solid ${COLORS.borderFaint}`,
+        clipPath: 'polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 6px 100%, 0 calc(100% - 6px))',
       }}
     >
       {WEAPONS.map((w) => {
@@ -84,8 +64,8 @@ export function WeaponSelector() {
             onClick={() => setActiveWeapon(w.id)}
             style={{
               position: 'relative',
-              width: '60px',
-              height: '60px',
+              width: '68px',
+              height: '64px',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
@@ -93,26 +73,28 @@ export function WeaponSelector() {
               cursor: 'pointer',
               userSelect: 'none',
               background: isActive
-                ? `linear-gradient(135deg, ${w.accent}15, ${w.accent}08)`
-                : 'rgba(255, 255, 255, 0.02)',
+                ? 'rgba(255, 140, 0, 0.1)'
+                : 'rgba(0, 0, 0, 0.3)',
               border: isActive
-                ? `1.5px solid ${w.accent}60`
-                : '1px solid rgba(255, 255, 255, 0.06)',
-              borderRadius: '6px',
-              backdropFilter: 'blur(8px)',
+                ? `1px solid ${COLORS.amber}`
+                : `1px dashed ${COLORS.borderFaint}`,
+              clipPath: CLIP.button,
               transition: 'all 0.15s ease',
+              boxShadow: isActive
+                ? `0 0 12px ${COLORS.amberGlow}, inset 0 0 8px ${COLORS.amberGlow}`
+                : 'none',
             }}
           >
             {/* Key number badge */}
             <div
               style={{
                 position: 'absolute',
-                top: '4px',
+                top: '3px',
                 left: '6px',
-                fontSize: '8px',
+                fontSize: '10px',
                 fontWeight: 700,
-                fontFamily: FONT_HEADING,
-                color: isActive ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.2)',
+                fontFamily: FONTS.mono,
+                color: isActive ? COLORS.amber : COLORS.textDim,
                 lineHeight: 1,
               }}
             >
@@ -122,40 +104,40 @@ export function WeaponSelector() {
             {/* Weapon icon */}
             <div
               style={{
-                opacity: isActive ? 1 : 0.35,
+                opacity: isActive ? 1 : 0.4,
                 transition: 'opacity 0.15s ease',
+                marginTop: '2px',
               }}
             >
-              <w.Icon color={isActive ? w.accent : '#888'} />
+              <w.Icon />
             </div>
 
-            {/* Weapon name */}
+            {/* Weapon name / ARMED label */}
             <div
               style={{
                 fontSize: '8px',
                 fontWeight: 600,
-                fontFamily: FONT_BODY,
-                letterSpacing: '1.5px',
-                color: isActive ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.2)',
+                fontFamily: FONTS.mono,
+                letterSpacing: '0.08em',
+                color: isActive ? COLORS.amber : COLORS.textDim,
                 marginTop: '2px',
                 transition: 'color 0.15s ease',
               }}
             >
-              {w.name}
+              {isActive ? 'ARMED' : w.name}
             </div>
 
-            {/* Active indicator line */}
+            {/* Active indicator bar */}
             {isActive && (
               <div
                 style={{
                   position: 'absolute',
                   bottom: '0px',
-                  left: '25%',
-                  right: '25%',
-                  height: '1.5px',
-                  background: w.accent,
-                  borderRadius: '1px',
-                  boxShadow: `0 0 6px ${w.accent}80`,
+                  left: '20%',
+                  right: '20%',
+                  height: '2px',
+                  background: COLORS.amber,
+                  boxShadow: `0 0 6px ${COLORS.amber}`,
                 }}
               />
             )}

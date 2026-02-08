@@ -114,6 +114,7 @@ export function MeleeCombat() {
   const lastPlayerHitTime = useRef(0);
   const lastBotHitTime = useRef(0);
   const lastClashTime = useRef(0);
+  const playerHitThisFrame = useRef(false);
   const CLASH_COOLDOWN_MS = 1500; // prevent rapid re-clashes
 
   useFrame(() => {
@@ -121,6 +122,7 @@ export function MeleeCombat() {
     if (phase !== 'playing') return;
 
     const now = Date.now();
+    playerHitThisFrame.current = false;
 
     // If player is stunned from a sword clash, skip all attack logic
     const stunned = isPlayerStunned();
@@ -134,7 +136,7 @@ export function MeleeCombat() {
       // Check against all opponents
     scene.traverse((obj) => {
       if (!obj.userData?.isOpponent) return;
-      if (lastPlayerHitTime.current === now) return; // already hit this frame
+      if (playerHitThisFrame.current) return; // already hit this frame
 
       obj.getWorldPosition(_oppPos);
 
@@ -155,6 +157,7 @@ export function MeleeCombat() {
       if (dist <= OPPONENT_RADIUS) {
         // HIT!
         lastPlayerHitTime.current = now;
+        playerHitThisFrame.current = true;
 
         _hitPoint.addVectors(_closestOnSword, _closestOnCapsule).multiplyScalar(0.5);
 

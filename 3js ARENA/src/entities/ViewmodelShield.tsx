@@ -28,35 +28,20 @@ export function ViewmodelShield() {
   const [isBlocking, setIsBlocking] = useState(false);
   const blockLerp = useRef(0);
 
-  // Right-click to block while pointer is locked
+  // Block on left-click or right-click while pointer is locked
   useEffect(() => {
     if (activeWeapon !== 'shield') return;
 
     const onMouseDown = (e: MouseEvent) => {
-      if (e.button === 2 && document.pointerLockElement) {
+      // Both left (0) and right (2) clicks activate block for shield
+      if ((e.button === 0 || e.button === 2) && document.pointerLockElement) {
         setIsBlocking(true);
         const slot = playerSlot ?? 'player1';
         setPlayerBlocking(slot, true);
       }
     };
     const onMouseUp = (e: MouseEvent) => {
-      if (e.button === 2) {
-        setIsBlocking(false);
-        const slot = playerSlot ?? 'player1';
-        setPlayerBlocking(slot, false);
-      }
-    };
-
-    // Also block on left click for shield
-    const onLeftDown = (e: MouseEvent) => {
-      if (e.button === 0 && document.pointerLockElement) {
-        setIsBlocking(true);
-        const slot = playerSlot ?? 'player1';
-        setPlayerBlocking(slot, true);
-      }
-    };
-    const onLeftUp = (e: MouseEvent) => {
-      if (e.button === 0) {
+      if (e.button === 0 || e.button === 2) {
         setIsBlocking(false);
         const slot = playerSlot ?? 'player1';
         setPlayerBlocking(slot, false);
@@ -65,13 +50,9 @@ export function ViewmodelShield() {
 
     window.addEventListener('mousedown', onMouseDown);
     window.addEventListener('mouseup', onMouseUp);
-    window.addEventListener('mousedown', onLeftDown);
-    window.addEventListener('mouseup', onLeftUp);
     return () => {
       window.removeEventListener('mousedown', onMouseDown);
       window.removeEventListener('mouseup', onMouseUp);
-      window.removeEventListener('mousedown', onLeftDown);
-      window.removeEventListener('mouseup', onLeftUp);
       // Ensure blocking is cleared when switching weapons
       const slot = playerSlot ?? 'player1';
       setPlayerBlocking(slot, false);

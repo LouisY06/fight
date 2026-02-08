@@ -1,6 +1,6 @@
 // =============================================================================
-// GameOverScreen.tsx — Winner display with confetti, score count-up
-// Modern UI: Orbitron/Rajdhani fonts, clean buttons
+// GameOverScreen.tsx — Winner display with metal debris effect, stats panel
+// Military mech aesthetic
 // =============================================================================
 
 import { useState, useEffect, useMemo, useRef } from 'react';
@@ -8,35 +8,29 @@ import { useGameStore } from '../game/GameState';
 import { ARENA_THEMES } from '../arena/arenaThemes';
 import { randomPick } from '../utils/random';
 import { ElevenLabs } from '../audio/ElevenLabsService';
+import { COLORS, FONTS, CLIP } from './theme';
+import { MechButton } from './MainMenu';
 
-const FONT_HEADING = "'Orbitron', 'Rajdhani', sans-serif";
-const FONT_BODY = "'Rajdhani', 'Segoe UI', system-ui, sans-serif";
+const DEBRIS_COUNT = 40;
 
-const CONFETTI_COUNT = 60;
-const CONFETTI_COLORS = ['#ff4488', '#44ccff', '#ffcc00', '#44ff88', '#ff8844', '#aa44ff'];
-
-function Confetti() {
+function MetalDebris() {
   const pieces = useMemo(() => {
-    return Array.from({ length: CONFETTI_COUNT }, (_, i) => ({
+    return Array.from({ length: DEBRIS_COUNT }, (_, i) => ({
       id: i,
       left: Math.random() * 100,
-      delay: Math.random() * 0.5,
-      duration: 2 + Math.random() * 1.5,
-      color: CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)],
-      size: 6 + Math.random() * 8,
+      delay: Math.random() * 0.6,
+      duration: 2 + Math.random() * 2,
+      color: Math.random() > 0.5
+        ? `rgba(255, 140, 0, ${0.4 + Math.random() * 0.5})`
+        : `rgba(180, 180, 200, ${0.3 + Math.random() * 0.4})`,
+      size: 3 + Math.random() * 6,
       rotation: Math.random() * 360,
+      isRect: Math.random() > 0.4,
     }));
   }, []);
 
   return (
-    <div
-      style={{
-        position: 'absolute',
-        inset: 0,
-        pointerEvents: 'none',
-        overflow: 'hidden',
-      }}
-    >
+    <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden' }}>
       {pieces.map((p) => (
         <div
           key={p.id}
@@ -44,13 +38,14 @@ function Confetti() {
             position: 'absolute',
             left: `${p.left}%`,
             top: '-20px',
-            width: `${p.size}px`,
+            width: p.isRect ? `${p.size * 1.5}px` : `${p.size}px`,
             height: `${p.size}px`,
             background: p.color,
-            borderRadius: Math.random() > 0.5 ? '50%' : '2px',
-            animation: `confettiFall ${p.duration}s ${p.delay}s ease-out forwards`,
+            borderRadius: p.isRect ? '1px' : '50%',
+            animation: `metalDebrisFall ${p.duration}s ${p.delay}s ease-out forwards`,
             transform: `rotate(${p.rotation}deg)`,
-            opacity: 0.9,
+            opacity: 0,
+            boxShadow: p.color.includes('255, 140') ? `0 0 4px ${p.color}` : 'none',
           }}
         />
       ))}
@@ -112,14 +107,12 @@ export function GameOverScreen() {
   const p2Wins = player2.roundsWon;
   const player1Won = p1Wins > p2Wins;
 
-  let winnerName = player1Won ? 'Player 1' : 'Player 2';
+  let winnerName = player1Won ? 'PILOT-1' : 'PILOT-2';
   if (playerSlot === 'player1') {
     winnerName = player1Won ? username : opponentName;
   } else if (playerSlot === 'player2') {
     winnerName = player1Won ? opponentName : username;
   }
-
-  const winnerColor = player1Won ? '#4488ff' : '#ff4444';
 
   const handleRematch = () => {
     const theme = randomPick(ARENA_THEMES);
@@ -135,108 +128,88 @@ export function GameOverScreen() {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'rgba(0, 0, 0, 0.88)',
-        backdropFilter: 'blur(12px)',
+        background: 'rgba(10, 12, 16, 0.92)',
+        backdropFilter: 'blur(8px)',
         zIndex: 200,
-        gap: '16px',
+        gap: '12px',
         animation: 'fadeIn 0.3s ease-out',
       }}
     >
-      <Confetti />
+      <MetalDebris />
+
+      {/* Warning stripe */}
+      <div
+        style={{
+          width: '350px',
+          height: '4px',
+          background: `repeating-linear-gradient(-45deg, ${COLORS.amber}, ${COLORS.amber} 4px, transparent 4px, transparent 8px)`,
+          marginBottom: '8px',
+          opacity: 0.5,
+        }}
+      />
+
+      {/* Victor label */}
+      <div
+        style={{
+          color: COLORS.textDim,
+          fontSize: '12px',
+          fontFamily: FONTS.mono,
+          letterSpacing: '4px',
+          animation: 'fadeInUp 0.4s 0.1s cubic-bezier(0.34, 1.56, 0.64, 1) both',
+        }}
+      >
+        // VICTOR
+      </div>
 
       <h2
         style={{
-          color: winnerColor,
-          fontSize: '42px',
-          fontWeight: 900,
-          fontFamily: FONT_HEADING,
+          color: COLORS.amber,
+          fontSize: '48px',
+          fontWeight: '700',
+          fontFamily: FONTS.heading,
           textTransform: 'uppercase',
           letterSpacing: '8px',
-          textShadow: `0 0 40px ${winnerColor}66`,
+          textShadow: `0 0 40px ${COLORS.amberGlow}`,
           marginBottom: '4px',
           animation: 'scaleInBounce 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
         }}
       >
-        {winnerName} WINS
+        {winnerName}
       </h2>
 
+      {/* Score */}
       <div
         style={{
-          color: 'rgba(255,255,255,0.4)',
-          fontSize: '20px',
-          fontFamily: FONT_HEADING,
-          fontWeight: 500,
+          color: COLORS.textSecondary,
+          fontSize: '22px',
+          fontFamily: FONTS.mono,
           letterSpacing: '4px',
-          marginBottom: '32px',
+          marginBottom: '8px',
           animation: 'countUp 0.5s 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both',
         }}
       >
-        <CountUpNumber value={p1Wins} /> &mdash; <CountUpNumber value={p2Wins} />
+        <CountUpNumber value={p1Wins} /> — <CountUpNumber value={p2Wins} />
       </div>
 
-      <button
-        onClick={handleRematch}
+      {/* Warning stripe */}
+      <div
         style={{
-          padding: '12px 52px',
-          fontSize: '14px',
-          fontWeight: 700,
-          textTransform: 'uppercase',
-          letterSpacing: '4px',
-          color: '#ffffff',
-          background: 'linear-gradient(180deg, #ff2266, #cc0044)',
-          border: '1px solid rgba(255, 68, 136, 0.4)',
-          borderRadius: '4px',
-          cursor: 'pointer',
-          boxShadow: '0 0 20px rgba(255,0,80,0.3)',
-          fontFamily: FONT_HEADING,
-          transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+          width: '350px',
+          height: '4px',
+          background: `repeating-linear-gradient(-45deg, ${COLORS.amber}, ${COLORS.amber} 4px, transparent 4px, transparent 8px)`,
+          marginBottom: '20px',
+          opacity: 0.5,
         }}
-        onMouseDown={(e) => {
-          e.currentTarget.style.transform = 'scale(0.96)';
-        }}
-        onMouseUp={(e) => {
-          e.currentTarget.style.transform = 'scale(1)';
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.transform = 'scale(1.04)';
-          e.currentTarget.style.boxShadow = '0 0 30px rgba(255,0,80,0.5)';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.transform = 'scale(1)';
-          e.currentTarget.style.boxShadow = '0 0 20px rgba(255,0,80,0.3)';
-        }}
-      >
-        REMATCH
-      </button>
+      />
 
-      <button
-        onClick={resetToMenu}
-        style={{
-          padding: '8px 36px',
-          fontSize: '11px',
-          fontWeight: 600,
-          textTransform: 'uppercase',
-          letterSpacing: '3px',
-          color: 'rgba(255,255,255,0.4)',
-          background: 'transparent',
-          border: '1px solid rgba(255,255,255,0.1)',
-          borderRadius: '4px',
-          cursor: 'pointer',
-          fontFamily: FONT_BODY,
-          marginTop: '4px',
-          transition: 'all 0.15s ease',
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.color = 'rgba(255,255,255,0.8)';
-          e.currentTarget.style.borderColor = 'rgba(255,255,255,0.25)';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.color = 'rgba(255,255,255,0.4)';
-          e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
-        }}
-      >
-        Main Menu
-      </button>
+      {/* Action buttons */}
+      <MechButton onClick={handleRematch} variant="primary">
+        REMATCH
+      </MechButton>
+
+      <MechButton onClick={resetToMenu} variant="secondary">
+        MAIN MENU
+      </MechButton>
     </div>
   );
 }

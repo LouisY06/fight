@@ -114,7 +114,7 @@ function triggerDash(camera: THREE.Camera) {
   camera.getWorldDirection(dir);
   dir.y = 0; // keep dash horizontal
   dir.normalize();
-  dashDir = dir.multiplyScalar(GAME_CONFIG.dashSpell.dashSpeed);
+  dashDir = dir.clone().multiplyScalar(GAME_CONFIG.dashSpell.dashSpeed);
 
   // Screen shake on dash start
   useScreenShakeStore.getState().trigger(0.5, 250);

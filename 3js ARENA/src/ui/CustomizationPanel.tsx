@@ -1,20 +1,20 @@
 // =============================================================================
-// CustomizationPanel.tsx — Color + segment size sliders + avatar type for mech customization
+// CustomizationPanel.tsx — Mech customization with military aesthetic
 // =============================================================================
 
+import { useEffect } from 'react';
 import { useMechaCustomizationStore } from '../game/MechaCustomizationStore';
 import { MECH_PACK_COUNT } from '../riggedMechs/riggedMechPackConstants';
+import { COLORS, FONTS, CLIP, PANEL_STYLE, LABEL_STYLE } from './theme';
 
 const PRESET_COLORS = [
-  '#CC00FF', '#ff4488', '#00ffcc', '#ffcc00', '#ff6600',
-  '#00aaff', '#aa00ff', '#00ff66', '#ff0066', '#0066ff',
+  '#ff8c00', '#cc2222', '#00cc66', '#4a8fbf', '#CC00FF',
+  '#ff4488', '#00ffcc', '#ffcc00', '#0066ff', '#aa44ff',
 ];
 
-export function CustomizationPanel({
-  onClose,
-}: {
-  onClose: () => void;
-}) {
+const MECH_NAMES = ['VANGUARD', 'SENTINEL', 'ENFORCER', 'SPECTRE', 'WARDEN'];
+
+export function CustomizationPanel({ onClose }: { onClose: () => void }) {
   const {
     accentColor,
     segmentScales,
@@ -25,14 +25,24 @@ export function CustomizationPanel({
     resetScales,
     setAvatarType,
     setSelectedPlayerMechId,
+    resetAll,
   } = useMechaCustomizationStore();
+
+  // Close on Escape
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { e.stopPropagation(); onClose(); }
+    };
+    window.addEventListener('keydown', handler, true);
+    return () => window.removeEventListener('keydown', handler, true);
+  }, [onClose]);
 
   return (
     <div
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(0,0,0,0.75)',
+        background: 'rgba(0,0,0,0.8)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -43,16 +53,14 @@ export function CustomizationPanel({
     >
       <div
         style={{
-          background: 'linear-gradient(180deg, #1a0a2e 0%, #0d0515 100%)',
-          border: '1px solid rgba(255, 68, 136, 0.3)',
-          borderRadius: '12px',
+          ...PANEL_STYLE,
           padding: '28px 32px',
-          minWidth: 360,
-          maxWidth: 420,
-          boxShadow: '0 0 60px rgba(255,0,100,0.15), 0 20px 60px rgba(0,0,0,0.5)',
+          minWidth: 380,
+          maxWidth: 440,
         }}
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Header */}
         <div
           style={{
             display: 'flex',
@@ -63,112 +71,76 @@ export function CustomizationPanel({
         >
           <h2
             style={{
-              color: '#fff',
-              fontSize: '22px',
-              fontFamily: "'Impact', 'Arial Black', sans-serif",
+              color: COLORS.textPrimary,
+              fontSize: '20px',
+              fontFamily: FONTS.heading,
               textTransform: 'uppercase',
               letterSpacing: '4px',
             }}
           >
-            Customize Mech
+            UNIT CONFIGURATION
           </h2>
           <button
             onClick={onClose}
             style={{
               background: 'transparent',
               border: 'none',
-              color: '#888',
-              fontSize: '24px',
+              color: COLORS.textDim,
+              fontSize: '20px',
               cursor: 'pointer',
               padding: '4px 8px',
-              lineHeight: 1,
+              fontFamily: FONTS.mono,
             }}
           >
-            ×
+            [X]
           </button>
         </div>
 
-        {/* Avatar type: Classic mech vs Rigged mechs pack */}
-        <div style={{ marginBottom: '24px' }}>
-          <label
-            style={{
-              display: 'block',
-              color: '#aaa',
-              fontSize: '12px',
-              textTransform: 'uppercase',
-              letterSpacing: '2px',
-              marginBottom: '10px',
-            }}
-          >
-            Avatar
+        {/* Avatar type selector */}
+        <div style={{ marginBottom: '20px' }}>
+          <label style={{ ...LABEL_STYLE, display: 'block', marginBottom: '10px' }}>
+            // CHASSIS TYPE
           </label>
-          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-            <button
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <ChassisButton
+              active={avatarType === 'classic'}
               onClick={() => setAvatarType('classic')}
-              style={{
-                padding: '10px 16px',
-                fontSize: '14px',
-                fontFamily: "'Impact', 'Arial Black', sans-serif",
-                textTransform: 'uppercase',
-                letterSpacing: '1px',
-                color: avatarType === 'classic' ? '#fff' : '#888',
-                background: avatarType === 'classic' ? 'rgba(255,68,136,0.35)' : 'rgba(255,255,255,0.06)',
-                border: avatarType === 'classic' ? '2px solid #ff4488' : '1px solid rgba(255,255,255,0.2)',
-                borderRadius: 8,
-                cursor: 'pointer',
-              }}
-            >
-              Classic Mech
-            </button>
-            <button
+              label="CLASSIC"
+            />
+            <ChassisButton
+              active={avatarType === 'riggedPack'}
               onClick={() => setAvatarType('riggedPack')}
-              style={{
-                padding: '10px 16px',
-                fontSize: '14px',
-                fontFamily: "'Impact', 'Arial Black', sans-serif",
-                textTransform: 'uppercase',
-                letterSpacing: '1px',
-                color: avatarType === 'riggedPack' ? '#fff' : '#888',
-                background: avatarType === 'riggedPack' ? 'rgba(255,68,136,0.35)' : 'rgba(255,255,255,0.06)',
-                border: avatarType === 'riggedPack' ? '2px solid #ff4488' : '1px solid rgba(255,255,255,0.2)',
-                borderRadius: 8,
-                cursor: 'pointer',
-              }}
-            >
-              Rigged Mechs Pack
-            </button>
+              label="RIGGED PACK"
+            />
           </div>
+
+          {/* Mech selection for rigged pack */}
           {avatarType === 'riggedPack' && MECH_PACK_COUNT > 0 && (
             <div style={{ marginTop: '12px' }}>
-              <label
-                style={{
-                  display: 'block',
-                  color: '#888',
-                  fontSize: '11px',
-                  textTransform: 'uppercase',
-                  letterSpacing: '2px',
-                  marginBottom: '8px',
-                }}
-              >
-                Choose your mech
+              <label style={{ ...LABEL_STYLE, display: 'block', marginBottom: '8px', fontSize: '10px' }}>
+                // SELECT UNIT
               </label>
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                 {Array.from({ length: MECH_PACK_COUNT }, (_, i) => (
                   <button
                     key={i}
                     onClick={() => setSelectedPlayerMechId(i)}
                     style={{
-                      minWidth: 44,
-                      padding: '8px 12px',
-                      fontSize: '13px',
-                      color: selectedPlayerMechId === i ? '#fff' : '#aaa',
-                      background: selectedPlayerMechId === i ? accentColor : 'rgba(255,255,255,0.08)',
-                      border: selectedPlayerMechId === i ? `2px solid ${accentColor}` : '1px solid rgba(255,255,255,0.15)',
-                      borderRadius: 6,
+                      padding: '8px 14px',
+                      fontSize: '11px',
+                      fontFamily: FONTS.mono,
+                      color: selectedPlayerMechId === i ? COLORS.amber : COLORS.textDim,
+                      background: selectedPlayerMechId === i ? 'rgba(255, 140, 0, 0.12)' : 'rgba(255,255,255,0.03)',
+                      border: selectedPlayerMechId === i
+                        ? `1px solid ${COLORS.amber}`
+                        : `1px solid ${COLORS.borderFaint}`,
+                      clipPath: CLIP.button,
                       cursor: 'pointer',
+                      letterSpacing: '1px',
+                      transition: 'all 0.15s ease',
                     }}
                   >
-                    {i + 1}
+                    {MECH_NAMES[i] || `UNIT-${String(i + 1).padStart(2, '0')}`}
                   </button>
                 ))}
               </div>
@@ -177,44 +149,39 @@ export function CustomizationPanel({
         </div>
 
         {/* Accent color */}
-        <div style={{ marginBottom: '24px' }}>
-          <label
-            style={{
-              display: 'block',
-              color: '#aaa',
-              fontSize: '12px',
-              textTransform: 'uppercase',
-              letterSpacing: '2px',
-              marginBottom: '10px',
-            }}
-          >
-            Accent Color
+        <div style={{ marginBottom: '20px' }}>
+          <label style={{ ...LABEL_STYLE, display: 'block', marginBottom: '10px' }}>
+            // ACCENT COLOR
           </label>
-          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-            {PRESET_COLORS.map((c) => (
-              <button
-                key={c}
-                onClick={() => setAccentColor(c)}
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 8,
-                  background: c,
-                  border: accentColor === c ? '3px solid #fff' : '2px solid rgba(255,255,255,0.2)',
-                  cursor: 'pointer',
-                  boxShadow: accentColor === c ? `0 0 20px ${c}` : 'none',
-                }}
-              />
-            ))}
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+            {PRESET_COLORS.map((c) => {
+              const isActive = accentColor === c;
+              return (
+                <button
+                  key={c}
+                  onClick={() => setAccentColor(c)}
+                  style={{
+                    width: 32,
+                    height: 32,
+                    background: c,
+                    border: isActive ? '2px solid #fff' : `1px solid ${COLORS.borderFaint}`,
+                    clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)',
+                    cursor: 'pointer',
+                    boxShadow: isActive ? `0 0 16px ${c}` : 'none',
+                    transition: 'all 0.15s ease',
+                    padding: 0,
+                  }}
+                />
+              );
+            })}
             <label style={{ cursor: 'pointer' }}>
               <input
                 type="color"
                 value={accentColor}
                 onChange={(e) => setAccentColor(e.target.value)}
                 style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 8,
+                  width: 32,
+                  height: 32,
                   border: 'none',
                   cursor: 'pointer',
                   padding: 0,
@@ -227,31 +194,16 @@ export function CustomizationPanel({
 
         {/* Segment size sliders */}
         <div style={{ marginBottom: '20px' }}>
-          <label
-            style={{
-              display: 'block',
-              color: '#aaa',
-              fontSize: '12px',
-              textTransform: 'uppercase',
-              letterSpacing: '2px',
-              marginBottom: '14px',
-            }}
-          >
-            Segment Size
+          <label style={{ ...LABEL_STYLE, display: 'block', marginBottom: '12px' }}>
+            // SEGMENT SCALE
           </label>
           {(['head', 'torso', 'arms', 'legs'] as const).map((seg) => (
-            <div key={seg} style={{ marginBottom: '12px' }}>
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  marginBottom: '4px',
-                }}
-              >
-                <span style={{ color: '#ccc', fontSize: '14px', textTransform: 'capitalize' }}>
+            <div key={seg} style={{ marginBottom: '10px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                <span style={{ color: COLORS.textSecondary, fontSize: '13px', fontFamily: FONTS.heading, textTransform: 'uppercase', letterSpacing: '2px' }}>
                   {seg}
                 </span>
-                <span style={{ color: '#ff4488', fontFamily: 'monospace', fontSize: '13px' }}>
+                <span style={{ color: COLORS.amber, fontFamily: FONTS.mono, fontSize: '12px' }}>
                   {(segmentScales[seg] * 100).toFixed(0)}%
                 </span>
               </div>
@@ -262,55 +214,78 @@ export function CustomizationPanel({
                 step={0.05}
                 value={segmentScales[seg]}
                 onChange={(e) => setSegmentScale(seg, parseFloat(e.target.value))}
-                style={{
-                  width: '100%',
-                  height: 6,
-                  accentColor: accentColor,
-                }}
+                style={{ width: '100%', cursor: 'pointer' }}
               />
             </div>
           ))}
         </div>
 
-        <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
+        {/* Action buttons */}
+        <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
           <button
-            onClick={resetScales}
+            onClick={resetAll}
             style={{
               flex: 1,
-              padding: '12px',
-              fontSize: '14px',
-              fontFamily: "'Impact', 'Arial Black', sans-serif",
+              padding: '10px',
+              fontSize: '13px',
+              fontFamily: FONTS.heading,
               textTransform: 'uppercase',
               letterSpacing: '2px',
-              color: '#888',
-              background: 'rgba(255,255,255,0.06)',
-              border: '1px solid rgba(255,255,255,0.15)',
-              borderRadius: 6,
+              color: COLORS.textDim,
+              background: 'rgba(255,255,255,0.03)',
+              border: `1px solid ${COLORS.borderFaint}`,
+              clipPath: CLIP.button,
               cursor: 'pointer',
+              transition: 'all 0.15s ease',
             }}
           >
-            Reset Sizes
+            RESET ALL
           </button>
           <button
             onClick={onClose}
             style={{
               flex: 1,
-              padding: '12px',
-              fontSize: '14px',
-              fontFamily: "'Impact', 'Arial Black', sans-serif",
+              padding: '10px',
+              fontSize: '13px',
+              fontFamily: FONTS.heading,
               textTransform: 'uppercase',
               letterSpacing: '2px',
-              color: '#fff',
-              background: `linear-gradient(180deg, ${accentColor}, #880044)`,
-              border: `1px solid ${accentColor}`,
-              borderRadius: 6,
+              color: COLORS.bgDeep,
+              background: `linear-gradient(180deg, ${COLORS.amber}, #cc6600)`,
+              border: `1px solid ${COLORS.amberBright}`,
+              clipPath: CLIP.button,
               cursor: 'pointer',
+              fontWeight: 600,
+              transition: 'all 0.15s ease',
             }}
           >
-            Done
+            CONFIRM
           </button>
         </div>
       </div>
     </div>
+  );
+}
+
+function ChassisButton({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        padding: '10px 16px',
+        fontSize: '12px',
+        fontFamily: FONTS.heading,
+        textTransform: 'uppercase',
+        letterSpacing: '2px',
+        color: active ? COLORS.amber : COLORS.textDim,
+        background: active ? 'rgba(255, 140, 0, 0.1)' : 'rgba(255,255,255,0.03)',
+        border: active ? `1px solid ${COLORS.amber}` : `1px solid ${COLORS.borderFaint}`,
+        clipPath: CLIP.button,
+        cursor: 'pointer',
+        transition: 'all 0.15s ease',
+      }}
+    >
+      {label}
+    </button>
   );
 }
