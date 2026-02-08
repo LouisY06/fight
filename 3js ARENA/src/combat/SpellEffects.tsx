@@ -25,7 +25,9 @@ const _dir = new THREE.Vector3();
 const _pos = new THREE.Vector3();
 const _oppPos = new THREE.Vector3();
 
-const SPELL_HIT_RADIUS = 1.0;
+// Opponent group is at feet (y≈0). Offset to body center for hit checks.
+const OPPONENT_CENTER_Y = 1.0;
+const SPELL_HIT_RADIUS = 1.8; // generous — spells should feel satisfying to land
 
 // ---------------------------------------------------------------------------
 // Cache the opponent object so we don't scene.traverse() every frame
@@ -114,6 +116,8 @@ function SpellProjectile({ spell }: { spell: ActiveSpell }) {
       const opp = findOpponent(scene);
       if (opp) {
         opp.getWorldPosition(_oppPos);
+        // Offset to body center (group pos is at feet)
+        _oppPos.y += OPPONENT_CENTER_Y;
         if (ref.current.position.distanceTo(_oppPos) < SPELL_HIT_RADIUS) {
           handleSpellHit(spell);
           hasHit.current = true;
@@ -137,6 +141,7 @@ function SpellProjectile({ spell }: { spell: ActiveSpell }) {
       const opp = findOpponent(scene);
       if (opp) {
         opp.getWorldPosition(_oppPos);
+        _oppPos.y += OPPONENT_CENTER_Y; // offset to body center
         const toOpp = _oppPos.clone().sub(beamOrigin);
         const proj = toOpp.dot(beamDir);
         if (proj >= 0 && proj <= config.range) {

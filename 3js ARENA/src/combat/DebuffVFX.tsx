@@ -1,8 +1,8 @@
 // =============================================================================
 // DebuffVFX.tsx — 3D visual effects for stun/slow debuffs on characters
 //
-// StunVFX: Electric arcs + spark particles flickering around the target
-// SlowVFX: Frost crystals + icy ring orbiting the target
+// StunVFX: Bright electric arcs + large spark particles around the target
+// SlowVFX: Large frost crystals + visible icy ring orbiting the target
 //
 // Attach as a child of the character group. Renders at origin of parent.
 // =============================================================================
@@ -40,7 +40,7 @@ export function DebuffVFX({ target }: DebuffVFXProps) {
 }
 
 // ---------------------------------------------------------------------------
-// Stun VFX — Electric arcs + sparks
+// Stun VFX — Bright electric arcs + big sparks
 // ---------------------------------------------------------------------------
 
 interface ArcData {
@@ -49,34 +49,34 @@ interface ArcData {
   radius: number;
   speed: number;
   phaseOffset: number;
+  length: number;
 }
 
 function StunVFX({ targetRef }: { targetRef: React.MutableRefObject<SpellDebuff> }) {
   const groupRef = useRef<THREE.Group>(null!);
 
-  // Pre-generate arc data
   const arcs = useMemo<ArcData[]>(() => {
     const out: ArcData[] = [];
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 8; i++) {
       out.push({
-        startAngle: (Math.PI * 2 * i) / 6,
-        height: 0.5 + Math.random() * 1.4,
-        radius: 0.3 + Math.random() * 0.3,
+        startAngle: (Math.PI * 2 * i) / 8,
+        height: 0.3 + Math.random() * 1.6,
+        radius: 0.4 + Math.random() * 0.4,
         speed: 3 + Math.random() * 4,
         phaseOffset: Math.random() * Math.PI * 2,
+        length: 0.3 + Math.random() * 0.4,
       });
     }
     return out;
   }, []);
 
-  // Spark particles
   const sparkRefs = useRef<THREE.Mesh[]>([]);
   const sparkData = useMemo(() => {
-    const out:{ angle: number; height: number; speed: number; flickerSpeed: number }[] = [];
-    for (let i = 0; i < 10; i++) {
+    const out: { angle: number; height: number; speed: number; flickerSpeed: number }[] = [];
+    for (let i = 0; i < 14; i++) {
       out.push({
         angle: Math.random() * Math.PI * 2,
-        height: 0.3 + Math.random() * 1.6,
+        height: 0.2 + Math.random() * 1.8,
         speed: 2 + Math.random() * 5,
         flickerSpeed: 8 + Math.random() * 12,
       });
@@ -92,49 +92,74 @@ function StunVFX({ targetRef }: { targetRef: React.MutableRefObject<SpellDebuff>
 
     const t = performance.now() * 0.001;
 
-    // Animate sparks
     sparkRefs.current.forEach((mesh, i) => {
       if (!mesh) return;
       const sd = sparkData[i];
       const angle = sd.angle + t * sd.speed;
-      const r = 0.35 + Math.sin(t * 3 + i) * 0.1;
+      const r = 0.5 + Math.sin(t * 3 + i) * 0.15;
       mesh.position.set(
         Math.cos(angle) * r,
-        sd.height + Math.sin(t * 4 + i * 0.7) * 0.15,
+        sd.height + Math.sin(t * 4 + i * 0.7) * 0.2,
         Math.sin(angle) * r
       );
-      // Flicker visibility
-      const flicker = Math.sin(t * sd.flickerSpeed + i) > 0.1;
+      const flicker = Math.sin(t * sd.flickerSpeed + i) > 0;
       mesh.visible = flicker;
-      mesh.scale.setScalar(flicker ? 0.02 + Math.random() * 0.03 : 0);
+      mesh.scale.setScalar(flicker ? 0.04 + Math.random() * 0.06 : 0);
     });
 
-    // Slight overall rotation
     groupRef.current.rotation.y += delta * 2;
   });
 
   return (
     <group ref={groupRef} visible={false}>
-      {/* Electric arc lines (thin emissive cylinders) */}
       {arcs.map((arc, i) => (
         <StunArc key={i} arc={arc} />
       ))}
 
-      {/* Spark particles */}
       {sparkData.map((_, i) => (
         <mesh
           key={`spark-${i}`}
           ref={(el) => { if (el) sparkRefs.current[i] = el; }}
         >
-          <sphereGeometry args={[0.03, 4, 4]} />
+          <sphereGeometry args={[0.06, 4, 4]} />
           <meshStandardMaterial
             color="#ffffff"
             emissive="#00ccff"
-            emissiveIntensity={8}
+            emissiveIntensity={10}
             toneMapped={false}
           />
         </mesh>
       ))}
+
+      {/* Big electric ring at waist height */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.8, 0]}>
+        <ringGeometry args={[0.5, 0.55, 16]} />
+        <meshStandardMaterial
+          color="#00ccff"
+          emissive="#44eeff"
+          emissiveIntensity={6}
+          transparent
+          opacity={0.5}
+          side={THREE.DoubleSide}
+          depthWrite={false}
+          toneMapped={false}
+        />
+      </mesh>
+
+      {/* Second ring at shoulder height */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 1.4, 0]}>
+        <ringGeometry args={[0.35, 0.4, 16]} />
+        <meshStandardMaterial
+          color="#00ccff"
+          emissive="#44eeff"
+          emissiveIntensity={4}
+          transparent
+          opacity={0.35}
+          side={THREE.DoubleSide}
+          depthWrite={false}
+          toneMapped={false}
+        />
+      </mesh>
     </group>
   );
 }
@@ -148,34 +173,32 @@ function StunArc({ arc }: { arc: ArcData }) {
     const t = performance.now() * 0.001;
     const angle = arc.startAngle + t * arc.speed;
 
-    // Zigzag positioning
     const x = Math.cos(angle) * arc.radius;
     const z = Math.sin(angle) * arc.radius;
-    const jitterX = Math.sin(t * 15 + arc.phaseOffset) * 0.08;
-    const jitterZ = Math.cos(t * 18 + arc.phaseOffset) * 0.08;
+    const jitterX = Math.sin(t * 15 + arc.phaseOffset) * 0.12;
+    const jitterZ = Math.cos(t * 18 + arc.phaseOffset) * 0.12;
 
     meshRef.current.position.set(x + jitterX, arc.height, z + jitterZ);
     meshRef.current.rotation.set(
-      Math.sin(t * 10) * 0.5,
+      Math.sin(t * 10) * 0.8,
       t * 5,
-      Math.cos(t * 12) * 0.5
+      Math.cos(t * 12) * 0.8
     );
 
-    // Flicker intensity
     if (matRef.current) {
-      matRef.current.emissiveIntensity = 4 + Math.random() * 6;
-      matRef.current.opacity = 0.4 + Math.random() * 0.6;
+      matRef.current.emissiveIntensity = 5 + Math.random() * 8;
+      matRef.current.opacity = 0.5 + Math.random() * 0.5;
     }
   });
 
   return (
     <mesh ref={meshRef}>
-      <cylinderGeometry args={[0.008, 0.008, 0.25 + Math.random() * 0.2, 3]} />
+      <cylinderGeometry args={[0.015, 0.015, arc.length, 3]} />
       <meshStandardMaterial
         ref={matRef}
         color="#00ddff"
         emissive="#44eeff"
-        emissiveIntensity={6}
+        emissiveIntensity={8}
         transparent
         opacity={0.7}
         depthWrite={false}
@@ -186,7 +209,7 @@ function StunArc({ arc }: { arc: ArcData }) {
 }
 
 // ---------------------------------------------------------------------------
-// Slow VFX — Frost crystals + icy ground ring
+// Slow VFX — Big frost crystals + visible icy ring + ground frost
 // ---------------------------------------------------------------------------
 
 interface CrystalData {
@@ -204,12 +227,12 @@ function SlowVFX({ targetRef }: { targetRef: React.MutableRefObject<SpellDebuff>
 
   const crystals = useMemo<CrystalData[]>(() => {
     const out: CrystalData[] = [];
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 10; i++) {
       out.push({
-        angle: (Math.PI * 2 * i) / 8 + Math.random() * 0.3,
-        height: 0.4 + Math.random() * 1.4,
-        radius: 0.3 + Math.random() * 0.25,
-        size: 0.04 + Math.random() * 0.06,
+        angle: (Math.PI * 2 * i) / 10 + Math.random() * 0.3,
+        height: 0.2 + Math.random() * 1.6,
+        radius: 0.4 + Math.random() * 0.35,
+        size: 0.08 + Math.random() * 0.1,
         rotSpeed: 1 + Math.random() * 2,
         orbitSpeed: 0.3 + Math.random() * 0.5,
       });
@@ -227,59 +250,72 @@ function SlowVFX({ targetRef }: { targetRef: React.MutableRefObject<SpellDebuff>
 
     const t = performance.now() * 0.001;
 
-    // Animate crystals orbiting
     crystalRefs.current.forEach((mesh, i) => {
       if (!mesh) return;
       const cd = crystals[i];
       const angle = cd.angle + t * cd.orbitSpeed;
       mesh.position.set(
         Math.cos(angle) * cd.radius,
-        cd.height + Math.sin(t * 1.5 + i * 0.8) * 0.1,
+        cd.height + Math.sin(t * 1.5 + i * 0.8) * 0.15,
         Math.sin(angle) * cd.radius
       );
       mesh.rotation.x += delta * cd.rotSpeed;
       mesh.rotation.z += delta * cd.rotSpeed * 0.7;
     });
 
-    // Pulse the ground ring
     if (ringRef.current) {
-      const pulse = 0.8 + Math.sin(t * 2) * 0.2;
+      const pulse = 0.9 + Math.sin(t * 2) * 0.1;
       ringRef.current.scale.set(pulse, 1, pulse);
       (ringRef.current.material as THREE.MeshStandardMaterial).opacity =
-        0.15 + Math.sin(t * 3) * 0.08;
+        0.3 + Math.sin(t * 3) * 0.1;
     }
   });
 
   return (
     <group ref={groupRef} visible={false}>
-      {/* Icy ground ring */}
+      {/* Large icy ground ring */}
       <mesh ref={ringRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.05, 0]}>
-        <ringGeometry args={[0.4, 0.65, 24]} />
+        <ringGeometry args={[0.6, 1.0, 24]} />
         <meshStandardMaterial
           color="#88ccff"
           emissive="#aaddff"
-          emissiveIntensity={2}
+          emissiveIntensity={3}
           transparent
-          opacity={0.2}
+          opacity={0.35}
           side={THREE.DoubleSide}
           depthWrite={false}
           toneMapped={false}
         />
       </mesh>
 
-      {/* Floating ice crystals */}
-      {crystals.map((_, i) => (
+      {/* Inner frost circle */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.06, 0]}>
+        <circleGeometry args={[0.6, 24]} />
+        <meshStandardMaterial
+          color="#aaddff"
+          emissive="#88ccff"
+          emissiveIntensity={1.5}
+          transparent
+          opacity={0.12}
+          side={THREE.DoubleSide}
+          depthWrite={false}
+          toneMapped={false}
+        />
+      </mesh>
+
+      {/* Floating ice crystals — bigger and more visible */}
+      {crystals.map((cd, i) => (
         <mesh
           key={i}
           ref={(el) => { if (el) crystalRefs.current[i] = el; }}
         >
-          <octahedronGeometry args={[crystals[i].size, 0]} />
+          <octahedronGeometry args={[cd.size, 0]} />
           <meshStandardMaterial
             color="#bbddff"
             emissive="#88ccff"
-            emissiveIntensity={3}
+            emissiveIntensity={5}
             transparent
-            opacity={0.7}
+            opacity={0.8}
             roughness={0.05}
             metalness={0.4}
             toneMapped={false}

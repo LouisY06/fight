@@ -56,7 +56,7 @@ export const SPELL_CONFIGS: Record<SpellType, SpellConfig> = {
     color: '#00ccff',
     emissive: '#44eeff',
     debuff: 'stun',
-    debuffDurationMs: 1500,
+    debuffDurationMs: 2000,
   },
   ice_blast: {
     name: 'Ice Blast',
@@ -68,7 +68,7 @@ export const SPELL_CONFIGS: Record<SpellType, SpellConfig> = {
     color: '#88ccff',
     emissive: '#aaddff',
     debuff: 'slow',
-    debuffDurationMs: 3000,
+    debuffDurationMs: 3500,
   },
 };
 
