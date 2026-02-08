@@ -702,10 +702,10 @@ function CastleWorld() {
       out.push({ name: 'tower-square-base', pos: [x, 0, z], rotY: ty, scale: sc });
       out.push({ name: 'tower-square-mid', pos: [x, sc, z], rotY: ty, scale: sc });
       out.push({ name: 'tower-square-top', pos: [x, sc * 2, z], rotY: ty, scale: sc });
-      // Flag on top
+      // Flag on top of tower (just above top block so it doesn't float in the sky)
       out.push({
         name: pick(['flag', 'flag-banner-long'], r),
-        pos: [x, sc * 3, z],
+        pos: [x, sc * 2 + 0.6, z],
         rotY: r() * Math.PI * 2,
         scale: sc,
       });
