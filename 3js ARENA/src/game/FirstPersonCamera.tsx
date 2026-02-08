@@ -1,6 +1,7 @@
 // =============================================================================
-// FirstPersonCamera.tsx — Full FPS camera: WASD move + mouse look
-// CV mode: head rotation for look + 1:1 position mapping from body tracking.
+// FirstPersonCamera.tsx — Full FPS camera: WASD/dance-pad move + mouse look
+// CV mode: head rotation for camera look, sword swing detection.
+// Movement via WASD keys (or dance pad mapped to WASD).
 // Click the canvas to lock the pointer. ESC to unlock / pause.
 // =============================================================================
 
@@ -174,7 +175,7 @@ export function FirstPersonCamera() {
           Math.min(Math.PI * 0.47, euler.current.x)
         );
 
-        // Movement is handled by WASD even in CV mode (CV position tracking disabled).
+        // Movement via WASD / dance pad (below). CV only handles head look + combat.
       }
 
       // ---- WASD movement (works in both keyboard and CV mode) ----
