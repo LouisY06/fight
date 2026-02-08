@@ -29,6 +29,7 @@ import { MeleeCombat } from './combat/MeleeCombat';
 import { HitEffectManager } from './combat/HitEffectManager';
 import { SpellEffects } from './combat/SpellEffects';
 import { SpellCaster } from './combat/SpellCaster';
+import { BulletManager } from './combat/BulletManager';
 import { initWeaponKeyListener } from './game/WeaponState';
 
 import { CVProvider } from './cv/CVProvider';
@@ -153,6 +154,7 @@ function GameApp() {
                 <HitEffectManager />
                 <SpellEffects />
                 <SpellCaster />
+                <BulletManager />
                 <InputSyncBridge />
 
                 {/* Arena environment */}

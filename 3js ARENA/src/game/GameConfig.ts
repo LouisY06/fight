@@ -9,7 +9,7 @@ export const GAME_CONFIG = {
   damage: {
     swordSlash: 15,
     swordStab: 20,
-    gunShot: 25,
+    gunShot: 10,
     knifeSlash: 12,
     knifeStab: 18,
   },
