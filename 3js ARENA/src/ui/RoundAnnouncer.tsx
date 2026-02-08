@@ -29,37 +29,69 @@ export function RoundAnnouncer() {
     }
   }, []);
 
-  useEffect(() => {
-    if (phase === 'countdown') {
-      setVisible(true);
+  // Helper: run the full "ROUND X → 3 → 2 → 1 → FIGHT!" sequence
+  const runCountdownSequence = () => {
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    setVisible(true);
+    setShowFlash(false);
+    flashDone.current = false;
+
+    // "ROUND X"
+    setScale(0.5);
+    setVariant('round');
+    setText(`ROUND ${currentRound}`);
+    requestAnimationFrame(() => setScale(1));
+    ElevenLabs.announceRound(currentRound);
+
+    // "3" at 1200ms
+    timers.push(setTimeout(() => {
+      setText('3');
       setScale(0.5);
-      setVariant('round');
-      setShowFlash(false);
-      flashDone.current = false;
-
-      setText(`ROUND ${currentRound}`);
       requestAnimationFrame(() => setScale(1));
+      ElevenLabs.announceCountdownNumber(3);
+    }, 1200));
 
-      ElevenLabs.announceRound(currentRound);
+    // "2" at 2200ms
+    timers.push(setTimeout(() => {
+      setText('2');
+      setScale(0.5);
+      requestAnimationFrame(() => setScale(1));
+      ElevenLabs.announceCountdownNumber(2);
+    }, 2200));
 
-      const fightTimer = setTimeout(() => {
-        setScale(0.3);
-        setTimeout(() => {
-          setText('ENGAGE');
-          setVariant('fight');
-          setScale(1.2);
-          useScreenShakeStore.getState().trigger(0.3, 100);
-          ElevenLabs.announceFight();
-        }, 150);
-      }, 1500);
+    // "1" at 3200ms
+    timers.push(setTimeout(() => {
+      setText('1');
+      setScale(0.5);
+      requestAnimationFrame(() => setScale(1));
+      ElevenLabs.announceCountdownNumber(1);
+    }, 3200));
 
-      const hideTimer = setTimeout(() => {
-        setVisible(false);
-      }, 2800);
+    // "FIGHT!" at 4100ms
+    timers.push(setTimeout(() => {
+      setScale(0.3);
+      setTimeout(() => {
+        setText('FIGHT!');
+        setVariant('fight');
+        setScale(1.2);
+        useScreenShakeStore.getState().trigger(0.3, 100);
+        ElevenLabs.announceFight();
+      }, 150);
+    }, 4100));
 
+    // Hide overlay at 5500ms
+    timers.push(setTimeout(() => setVisible(false), 5500));
+
+    return timers;
+  };
+
+  // Intro phase (Round 1): camera orbits mech cutscene WITH countdown overlay
+  // Countdown phase (Rounds 2+): first-person view with countdown overlay
+  useEffect(() => {
+    if (phase === 'intro' || phase === 'countdown') {
+      const timers = runCountdownSequence();
       return () => {
-        clearTimeout(fightTimer);
-        clearTimeout(hideTimer);
+        for (const t of timers) clearTimeout(t);
       };
     }
 

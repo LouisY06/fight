@@ -26,10 +26,10 @@ export const GAME_CONFIG = {
   attackCooldownMs: 500, // ms between hits from same attack (raised from 200)
   swordClashRadius: 0.25, // max distance between sword segments to register a clash
   stunDurationMs: 1000, // ms both players are stunned after sword clash
-  countdownDuration: 3, // seconds for pre-round countdown
+  countdownDuration: 5, // seconds for "ROUND X → 3 → 2 → 1 → FIGHT!" (full sequence, all rounds)
   roundEndDelay: 3000, // ms to show round result before next round
-  /** Glambot intro: orbit around mech + visor power-on (seconds). */
-  introDuration: 3,
+  /** Glambot intro cutscene: orbit around mech with "ROUND 1 → 3 → 2 → 1 → FIGHT!" overlay (seconds). */
+  introDuration: 5,
   dashSpell: {
     chargeDuration: 0.8,   // seconds to fully charge
     dashSpeed: 35,          // units per second during dash
@@ -46,7 +46,7 @@ export type AttackType = 'slash' | 'stab' | 'shoot' | 'block' | 'parry' | 'idle'
 // AI Difficulty Presets
 // ---------------------------------------------------------------------------
 
-export type AIDifficulty = 'easy' | 'medium' | 'hard';
+export type AIDifficulty = 'easy' | 'medium' | 'hard' | 'trueai';
 
 export interface AIDifficultyConfig {
   label: string;
@@ -107,5 +107,18 @@ export const AI_DIFFICULTY: Record<AIDifficulty, AIDifficultyConfig> = {
     playerHealthMultiplier: 1.0, // 100 HP (standard)
     blockChance: 0.5,
     description: 'Fast, aggressive, reads your patterns',
+  },
+  trueai: {
+    label: 'TRUE AI',
+    moveSpeed: 3.0,
+    attackRange: 2.3,
+    attackCooldown: 0.9,
+    swingDuration: 0.35,
+    decisionIntervalMs: 1000,
+    useLLM: true,
+    damageMultiplier: 0.9,
+    playerHealthMultiplier: 1.0, // Fair fight — 100 HP
+    blockChance: 0.4,
+    description: 'Learns from every fight. Remembers you.',
   },
 } as const;

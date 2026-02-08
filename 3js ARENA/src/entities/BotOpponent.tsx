@@ -10,14 +10,28 @@ import * as THREE from 'three';
 import { DeathEffect } from './DeathEffect';
 import { useGameStore } from '../game/GameState';
 import { GAME_CONFIG, AI_DIFFICULTY } from '../game/GameConfig';
-import { getDebuff } from '../combat/SpellSystem';
+import { getDebuff, useSpellStore, fireSpellCast, SPELL_CONFIGS, type SpellType } from '../combat/SpellSystem';
 import { DebuffVFX } from '../combat/DebuffVFX';
 import { OpponentHitbox } from './OpponentHitbox';
 import { RiggedMechEntity } from '../riggedMechs/RiggedMechEntity';
 import { MECH_PACK_COUNT } from '../riggedMechs/riggedMechPackConstants';
 import { setBotSwordState } from '../combat/OpponentSwordState';
+import { cvBridge } from '../cv/cvBridge';
 
-const SWORD_BLADE_LENGTH = 0.7; // world-space blade length (scaled)
+// Bot spell-casting interval per difficulty (ms between spell attempts)
+const BOT_SPELL_INTERVAL: Record<string, number> = {
+  easy: 12000,
+  medium: 8000,
+  hard: 5000,
+  trueai: 6000,
+};
+
+const SPELL_TYPES: SpellType[] = ['fireball', 'laser', 'ice_blast'];
+
+// Blade in MechaGeometry: BoxGeometry height=2.0, position.y=1.08 → top at ~2.08.
+// Sword group in MechaEntity: scale=[0.3,0.3,0.3], rotation=[PI,0,0].
+// We use getWorldScale to compute the actual world blade length.
+const SWORD_BLADE_LENGTH = 2.1; // local-space blade extent (pre-scale)
 
 interface BotOpponentProps {
   color?: string;
@@ -45,12 +59,28 @@ export function BotOpponent({ color = '#ff4444' }: BotOpponentProps) {
   const swingProgressRef = useRef(0);
   const lastAttackTimeRef = useRef(0);
   const swordGroupRef = useRef<THREE.Group | null>(null);
+  const lastSpellTimeRef = useRef(0);
 
   const _dirToPlayer = new THREE.Vector3();
   const _playerPos = new THREE.Vector3();
   const _swordHilt = new THREE.Vector3();
   const _swordTipLocal = new THREE.Vector3();
   const _swordQuat = new THREE.Quaternion();
+
+  // Reset position on round start (countdown phase)
+  useEffect(() => {
+    if (phase === 'countdown' && groupRef.current) {
+      const [sx, sy, sz] = GAME_CONFIG.spawnP2;
+      groupRef.current.position.set(sx, sy, sz);
+      groupRef.current.rotation.set(0, 0, 0);
+      setIsDead(false);
+      swingProgressRef.current = 0;
+      setIsSwinging(false);
+      lastAttackTimeRef.current = 0;
+      // Update cvBridge with spawn position
+      cvBridge.setOpponentPosition(sx, sy, sz);
+    }
+  }, [phase]);
 
   // Detect when bot dies
   useEffect(() => {
@@ -84,6 +114,34 @@ export function BotOpponent({ color = '#ff4444' }: BotOpponentProps) {
     const distXZ = _dirToPlayer.length();
     const now = performance.now() / 1000;
 
+    // --- Lock movement and attacks during countdown ---
+    if (phase === 'countdown') {
+      isMovingRef.current = false;
+      // Update sword state but don't attack
+      if (swordGroupRef.current) {
+        swordGroupRef.current.getWorldPosition(_swordHilt);
+        swordGroupRef.current.getWorldQuaternion(_swordQuat);
+        const worldScale = new THREE.Vector3();
+        swordGroupRef.current.getWorldScale(worldScale);
+        const bladeWorldLen = SWORD_BLADE_LENGTH * worldScale.y;
+        _swordTipLocal.set(0, bladeWorldLen, 0);
+        _swordTipLocal.applyQuaternion(_swordQuat).add(_swordHilt);
+        setBotSwordState(_swordHilt.clone(), _swordTipLocal.clone(), false);
+      }
+      // Still face player during countdown
+      if (distXZ > 0.01) {
+        _dirToPlayer.normalize();
+        const targetYaw = Math.atan2(_dirToPlayer.x, _dirToPlayer.z);
+        groupRef.current.rotation.y = THREE.MathUtils.lerp(
+          groupRef.current.rotation.y,
+          targetYaw,
+          delta * 8
+        );
+      }
+      cvBridge.setOpponentPosition(botPos.x, botPos.y, botPos.z);
+      return;
+    }
+
     // --- Debuff checks ---
     const debuff = getDebuff('player2');
     const isStunned = debuff === 'stun';
@@ -97,7 +155,10 @@ export function BotOpponent({ color = '#ff4444' }: BotOpponentProps) {
       if (swordGroupRef.current) {
         swordGroupRef.current.getWorldPosition(_swordHilt);
         swordGroupRef.current.getWorldQuaternion(_swordQuat);
-        _swordTipLocal.set(0, SWORD_BLADE_LENGTH, 0);
+        const worldScale = new THREE.Vector3();
+        swordGroupRef.current.getWorldScale(worldScale);
+        const bladeWorldLen = SWORD_BLADE_LENGTH * worldScale.y;
+        _swordTipLocal.set(0, bladeWorldLen, 0);
         _swordTipLocal.applyQuaternion(_swordQuat).add(_swordHilt);
         setBotSwordState(_swordHilt.clone(), _swordTipLocal.clone(), false);
       }
@@ -119,6 +180,27 @@ export function BotOpponent({ color = '#ff4444' }: BotOpponentProps) {
       if (swingProgressRef.current >= 1) {
         swingProgressRef.current = 0;
         setIsSwinging(false);
+      }
+    }
+
+    // --- Bot spell casting ---
+    const nowMs = performance.now();
+    const spellInterval = BOT_SPELL_INTERVAL[aiDifficulty] ?? 8000;
+    if (nowMs - lastSpellTimeRef.current > spellInterval && distXZ < 15) {
+      lastSpellTimeRef.current = nowMs;
+      // Pick a random spell
+      const spellType = SPELL_TYPES[Math.floor(Math.random() * SPELL_TYPES.length)];
+      // Aim at player from bot position
+      const origin = new THREE.Vector3(botPos.x, botPos.y + 1.2, botPos.z);
+      const direction = new THREE.Vector3(
+        _playerPos.x - origin.x,
+        _playerPos.y - origin.y,
+        _playerPos.z - origin.z
+      ).normalize();
+      const spell = useSpellStore.getState().castSpell(spellType, 'player2', origin, direction);
+      if (spell) {
+        fireSpellCast(spell);
+        console.log(`[Bot] Cast ${spellType}!`);
       }
     }
 
@@ -155,15 +237,32 @@ export function BotOpponent({ color = '#ff4444' }: BotOpponentProps) {
       groupRef.current.position.z = dz * scale;
     }
 
+    // Publish opponent position
+    cvBridge.setOpponentPosition(groupRef.current.position.x, groupRef.current.position.y, groupRef.current.position.z);
+
     // Publish sword world-space segment for hit detection
     // Must updateWorldMatrix first since the sword is attached imperatively to the hierarchy
     if (swordGroupRef.current) {
       swordGroupRef.current.updateWorldMatrix(true, false);
       swordGroupRef.current.getWorldPosition(_swordHilt);
       swordGroupRef.current.getWorldQuaternion(_swordQuat);
-      _swordTipLocal.set(0, SWORD_BLADE_LENGTH, 0);
+
+      // Get the world scale of the sword group to compute proper blade length
+      const worldScale = new THREE.Vector3();
+      swordGroupRef.current.getWorldScale(worldScale);
+      const bladeWorldLen = SWORD_BLADE_LENGTH * worldScale.y;
+
+      _swordTipLocal.set(0, bladeWorldLen, 0);
       _swordTipLocal.applyQuaternion(_swordQuat).add(_swordHilt);
       setBotSwordState(_swordHilt.clone(), _swordTipLocal.clone(), isSwinging);
+    } else {
+      // Fallback: if swordRef is not populated yet, place sword at bot position
+      const bp = groupRef.current.position;
+      setBotSwordState(
+        new THREE.Vector3(bp.x, bp.y + 1.2, bp.z),
+        new THREE.Vector3(bp.x, bp.y + 2.0, bp.z),
+        isSwinging
+      );
     }
     // Even if swordGroupRef is not set yet, still publish active state so damage can register
     // once the sword position becomes available next frame

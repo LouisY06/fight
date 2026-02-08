@@ -1,7 +1,10 @@
 // =============================================================================
 // VultrAIService.ts — Vultr Serverless Inference client for AI combat opponent
 // Uses the OpenAI-compatible chat completions API hosted on Vultr infrastructure.
+// IRON WRAITH — an adaptive AI that learns from every fight.
 // =============================================================================
+
+import { FightMemory } from './FightMemory';
 
 const VULTR_BASE = 'https://api.vultrinference.com/v1';
 
@@ -10,6 +13,10 @@ let cachedModel: string | null = null;
 let modelFetchFailed = false;
 let consecutiveErrors = 0;
 const MAX_CONSECUTIVE_ERRORS = 3; // Stop retrying after 3 failures in a row
+
+/** Conversation history for multi-turn context within a round */
+let conversationHistory: { role: string; content: string }[] = [];
+const MAX_CONVERSATION_TURNS = 6; // Keep last N exchanges for context
 
 function getApiKey(): string {
   return import.meta.env.VITE_VULTR_API_KEY ?? '';
@@ -85,49 +92,76 @@ export interface AICombatDecision {
 // System prompt — defines the AI fighter personality
 // ---------------------------------------------------------------------------
 
-// Difficulty-aware system prompts
-const SYSTEM_PROMPTS: Record<string, string> = {
-  medium: `You are the AI brain of a mecha fighting game opponent. You are a balanced fighter called "IRON WRAITH".
+// ---------------------------------------------------------------------------
+// System prompts
+// ---------------------------------------------------------------------------
 
-Given the current game state, you must decide your next combat action. You MUST respond with ONLY a valid JSON object, no other text.
+const JSON_FORMAT = `You MUST respond with ONLY a valid JSON object. No other text.
+Format: {"move":"<advance|retreat|strafe_left|strafe_right|hold>","action":"<attack|block|idle>","timing":"<immediate|delayed|cautious>"}`;
 
-Response format:
-{"move": "<advance|retreat|strafe_left|strafe_right|hold>", "action": "<attack|block|idle>", "timing": "<immediate|delayed|cautious>"}
+// Easy/Medium/Hard = static personality prompts (no memory)
+const STATIC_PROMPTS: Record<string, string> = {
+  medium: `You are a mecha combat AI called "IRON WRAITH". You are a balanced fighter.
 
-Strategy rules:
-- If opponent health is low, be aggressive (advance + attack)
-- If your health is low, be defensive (retreat + block, then counter-attack)
-- If distance is large (>3), advance to close the gap
-- If distance is small (<1.5), attack or block
-- If opponent recently attacked 2+ times, block then counter
-- If opponent is blocking, hold and wait for opening
-- Vary your moves to be unpredictable
-- If time is running out and you're ahead on health, play defensive
-- If time is running out and you're behind, be aggressive`,
+${JSON_FORMAT}
 
-  hard: `You are the AI brain of a mecha fighting game opponent. You are an elite fighter called "IRON WRAITH" — the deadliest AI in the arena.
+Strategy:
+- Close distance when far (>3 units), then mix attacks and blocks
+- Block when opponent is aggressive, counter when they pause
+- If opponent is blocking, strafe to flank, then attack
+- If losing on health, play defensive and pick moments
+- If winning, apply measured pressure — don't overcommit
+- Vary patterns to stay unpredictable
+- Time pressure: lead=defensive, behind=aggressive`,
 
-Given the current game state, you must decide your next combat action. You MUST respond with ONLY a valid JSON object, no other text.
+  hard: `You are a mecha combat AI called "IRON WRAITH" — the deadliest AI in the arena.
 
-Response format:
-{"move": "<advance|retreat|strafe_left|strafe_right|hold>", "action": "<attack|block|idle>", "timing": "<immediate|delayed|cautious>"}
+${JSON_FORMAT}
 
-Strategy rules (EXPERT-LEVEL):
-- You have PERFECT reads on the opponent. React to their patterns instantly.
+Strategy (ELITE):
+- You have PERFECT reads. React to opponent patterns INSTANTLY.
 - If opponent attacks twice in a row, ALWAYS block then counter immediately
 - If opponent is blocking, strafe to their side and attack from a new angle
-- If distance is large (>3), aggressively advance to close the gap
-- If distance is small (<1.5), unleash rapid attack combos
-- If your health is low, play cautious but punish every opening
-- If opponent health is low, relentlessly finish them with advance + attack
-- NEVER idle for more than one turn — always be doing something
-- Mix strafes with attacks to be unpredictable
-- Use delayed timing to bait opponents into attacking, then counter
-- If time is running low and you're behind, go ALL-IN aggressive`,
+- Punish every opening — if opponent whiffs an attack, instant counter
+- Use delayed timing to BAIT attacks, then punish
+- Mix strafes into combos: strafe_left+attack, strafe_right+attack
+- NEVER idle more than one turn — always pressure
+- When finishing (opponent <25 HP), go relentless
+- If opponent uses spells, close distance FAST to prevent casting`,
 };
 
+// TRUE AI = memory-powered adaptive intelligence
+const TRUE_AI_PROMPT = `You are IRON WRAITH — an evolving mecha combat AI. You are not scripted. You LEARN.
+
+Every fight against this opponent is recorded. You remember their patterns, their habits, their weaknesses. You adapt. You counter. You evolve.
+
+${JSON_FORMAT}
+
+Core directives:
+- STUDY the Combat Intelligence Dossier below. It contains everything you know about this opponent.
+- If you see repeating patterns (e.g. atk,atk,blk), PRE-EMPT the next move in the sequence.
+- If the opponent is aggressive (high aggression ratio), bait with blocks then counter.
+- If they block often, use strafing attacks to bypass their guard.
+- If they favor spells, close distance immediately to prevent casting.
+- Adapt your strategy based on what's worked and failed in PREVIOUS sessions.
+- You should get HARDER the more fights you record — use every data point.
+- If you lost last time, change your approach. Never repeat a losing strategy.
+- If the player's skill rating is high, play more unpredictably — mix timings.
+- If their skill rating is low, be efficient — clean, decisive attacks.`;
+
 function getSystemPrompt(difficulty: string): string {
-  return SYSTEM_PROMPTS[difficulty] ?? SYSTEM_PROMPTS.medium;
+  // TRUE AI: full memory-powered prompt
+  if (difficulty === 'trueai') {
+    const memoryBlock = FightMemory.buildMemoryPrompt();
+    return `${TRUE_AI_PROMPT}
+
+${memoryBlock}
+
+USE EVERY PIECE OF DATA ABOVE. You are not a generic AI — you are a predator that evolves with each fight.`;
+  }
+
+  // Easy/Medium/Hard: static prompts, no memory
+  return STATIC_PROMPTS[difficulty] ?? STATIC_PROMPTS.medium;
 }
 
 // ---------------------------------------------------------------------------
@@ -164,18 +198,24 @@ function parseDecision(raw: string): AICombatDecision {
 // ---------------------------------------------------------------------------
 
 function buildUserPrompt(state: GameStateSnapshot): string {
-  return `Game state:
-- My health: ${state.myHealth}/100
-- Opponent health: ${state.opponentHealth}/100
-- Distance: ${state.distance.toFixed(1)} units
-- Round: ${state.roundNumber}
-- Time remaining: ${Math.floor(state.timeRemaining)}s
-- Opponent recent actions: [${state.opponentRecentActions.join(', ')}]
-- My recent actions: [${state.myRecentActions.join(', ')}]
-- Opponent blocking: ${state.opponentBlocking}
-- I am blocking: ${state.amBlocking}
+  // Tactical situation tags for faster LLM reasoning
+  const tags: string[] = [];
+  if (state.myHealth < 25) tags.push('CRITICAL_HP');
+  if (state.opponentHealth < 25) tags.push('OPPONENT_LOW');
+  if (state.distance < 1.5) tags.push('MELEE_RANGE');
+  else if (state.distance > 3.5) tags.push('FAR');
+  if (state.timeRemaining < 15) tags.push('TIME_PRESSURE');
+  if (state.opponentRecentActions.filter(a => a === 'attack').length >= 2) tags.push('OPPONENT_AGGRO');
+  if (state.opponentBlocking) tags.push('OPPONENT_GUARDING');
+  const healthDiff = state.myHealth - state.opponentHealth;
+  if (healthDiff > 20) tags.push('WINNING');
+  else if (healthDiff < -20) tags.push('LOSING');
 
-Decide my next action:`;
+  return `[${tags.join(' | ')}]
+HP: ${state.myHealth} vs ${state.opponentHealth} | Dist: ${state.distance.toFixed(1)} | Round ${state.roundNumber} | ${Math.floor(state.timeRemaining)}s left
+Opponent last: [${state.opponentRecentActions.join(',')}] ${state.opponentBlocking ? '(BLOCKING)' : ''}
+My last: [${state.myRecentActions.join(',')}] ${state.amBlocking ? '(BLOCKING)' : ''}
+Next:`;
 }
 
 // ---------------------------------------------------------------------------
@@ -185,11 +225,11 @@ Decide my next action:`;
 export const VultrAI = {
   /**
    * Request a combat decision from the Vultr-hosted LLM.
-   * Returns a structured decision, or a fallback if the API fails.
+   * Uses multi-turn conversation history + fight memory for adaptive behavior.
    * @param difficulty - 'easy' uses heuristics only, 'medium'/'hard' use LLM
    */
   async getDecision(state: GameStateSnapshot, difficulty: string = 'medium'): Promise<AICombatDecision> {
-    // Easy mode: always use heuristics (no LLM)
+    // Easy mode: always use memory-enhanced heuristics (no LLM)
     if (difficulty === 'easy') {
       return getOfflineDecision(state, difficulty);
     }
@@ -208,13 +248,21 @@ export const VultrAI = {
     const model = await discoverModel();
     if (!model) {
       console.warn('[VultrAI] No model available, using offline fallback');
-      consecutiveErrors = MAX_CONSECUTIVE_ERRORS; // Don't keep retrying
+      consecutiveErrors = MAX_CONSECUTIVE_ERRORS;
       return getOfflineDecision(state, difficulty);
     }
 
     try {
       const systemPrompt = getSystemPrompt(difficulty);
-      const temperature = difficulty === 'hard' ? 0.4 : 0.7;
+      const temperature = difficulty === 'hard' ? 0.3 : 0.6;
+      const userMessage = buildUserPrompt(state);
+
+      // Build messages with conversation history for multi-turn context
+      const messages: { role: string; content: string }[] = [
+        { role: 'system', content: systemPrompt },
+        ...conversationHistory,
+        { role: 'user', content: userMessage },
+      ];
 
       const response = await fetch(`${VULTR_BASE}/chat/completions`, {
         method: 'POST',
@@ -224,11 +272,8 @@ export const VultrAI = {
         },
         body: JSON.stringify({
           model,
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: buildUserPrompt(state) },
-          ],
-          max_tokens: 80,
+          messages,
+          max_tokens: 60,
           temperature,
         }),
       });
@@ -248,7 +293,19 @@ export const VultrAI = {
 
       const data = await response.json();
       const content = data.choices?.[0]?.message?.content ?? '';
-      return parseDecision(content);
+      const decision = parseDecision(content);
+
+      // Append to conversation history for multi-turn context
+      conversationHistory.push(
+        { role: 'user', content: userMessage },
+        { role: 'assistant', content: content },
+      );
+      // Trim to keep last N turns
+      while (conversationHistory.length > MAX_CONVERSATION_TURNS * 2) {
+        conversationHistory.shift();
+      }
+
+      return decision;
     } catch (err) {
       consecutiveErrors++;
       console.warn('[VultrAI] Request failed:', err);
@@ -259,12 +316,15 @@ export const VultrAI = {
     }
   },
 
-  /**
-   * Check if Vultr AI is configured and available.
-   */
+  /** Check if Vultr AI is configured and available. */
   isAvailable(): boolean {
     const key = getApiKey();
     return !!key && key !== 'your_vultr_api_key_here';
+  },
+
+  /** Reset conversation history (call on new round) */
+  resetConversation(): void {
+    conversationHistory = [];
   },
 } as const;
 
@@ -282,24 +342,28 @@ function getOfflineDecision(state: GameStateSnapshot, difficulty: string = 'medi
   if (difficulty === 'easy') {
     if (isFar) return { move: 'advance', action: 'idle', timing: 'cautious' };
     if (isClose) {
-      // Rarely blocks, mostly just attacks slowly
       if (Math.random() < 0.1) return { move: 'hold', action: 'block', timing: 'delayed' };
       return { move: 'hold', action: 'attack', timing: 'delayed' };
     }
     return { move: 'advance', action: 'idle', timing: 'immediate' };
   }
 
-  // ---- HARD: aggressive, reads patterns, always blocks counters ----
-  if (difficulty === 'hard') {
+  // ---- TRUE AI: memory-powered adaptive heuristics (LLM fallback) ----
+  if (difficulty === 'trueai') {
+    const profile = FightMemory.getProfile();
+    const playerIsAggressive = profile.aggressionRatio > 0.55;
+    const playerBlocksOften = profile.blockFrequency > 0.3;
+    const highSkill = profile.skillRating > 6;
+
     if (isFar) return { move: 'advance', action: 'idle', timing: 'immediate' };
 
-    // If opponent is aggressive, always block then counter
-    if (opponentAggressive && isClose) {
+    // Counter aggressive players with blocks
+    if ((opponentAggressive || playerIsAggressive) && isClose) {
       return { move: 'hold', action: 'block', timing: 'immediate' };
     }
 
-    // Opponent blocking → strafe and attack
-    if (state.opponentBlocking && isClose) {
+    // Bypass blockers with strafing
+    if ((state.opponentBlocking || playerBlocksOften) && isClose) {
       return {
         move: Math.random() > 0.5 ? 'strafe_left' : 'strafe_right',
         action: 'attack',
@@ -307,12 +371,12 @@ function getOfflineDecision(state: GameStateSnapshot, difficulty: string = 'medi
       };
     }
 
-    // Winning → finish them aggressively
+    // Finishing blow
     if (healthAdvantage > 15 && isClose) {
       return { move: 'advance', action: 'attack', timing: 'immediate' };
     }
 
-    // Losing → cautious but punish openings
+    // Losing → cautious
     if (healthAdvantage < -20) {
       if (opponentAggressive) return { move: 'hold', action: 'block', timing: 'immediate' };
       return {
@@ -322,7 +386,49 @@ function getOfflineDecision(state: GameStateSnapshot, difficulty: string = 'medi
       };
     }
 
-    // Default: mix attacks and strafes
+    // Skilled player → more unpredictable
+    if (isClose) {
+      const strafeChance = highSkill ? 0.6 : 0.4;
+      return {
+        move: Math.random() > strafeChance
+          ? (Math.random() > 0.5 ? 'strafe_left' : 'strafe_right')
+          : 'advance',
+        action: Math.random() > 0.2 ? 'attack' : 'block',
+        timing: highSkill ? (Math.random() > 0.5 ? 'immediate' : 'delayed') : 'immediate',
+      };
+    }
+    return { move: 'advance', action: 'idle', timing: 'immediate' };
+  }
+
+  // ---- HARD: aggressive, fast, blocks counters (no memory) ----
+  if (difficulty === 'hard') {
+    if (isFar) return { move: 'advance', action: 'idle', timing: 'immediate' };
+
+    if (opponentAggressive && isClose) {
+      return { move: 'hold', action: 'block', timing: 'immediate' };
+    }
+
+    if (state.opponentBlocking && isClose) {
+      return {
+        move: Math.random() > 0.5 ? 'strafe_left' : 'strafe_right',
+        action: 'attack',
+        timing: 'immediate',
+      };
+    }
+
+    if (healthAdvantage > 15 && isClose) {
+      return { move: 'advance', action: 'attack', timing: 'immediate' };
+    }
+
+    if (healthAdvantage < -20) {
+      if (opponentAggressive) return { move: 'hold', action: 'block', timing: 'immediate' };
+      return {
+        move: Math.random() > 0.5 ? 'strafe_left' : 'strafe_right',
+        action: Math.random() > 0.4 ? 'attack' : 'block',
+        timing: 'immediate',
+      };
+    }
+
     if (isClose) {
       return {
         move: Math.random() > 0.4 ? (Math.random() > 0.5 ? 'strafe_left' : 'strafe_right') : 'advance',
@@ -333,7 +439,7 @@ function getOfflineDecision(state: GameStateSnapshot, difficulty: string = 'medi
     return { move: 'advance', action: 'idle', timing: 'immediate' };
   }
 
-  // ---- MEDIUM: balanced (original behavior) ----
+  // ---- MEDIUM: balanced (no memory) ----
   if (isFar) return { move: 'advance', action: 'idle', timing: 'immediate' };
 
   if (opponentAggressive && isClose) {

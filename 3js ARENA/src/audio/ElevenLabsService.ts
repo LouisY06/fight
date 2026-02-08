@@ -42,8 +42,9 @@ function playVoice(audio: HTMLAudioElement | null, priority: PriorityLevel, volu
 
   // If something is currently playing...
   if (currentVoice && !currentVoice.ended && !currentVoice.paused) {
-    // Only interrupt if new line has HIGHER priority
-    if (priority <= currentPriority) return;
+    // CRITICAL can always interrupt (needed for rapid countdown: Round→3→2→1→Fight)
+    // Lower priorities need strictly higher priority to interrupt
+    if (priority < Priority.CRITICAL && priority <= currentPriority) return;
     // Interrupt: stop current
     currentVoice.pause();
     currentVoice.currentTime = 0;
@@ -192,6 +193,22 @@ export const ElevenLabs = {
     playVoice(audio, Priority.CRITICAL, 1.0);
   },
 
+  async announceGetReady(): Promise<void> {
+    const audio = await getOrGenerate('announce-get-ready', () =>
+      generateTTS('Get ready!')
+    );
+    playVoice(audio, Priority.CRITICAL, 1.0);
+  },
+
+  async announceCountdownNumber(n: number): Promise<void> {
+    const words: Record<number, string> = { 3: 'Three!', 2: 'Two!', 1: 'One!' };
+    const word = words[n] ?? String(n);
+    const audio = await getOrGenerate(`announce-countdown-${n}`, () =>
+      generateTTS(word)
+    );
+    playVoice(audio, Priority.CRITICAL, 1.0);
+  },
+
   async announceKO(): Promise<void> {
     const audio = await getOrGenerate('announce-ko', () => generateTTS('Kay, O!'));
     playVoice(audio, Priority.CRITICAL, 1.0);
@@ -291,9 +308,13 @@ export const ElevenLabs = {
     const lines: [string, string][] = [
       ['announce-round-1', 'Round One!'],
       ['announce-fight', 'Fight!'],
+      ['announce-countdown-3', 'Three!'],
+      ['announce-countdown-2', 'Two!'],
+      ['announce-countdown-1', 'One!'],
       ['announce-ko', 'Kay, O!'],
       ['announce-round-2', 'Round Two!'],
       ['announce-round-3', 'Round Three!'],
+      ['announce-get-ready', 'Get ready!'],
       ['announce-draw', 'Draw!'],
       ['announce-you-win', 'Victory!'],
       ['announce-you-lose', 'Defeated!'],

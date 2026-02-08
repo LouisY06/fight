@@ -1,7 +1,6 @@
 // =============================================================================
-// WebcamView.tsx — Small PiP webcam feed + recenter button
-// Press C to recenter: snaps camera to face the enemy from current head pos.
-// Also auto-calibrates on round start.
+// WebcamView.tsx — Small PiP webcam feed
+// Camera is flipped 180° in FirstPersonCamera so no calibration is needed.
 // =============================================================================
 
 import { useEffect, useRef, useCallback } from 'react';
@@ -10,13 +9,12 @@ import { useGameStore } from '../game/GameState';
 import { poseTracker } from './PoseTracker';
 
 const FONT_HEADING = "'Orbitron', 'Rajdhani', sans-serif";
-const FONT_BODY = "'Rajdhani', 'Segoe UI', system-ui, sans-serif";
 
 const PIP_WIDTH = 160;
 const PIP_HEIGHT = 120;
 
 export function WebcamView() {
-  const { cvEnabled, isTracking, calibrate } = useCVContext();
+  const { cvEnabled, isTracking } = useCVContext();
   const phase = useGameStore((s) => s.phase);
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -47,16 +45,6 @@ export function WebcamView() {
     return () => clearInterval(interval);
   }, [isTracking, attachStream, phase]);
 
-  // C key to recenter
-  useEffect(() => {
-    if (!cvEnabled) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.code === 'KeyC' && !e.repeat) calibrate();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [cvEnabled, calibrate]);
-
   const inGame =
     phase === 'playing' ||
     phase === 'countdown' ||
@@ -74,7 +62,7 @@ export function WebcamView() {
         left: '16px',
         width: `${PIP_WIDTH}px`,
         zIndex: 300,
-        pointerEvents: 'auto',
+        pointerEvents: 'none',
       }}
     >
       <div
@@ -135,41 +123,6 @@ export function WebcamView() {
           </span>
         </div>
       </div>
-
-      {/* Recenter button */}
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          calibrate();
-        }}
-        style={{
-          display: 'block',
-          width: '100%',
-          marginTop: '4px',
-          padding: '5px 0',
-          fontSize: '9px',
-          fontWeight: 700,
-          fontFamily: FONT_BODY,
-          letterSpacing: '2px',
-          textTransform: 'uppercase',
-          background: 'rgba(255, 255, 255, 0.04)',
-          color: 'rgba(255, 255, 255, 0.5)',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
-          borderRadius: '4px',
-          cursor: 'pointer',
-          transition: 'all 0.15s ease',
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
-          e.currentTarget.style.color = 'rgba(255, 255, 255, 0.8)';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)';
-          e.currentTarget.style.color = 'rgba(255, 255, 255, 0.5)';
-        }}
-      >
-        FACE ENEMY [C]
-      </button>
     </div>
   );
 }

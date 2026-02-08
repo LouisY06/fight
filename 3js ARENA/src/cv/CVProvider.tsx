@@ -152,10 +152,21 @@ export function CVProvider({ children }: { children: ReactNode }) {
     if (now - lastCalibrateTime.current < CALIBRATE_COOLDOWN) return; // cooldown
     lastCalibrateTime.current = now;
 
-    mapperRef.current.calibrate();
-    // Notify listeners (camera facing reset, etc.)
-    for (const cb of calibrateListeners.current) cb();
-    cvBridge.triggerCalibrate();
+    // Pause CV input so pose data doesn't interfere during calibration
+    cvBridge.cvPaused = true;
+
+    // Wait for the player to settle, then recalibrate
+    setTimeout(() => {
+      mapperRef.current.calibrate();
+      // Notify listeners (camera facing reset, etc.)
+      for (const cb of calibrateListeners.current) cb();
+      cvBridge.triggerCalibrate();
+
+      // Resume CV input after a short delay
+      setTimeout(() => {
+        cvBridge.cvPaused = false;
+      }, 200);
+    }, 300);
   }, []);
 
   const onCalibrate = useCallback((cb: () => void) => {

@@ -5,13 +5,14 @@
 // Click the canvas to lock the pointer. ESC to unlock / pause.
 // =============================================================================
 
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useCallback } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from './GameState';
 import { GAME_CONFIG } from './GameConfig';
 import { cvBridge } from '../cv/cvBridge';
 import { getDebuff } from '../combat/SpellSystem';
+import { onVoiceCommand } from '../audio/VoiceCommands';
 import {
   useScreenShakeStore,
   computeShakeOffset,
@@ -62,13 +63,29 @@ export function FirstPersonCamera() {
   const _yawQuat = new THREE.Quaternion();
   const _yAxis = new THREE.Vector3(0, 1, 0);
 
+  // ---- 180° quick-turn: press C or say "mechabot, turn around" ----
+  const yawOffset = useRef(0);
+
+  const flip180 = useCallback(() => {
+    if (cvEnabled) {
+      // CV mode: toggle persistent yaw offset (added every frame)
+      yawOffset.current = yawOffset.current === 0 ? Math.PI : 0;
+    } else {
+      // Mouse mode: one-shot rotation since yaw accumulates from mouse
+      euler.current.y += Math.PI;
+    }
+  }, [cvEnabled]);
+
   // ---- Keyboard listeners ----
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       keys.current.add(e.code);
-      // Track jump key for jump buffering
       if (e.code === 'Space') {
         jumpPressed.current = true;
+      }
+      // C key = 180° quick-turn
+      if (e.code === 'KeyC' && !e.repeat) {
+        flip180();
       }
     };
     const onKeyUp = (e: KeyboardEvent) => {
@@ -83,58 +100,39 @@ export function FirstPersonCamera() {
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
     };
-  }, []);
+  }, [flip180]);
 
-  // ---- Reset camera facing on calibrate ----
+  // ---- "Mechabot, turn around" voice command → 180° flip ----
   useEffect(() => {
-    const unsub = cvBridge.onCalibrate(() => {
-      euler.current.set(0, facingYaw, 0);
+    const unsub = onVoiceCommand((cmd) => {
+      if (cmd === 'turnaround') {
+        console.log('[Camera] Voice turn-around — flipping 180°');
+        flip180();
+      }
     });
     return unsub;
-  }, [facingYaw]);
+  }, [flip180]);
 
-  // ---- Auto-calibrate: fully automatic, no manual button needed ----
-  // Fires on: round start, first tracking lock during gameplay, and
-  // periodically every 30s to correct drift. The player's current
-  // sitting position always = "facing the enemy."
-  const prevPhaseForCalibrate = useRef<string>('');
-  const wasTrackingRef = useRef(false);
-  const lastAutoCalibrate = useRef(0);
+  // ---- Reset spawn on round start ----
+  const prevPhaseForReset = useRef<string>('');
 
-  const doAutoCalibrate = () => {
-    if (cvBridge.mapperRef) {
-      cvBridge.mapperRef.current.calibrate();
-      cvBridge.triggerCalibrate();
-      lastAutoCalibrate.current = Date.now();
-    }
-  };
-
-  // Calibrate on round start (countdown phase)
   useEffect(() => {
-    if (
-      phase === 'countdown' &&
-      prevPhaseForCalibrate.current !== 'countdown' &&
-      cvEnabled
-    ) {
-      // Small delay to let pose tracker settle after scene transition
-      const timer = setTimeout(doAutoCalibrate, 300);
-      return () => clearTimeout(timer);
-    }
-    prevPhaseForCalibrate.current = phase;
-  }, [phase, cvEnabled]);
+    const prev = prevPhaseForReset.current;
+    const enteringCountdown = phase === 'countdown' && prev !== 'countdown';
+    const enteringPlayingFromIntro = phase === 'playing' && prev === 'intro';
 
-  // Calibrate when tracking first locks on during gameplay
-  useEffect(() => {
-    const cvInput = cvInputRef.current;
-    const isGameplay = phase === 'playing' || phase === 'countdown';
-    const isNowTracking = cvEnabled && cvInput.isTracking;
-
-    if (isNowTracking && !wasTrackingRef.current && isGameplay) {
-      // Tracking just started mid-game — auto-calibrate
-      setTimeout(doAutoCalibrate, 200);
+    if (enteringCountdown || enteringPlayingFromIntro) {
+      // Reset player position to spawn point each round
+      spawnPos.current.set(0, EYE_HEIGHT, spawnZ);
+      camera.position.copy(spawnPos.current);
+      euler.current.set(0, facingYaw, 0);
+      camera.quaternion.setFromEuler(euler.current);
+      verticalVelocity.current = 0;
+      isGrounded.current = true;
+      initialized.current = true;
     }
-    wasTrackingRef.current = isNowTracking;
-  });
+    prevPhaseForReset.current = phase;
+  }, [phase, spawnZ, facingYaw, camera]);
 
   // ---- Pointer lock for mouse look (keyboard mode) ----
   useEffect(() => {
@@ -217,16 +215,14 @@ export function FirstPersonCamera() {
       const cvInput = cvInputRef.current;
       if (cvEnabled && cvInput.isTracking) {
         // ---- CV mode ----
-
-        // Head rotation → camera look direction
-        euler.current.y = facingYaw - cvInput.lookYaw;
+        // Base: facingYaw - lookYaw (turn left → view goes left)
+        // yawOffset adds 180° when C is pressed or "mechabot turn around" is said
+        euler.current.y = facingYaw - cvInput.lookYaw + yawOffset.current;
         euler.current.x = cvInput.lookPitch;
         euler.current.x = Math.max(
           -Math.PI * 0.47,
           Math.min(Math.PI * 0.47, euler.current.x)
         );
-
-        // Movement via WASD / dance pad (below). CV only handles head look + combat.
       }
 
       // ---- Debuff checks (stun / slow from spells) ----
@@ -234,6 +230,9 @@ export function FirstPersonCamera() {
       const debuff = getDebuff(mySlot);
       const isStunned = debuff === 'stun';
       const moveSpeedMult = debuff === 'slow' ? 0.35 : 1;
+
+      // ---- Lock movement during countdown ----
+      const movementLocked = phase === 'countdown';
 
       // ---- WASD movement (works in both keyboard and CV mode) ----
       _forward.set(0, 0, -1);
@@ -243,7 +242,7 @@ export function FirstPersonCamera() {
       _right.applyQuaternion(_yawQuat);
 
       const move = new THREE.Vector3();
-      if (!isStunned) {
+      if (!isStunned && !movementLocked) {
         const k = keys.current;
         if (k.has('KeyW')) move.add(_forward);
         if (k.has('KeyS')) move.sub(_forward);
@@ -267,8 +266,8 @@ export function FirstPersonCamera() {
       // Check if on ground
       isGrounded.current = camera.position.y <= EYE_HEIGHT;
 
-      // Jump when spacebar is pressed and on ground
-      if (jumpPressed.current && isGrounded.current) {
+      // Jump when spacebar is pressed and on ground (not during countdown)
+      if (jumpPressed.current && isGrounded.current && !movementLocked) {
         verticalVelocity.current = JUMP_FORCE;
         jumpPressed.current = false; // Prevent double jump
       }
