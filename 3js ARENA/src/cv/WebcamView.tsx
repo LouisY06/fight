@@ -16,11 +16,13 @@ export function WebcamView() {
   const videoRef = useRef<HTMLVideoElement>(null);
 
   // Pipe the tracker's stream into our visible <video>
+  // Include `phase` so the effect re-runs when the <video> first mounts
+  // (CV may start in the menu before the PiP element exists).
   useEffect(() => {
     if (!videoRef.current || !videoElement?.srcObject) return;
     videoRef.current.srcObject = videoElement.srcObject;
     videoRef.current.play().catch(() => {});
-  }, [videoElement, isTracking]);
+  }, [videoElement, isTracking, phase]);
 
   // Keyboard shortcut: C to calibrate
   useEffect(() => {
