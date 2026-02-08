@@ -146,13 +146,19 @@ export function FirstPersonCamera() {
       }
     };
 
-    // Auto-request pointer lock when round starts so player can move/look without clicking
+    // Auto-request pointer lock when round starts; release on game over / pause
     const unsubPhase = useGameStore.subscribe(() => {
       const next = useGameStore.getState().phase;
       if (prevPhaseRef.current !== 'playing' && next === 'playing') {
         const el = gl.domElement;
         if (document.pointerLockElement !== el) {
           setTimeout(() => el.requestPointerLock(), 100);
+        }
+      }
+      // Release cursor on game over, pause, or menu
+      if (next === 'gameOver' || next === 'paused' || next === 'menu') {
+        if (document.pointerLockElement) {
+          document.exitPointerLock();
         }
       }
       prevPhaseRef.current = next;

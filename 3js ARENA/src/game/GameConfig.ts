@@ -5,7 +5,7 @@
 export const GAME_CONFIG = {
   maxHealth: 100,
   roundTime: 90, // seconds per round
-  roundsToWin: 2, // first to 2 wins
+  roundsToWin: 3, // first to 3 wins
   damage: {
     swordSlash: 15,
     swordStab: 20,
@@ -53,6 +53,8 @@ export interface AIDifficultyConfig {
   useLLM: boolean;
   /** Damage multiplier for the bot */
   damageMultiplier: number;
+  /** Player health multiplier (easy = more HP, hard = less) */
+  playerHealthMultiplier: number;
   /** Block chance (0-1) for offline heuristics */
   blockChance: number;
   /** Description for UI */
@@ -69,6 +71,7 @@ export const AI_DIFFICULTY: Record<AIDifficulty, AIDifficultyConfig> = {
     decisionIntervalMs: 2500,
     useLLM: false,
     damageMultiplier: 0.6,
+    playerHealthMultiplier: 1.5, // 150 HP
     blockChance: 0.1,
     description: 'Slow reflexes, predictable patterns',
   },
@@ -81,6 +84,7 @@ export const AI_DIFFICULTY: Record<AIDifficulty, AIDifficultyConfig> = {
     decisionIntervalMs: 1500,
     useLLM: true,
     damageMultiplier: 0.85,
+    playerHealthMultiplier: 1.2, // 120 HP
     blockChance: 0.3,
     description: 'Balanced fighter, uses LLM tactics',
   },
@@ -93,6 +97,7 @@ export const AI_DIFFICULTY: Record<AIDifficulty, AIDifficultyConfig> = {
     decisionIntervalMs: 800,
     useLLM: true,
     damageMultiplier: 1.0,
+    playerHealthMultiplier: 1.0, // 100 HP (standard)
     blockChance: 0.5,
     description: 'Fast, aggressive, reads your patterns',
   },

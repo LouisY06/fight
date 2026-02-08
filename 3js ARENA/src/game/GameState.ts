@@ -3,7 +3,7 @@
 // =============================================================================
 
 import { create } from 'zustand';
-import { GAME_CONFIG, type AIDifficulty } from './GameConfig';
+import { GAME_CONFIG, AI_DIFFICULTY, type AIDifficulty } from './GameConfig';
 
 export type GamePhase =
   | 'menu'
@@ -131,23 +131,31 @@ export const useGameStore = create<GameState>((set, get) => ({
       player2: defaultPlayerState(GAME_CONFIG.playerSpawnDistance / 2),
     }),
 
-  startRound: () =>
+  startRound: () => {
+    const state = get();
+    // In practice mode, player gets bonus health based on difficulty
+    const diffConfig = AI_DIFFICULTY[state.aiDifficulty];
+    const p1Health = state.isMultiplayer
+      ? GAME_CONFIG.maxHealth
+      : Math.floor(GAME_CONFIG.maxHealth * diffConfig.playerHealthMultiplier);
+
     set({
       phase: 'countdown',
       roundTimeRemaining: GAME_CONFIG.roundTime,
       roundWinner: null,
       lastDamagedPlayer: null,
       player1: {
-        ...get().player1,
-        health: GAME_CONFIG.maxHealth,
+        ...state.player1,
+        health: p1Health,
         isBlocking: false,
       },
       player2: {
-        ...get().player2,
+        ...state.player2,
         health: GAME_CONFIG.maxHealth,
         isBlocking: false,
       },
-    }),
+    });
+  },
 
   endRound: (winner) => {
     const state = get();

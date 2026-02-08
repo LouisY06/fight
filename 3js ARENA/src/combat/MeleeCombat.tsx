@@ -11,7 +11,7 @@ import { useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from '../game/GameState';
-import { GAME_CONFIG } from '../game/GameConfig';
+import { GAME_CONFIG, AI_DIFFICULTY } from '../game/GameConfig';
 import { cvBridge } from '../cv/cvBridge';
 import { swordHilt, swordTip, swordSpeed, keyboardSwingActive } from './SwordState';
 import { botSwordHilt, botSwordTip, botSwordActive } from './OpponentSwordState';
@@ -110,7 +110,9 @@ const _clashMidpoint = new THREE.Vector3();
 export function MeleeCombat() {
   const { camera, scene } = useThree();
   const cvEnabled = cvBridge.cvEnabled;
-  const lastHitTime = useRef(0);
+  // Separate cooldowns so player and bot attacks don't block each other
+  const lastPlayerHitTime = useRef(0);
+  const lastBotHitTime = useRef(0);
   const lastClashTime = useRef(0);
   const CLASH_COOLDOWN_MS = 1500; // prevent rapid re-clashes
 
@@ -128,11 +130,11 @@ export function MeleeCombat() {
     // CV mode: sword speed from arm swing (swordSpeed)
     const isActive =
       keyboardSwingActive || (cvEnabled && swordSpeed > MIN_SWING_SPEED);
-    if (!stunned && isActive && now - lastHitTime.current >= GAME_CONFIG.attackCooldownMs) {
+    if (!stunned && isActive && now - lastPlayerHitTime.current >= GAME_CONFIG.attackCooldownMs) {
       // Check against all opponents
     scene.traverse((obj) => {
       if (!obj.userData?.isOpponent) return;
-      if (lastHitTime.current === now) return; // already hit this frame
+      if (lastPlayerHitTime.current === now) return; // already hit this frame
 
       obj.getWorldPosition(_oppPos);
 
@@ -152,7 +154,7 @@ export function MeleeCombat() {
 
       if (dist <= OPPONENT_RADIUS) {
         // HIT!
-        lastHitTime.current = now;
+        lastPlayerHitTime.current = now;
 
         _hitPoint.addVectors(_closestOnSword, _closestOnCapsule).multiplyScalar(0.5);
 
@@ -184,9 +186,9 @@ export function MeleeCombat() {
     });
     }
 
-    // Bot sword vs player (practice mode only)
-    const { isMultiplayer } = useGameStore.getState();
-    if (!isMultiplayer && botSwordActive && now - lastHitTime.current >= GAME_CONFIG.attackCooldownMs) {
+    // Bot sword vs player (practice mode only) — separate cooldown from player
+    const { isMultiplayer, aiDifficulty } = useGameStore.getState();
+    if (!isMultiplayer && botSwordActive && now - lastBotHitTime.current >= GAME_CONFIG.attackCooldownMs) {
       const playerPos = camera.position;
       _playerCapsuleBot.set(playerPos.x, playerPos.y + PLAYER_CAPSULE_BOT, playerPos.z);
       _playerCapsuleTop.set(playerPos.x, playerPos.y + PLAYER_CAPSULE_TOP, playerPos.z);
@@ -201,12 +203,14 @@ export function MeleeCombat() {
       );
 
       if (dist <= OPPONENT_RADIUS) {
-        lastHitTime.current = now;
+        lastBotHitTime.current = now;
         _hitPoint.addVectors(_closestOnSword, _closestOnCapsule).multiplyScalar(0.5);
 
         const { player1, dealDamage } = useGameStore.getState();
         const isBlocked = player1.isBlocking;
-        const amount = GAME_CONFIG.damage.swordSlash;
+        // Apply difficulty damage multiplier
+        const diffConfig = AI_DIFFICULTY[aiDifficulty];
+        const amount = GAME_CONFIG.damage.swordSlash * diffConfig.damageMultiplier;
         const effectiveAmount = isBlocked
           ? amount * (1 - GAME_CONFIG.blockDamageReduction)
           : amount;
@@ -233,7 +237,8 @@ export function MeleeCombat() {
 
       if (clashDist <= GAME_CONFIG.swordClashRadius) {
         lastClashTime.current = now;
-        lastHitTime.current = now; // also reset hit cooldown
+        lastPlayerHitTime.current = now; // also reset hit cooldowns
+        lastBotHitTime.current = now;
 
         _clashMidpoint.addVectors(_clashOnPlayer, _clashOnBot).multiplyScalar(0.5);
         applyPlayerStun();
