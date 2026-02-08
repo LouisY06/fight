@@ -35,6 +35,11 @@ const PLAYER_CAPSULE_TOP = 0.3;   // head: camera.y + 0.3 ≈ 2.0
 // This prevents "resting sword on opponent" from dealing damage
 const MIN_SWING_SPEED = 1.5;
 
+// Swing-speed damage scaling: damage = base × clamp(speed / REF, MIN_MULT, MAX_MULT)
+const SWING_REF_SPEED = 6.0;   // "normal" swing speed → 1× damage
+const SWING_MIN_MULT = 0.3;    // light taps deal 30% base
+const SWING_MAX_MULT = 3.0;    // hard swings cap at 3× base
+
 // Max distance from camera to opponent for hit to count
 const MAX_OPPONENT_DIST = 4.0;
 
@@ -164,7 +169,9 @@ export function MeleeCombat() {
         const { playerSlot, isMultiplayer, dealDamage, player1, player2 } = useGameStore.getState();
         const opponentSlot: 'player1' | 'player2' =
           playerSlot === 'player2' ? 'player1' : 'player2';
-        const amount = GAME_CONFIG.damage.swordSlash;
+        // Scale damage by swing speed: faster swings hit harder
+        const speedMult = Math.max(SWING_MIN_MULT, Math.min(SWING_MAX_MULT, swordSpeed / SWING_REF_SPEED));
+        const amount = GAME_CONFIG.damage.swordSlash * speedMult;
         const opponent = opponentSlot === 'player1' ? player1 : player2;
         const isBlocked = opponent.isBlocking;
         const effectiveAmount = isBlocked
@@ -189,29 +196,23 @@ export function MeleeCombat() {
     });
     }
 
-    // Bot sword vs player (practice mode only) — separate cooldown from player
+    // Bot sword vs player — proximity-based hit detection (works in all modes)
+    // The bot's swing animation doesn't always reach the segment-to-capsule
+    // threshold, so we use sword-tip distance to camera as a reliable proxy.
+    const BOT_HIT_RADIUS = 1.8;
     const { isMultiplayer, aiDifficulty } = useGameStore.getState();
-    if (!isMultiplayer && botSwordActive && now - lastBotHitTime.current >= GAME_CONFIG.attackCooldownMs) {
+    if (botSwordActive && now - lastBotHitTime.current >= GAME_CONFIG.attackCooldownMs) {
       const playerPos = camera.position;
-      _playerCapsuleBot.set(playerPos.x, playerPos.y + PLAYER_CAPSULE_BOT, playerPos.z);
-      _playerCapsuleTop.set(playerPos.x, playerPos.y + PLAYER_CAPSULE_TOP, playerPos.z);
+      const tipDist = botSwordTip.distanceTo(playerPos);
+      const hiltDist = botSwordHilt.distanceTo(playerPos);
+      const closest = Math.min(tipDist, hiltDist);
 
-      const dist = closestDistSegmentSegment(
-        botSwordHilt,
-        botSwordTip,
-        _playerCapsuleBot,
-        _playerCapsuleTop,
-        _closestOnSword,
-        _closestOnCapsule
-      );
-
-      if (dist <= OPPONENT_RADIUS) {
+      if (closest <= BOT_HIT_RADIUS) {
         lastBotHitTime.current = now;
-        _hitPoint.addVectors(_closestOnSword, _closestOnCapsule).multiplyScalar(0.5);
+        _hitPoint.lerpVectors(botSwordTip, playerPos, 0.5);
 
         const { player1, dealDamage } = useGameStore.getState();
         const isBlocked = player1.isBlocking;
-        // Apply difficulty damage multiplier
         const diffConfig = AI_DIFFICULTY[aiDifficulty];
         const amount = GAME_CONFIG.damage.swordSlash * diffConfig.damageMultiplier;
         const effectiveAmount = isBlocked

@@ -292,7 +292,7 @@ export function MechaArms() {
     positionLimb(rForearm, s.rElbow, s.rWrist, dims.fore, slerpA);
     positionLimb(rHand, s.rWrist, s.rHand, dims.hand, slerpA);
 
-    // Weapon at right hand, oriented along forearm
+    // Weapon orientation: blade points along forearm toward enemy
     const weaponDir = _tmpDir.subVectors(s.rHand, s.rWrist);
     let weaponTargetQuat: THREE.Quaternion | null = null;
     if (weaponDir.lengthSq() > 0.0001) {
@@ -413,7 +413,7 @@ export function MechaArms() {
       <primitive object={lHand} />
 
       {/* Sword — extension of the arm, driven by red stick detection */}
-      <group ref={swordGroupRef} scale={0.65}>
+      <group ref={swordGroupRef} scale={0.85}>
         <primitive object={sword} />
       </group>
 
