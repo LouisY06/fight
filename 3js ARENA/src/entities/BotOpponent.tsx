@@ -1,6 +1,6 @@
 // =============================================================================
 // BotOpponent.tsx — AI bot for local practice: moves toward player, attacks
-// Uses AnimatedAvatarModel (biped_robot.glb) with walk + sword animations.
+// Uses RiggedMechEntity (rigged_mechs_pack_2.glb) with walk + sword animations.
 // =============================================================================
 
 import { useRef, useState, useEffect, useMemo } from 'react';
@@ -13,7 +13,8 @@ import { GAME_CONFIG, AI_DIFFICULTY } from '../game/GameConfig';
 import { getDebuff, useSpellStore, fireSpellCast, SPELL_CONFIGS, type SpellType } from '../combat/SpellSystem';
 import { DebuffVFX } from '../combat/DebuffVFX';
 import { OpponentHitbox } from './OpponentHitbox';
-import { MechaEntity } from './MechaEntity';
+import { RiggedMechEntity } from '../riggedMechs/RiggedMechEntity';
+import { MECH_PACK_COUNT } from '../riggedMechs/riggedMechPackConstants';
 import { setBotSwordState } from '../combat/OpponentSwordState';
 import { cvBridge } from '../cv/cvBridge';
 
@@ -41,6 +42,10 @@ export function BotOpponent({ color = '#ff4444' }: BotOpponentProps) {
   const groupRef = useRef<THREE.Group>(null!);
   const aiDifficulty = useGameStore((s) => s.aiDifficulty);
   const diffConfig = useMemo(() => AI_DIFFICULTY[aiDifficulty], [aiDifficulty]);
+  const randomEnemyMechIndex = useMemo(
+    () => Math.floor(Math.random() * Math.max(1, MECH_PACK_COUNT)),
+    []
+  );
 
   const phase = useGameStore((s) => s.phase);
   const player2 = useGameStore((s) => s.player2);
@@ -232,11 +237,13 @@ export function BotOpponent({ color = '#ff4444' }: BotOpponentProps) {
       groupRef.current.position.z = dz * scale;
     }
 
-    // Publish opponent position for aimlock calibration
+    // Publish opponent position
     cvBridge.setOpponentPosition(groupRef.current.position.x, groupRef.current.position.y, groupRef.current.position.z);
 
-    // Publish sword world-space segment for hit detection (reads from MechaEntity's built-in sword)
+    // Publish sword world-space segment for hit detection
+    // Must updateWorldMatrix first since the sword is attached imperatively to the hierarchy
     if (swordGroupRef.current) {
+      swordGroupRef.current.updateWorldMatrix(true, false);
       swordGroupRef.current.getWorldPosition(_swordHilt);
       swordGroupRef.current.getWorldQuaternion(_swordQuat);
 
@@ -257,6 +264,16 @@ export function BotOpponent({ color = '#ff4444' }: BotOpponentProps) {
         isSwinging
       );
     }
+    // Even if swordGroupRef is not set yet, still publish active state so damage can register
+    // once the sword position becomes available next frame
+    if (!swordGroupRef.current && isSwinging) {
+      // Fallback: use bot position as approximate sword position
+      const bx = groupRef.current.position.x;
+      const bz = groupRef.current.position.z;
+      _swordHilt.set(bx, 1.2, bz);
+      _swordTipLocal.set(bx + Math.sin(groupRef.current.rotation.y) * 0.8, 1.5, bz + Math.cos(groupRef.current.rotation.y) * 0.8);
+      setBotSwordState(_swordHilt.clone(), _swordTipLocal.clone(), true);
+    }
   });
 
   return (
@@ -267,9 +284,10 @@ export function BotOpponent({ color = '#ff4444' }: BotOpponentProps) {
             <RigidBody type="kinematicPosition" colliders={false}>
               <CapsuleCollider args={[0.5, 0.3]} position={[0, 1, 0]} />
 
-              {/* SR-3600 mecha with walk + swing animation + built-in sword */}
-              <MechaEntity
+              <RiggedMechEntity
+                key={`bot-mech-${randomEnemyMechIndex}`}
                 color={color}
+                mechIndex={randomEnemyMechIndex}
                 isSwinging={isSwinging}
                 isWalkingRef={isMovingRef}
                 swordRef={swordGroupRef}

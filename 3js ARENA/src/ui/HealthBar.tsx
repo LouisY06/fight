@@ -1,14 +1,12 @@
 // =============================================================================
-// HealthBar.tsx — Animated health bar with damage flash, ghost bar, low-health pulse
-// Modern UI: Orbitron/Rajdhani fonts, slim profile, gradient fills
+// HealthBar.tsx — Angled health bar with damage flash, ghost bar, tick marks
+// Military mech HUD aesthetic
 // =============================================================================
 
 import { useMemo, useRef, useEffect, useState } from 'react';
 import { useGameStore } from '../game/GameState';
 import { GAME_CONFIG } from '../game/GameConfig';
-
-const FONT_HEADING = "'Orbitron', 'Rajdhani', sans-serif";
-const FONT_BODY = "'Rajdhani', 'Segoe UI', system-ui, sans-serif";
+import { COLORS, FONTS } from './theme';
 
 interface HealthBarProps {
   health: number;
@@ -20,10 +18,17 @@ interface HealthBarProps {
 const DAMAGE_FLASH_MS = 400;
 const GHOST_DELAY_MS = 300;
 
+function healthColor(pct: number): string {
+  if (pct > 60) return COLORS.steel;
+  if (pct > 30) return COLORS.amber;
+  return COLORS.red;
+}
+
 export function HealthBar({ health, side, playerName, playerKey }: HealthBarProps) {
   const percentage = (health / GAME_CONFIG.maxHealth) * 100;
   const lastDamagedPlayer = useGameStore((s) => s.lastDamagedPlayer);
   const lastDamageTime = useGameStore((s) => s.lastDamageTime);
+  const isBlocking = useGameStore((s) => s[playerKey].isBlocking);
   const prevHealthRef = useRef(health);
   const [ghostPercentage, setGhostPercentage] = useState(percentage);
 
@@ -43,13 +48,14 @@ export function HealthBar({ health, side, playerName, playerKey }: HealthBarProp
     }
   }, [health]);
 
-  const barColor = useMemo(() => {
-    if (percentage > 60) return { main: '#22cc44', dark: '#189934', glow: 'rgba(34,204,68,0.3)' };
-    if (percentage > 30) return { main: '#e8b818', dark: '#b8920e', glow: 'rgba(232,184,24,0.3)' };
-    return { main: '#e83030', dark: '#b82020', glow: 'rgba(232,48,48,0.4)' };
-  }, [percentage]);
-
+  const barColor = useMemo(() => healthColor(percentage), [percentage]);
   const isLowHealth = percentage <= 30;
+
+  const clipPath = side === 'left'
+    ? 'polygon(0 0, 100% 0, calc(100% - 14px) 100%, 0 100%)'
+    : 'polygon(14px 0, 100% 0, 100% 100%, 0 100%)';
+
+  const hpStr = `${String(Math.ceil(health)).padStart(3, '0')}/${GAME_CONFIG.maxHealth}`;
 
   return (
     <div
@@ -57,54 +63,37 @@ export function HealthBar({ health, side, playerName, playerKey }: HealthBarProp
         display: 'flex',
         flexDirection: 'column',
         alignItems: side === 'left' ? 'flex-start' : 'flex-end',
-        gap: '5px',
+        gap: '4px',
         minWidth: '280px',
       }}
     >
-      {/* Player name + HP number inline */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'baseline',
-          gap: '8px',
-          flexDirection: side === 'right' ? 'row-reverse' : 'row',
-          width: '100%',
-          justifyContent: side === 'right' ? 'flex-end' : 'flex-start',
-        }}
-      >
+      {/* Player name + status */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        {side === 'right' && isBlocking && <ShieldIcon />}
         <span
           style={{
-            color: 'rgba(255,255,255,0.9)',
-            fontSize: '11px',
-            fontWeight: 700,
-            fontFamily: FONT_HEADING,
+            color: COLORS.textPrimary,
+            fontSize: '13px',
+            fontWeight: '600',
+            fontFamily: FONTS.heading,
             textTransform: 'uppercase',
-            letterSpacing: '2px',
+            letterSpacing: '3px',
+            textShadow: '0 0 10px rgba(0,0,0,0.8)',
           }}
         >
           {playerName}
         </span>
-        <span
-          style={{
-            color: 'rgba(255,255,255,0.4)',
-            fontSize: '11px',
-            fontWeight: 600,
-            fontFamily: FONT_BODY,
-            letterSpacing: '0.5px',
-          }}
-        >
-          {Math.ceil(health)}/{GAME_CONFIG.maxHealth}
-        </span>
+        {side === 'left' && isBlocking && <ShieldIcon />}
       </div>
 
       {/* Health bar container */}
       <div
         style={{
           width: '100%',
-          height: '16px',
-          background: 'rgba(255, 255, 255, 0.04)',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
-          borderRadius: '2px',
+          height: '22px',
+          background: 'rgba(0, 0, 0, 0.7)',
+          border: `1px solid ${isLowHealth ? COLORS.redDim : COLORS.borderFaint}`,
+          clipPath,
           overflow: 'hidden',
           position: 'relative',
           animation: isLowHealth ? 'lowHealthPulse 1.2s ease-in-out infinite' : 'none',
@@ -116,14 +105,14 @@ export function HealthBar({ health, side, playerName, playerKey }: HealthBarProp
             style={{
               position: 'absolute',
               inset: 0,
-              background: 'rgba(255, 50, 50, 0.4)',
+              background: 'rgba(255, 50, 50, 0.5)',
               animation: 'damageFlash 0.4s ease-out forwards',
               pointerEvents: 'none',
             }}
           />
         )}
 
-        {/* Ghost bar (delayed trailing) */}
+        {/* Ghost bar (red afterimage) */}
         <div
           style={{
             position: 'absolute',
@@ -131,7 +120,7 @@ export function HealthBar({ health, side, playerName, playerKey }: HealthBarProp
             [side === 'left' ? 'left' : 'right']: 0,
             width: `${ghostPercentage}%`,
             height: '100%',
-            background: 'rgba(255, 255, 255, 0.12)',
+            background: 'rgba(204, 34, 34, 0.4)',
             transition: 'width 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
           }}
         />
@@ -144,24 +133,63 @@ export function HealthBar({ health, side, playerName, playerKey }: HealthBarProp
             [side === 'left' ? 'left' : 'right']: 0,
             width: `${percentage}%`,
             height: '100%',
-            background: `linear-gradient(180deg, ${barColor.main}, ${barColor.dark})`,
+            background: `linear-gradient(180deg, ${barColor}, ${barColor}88)`,
             transition: 'width 0.3s ease-out, background 0.3s ease',
-            boxShadow: `0 0 8px ${barColor.glow}`,
+            boxShadow: `0 0 8px ${barColor}44`,
           }}
         />
 
-        {/* Subtle top highlight */}
-        <div
+        {/* Tick marks every 10% */}
+        {Array.from({ length: 9 }, (_, i) => (
+          <div
+            key={i}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: `${(i + 1) * 10}%`,
+              width: '1px',
+              height: '100%',
+              background: 'rgba(255, 255, 255, 0.08)',
+              pointerEvents: 'none',
+            }}
+          />
+        ))}
+
+        {/* HP number */}
+        <span
           style={{
             position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            height: '1px',
-            background: 'rgba(255, 255, 255, 0.1)',
+            top: '50%',
+            [side === 'left' ? 'right' : 'left']: '8px',
+            transform: 'translateY(-50%)',
+            color: COLORS.textPrimary,
+            fontSize: '11px',
+            fontWeight: '600',
+            fontFamily: FONTS.mono,
+            textShadow: '0 0 4px rgba(0,0,0,0.9)',
+            zIndex: 1,
+            letterSpacing: '1px',
           }}
-        />
+        >
+          {hpStr}
+        </span>
       </div>
     </div>
+  );
+}
+
+function ShieldIcon() {
+  return (
+    <span
+      style={{
+        display: 'inline-block',
+        width: '12px',
+        height: '14px',
+        background: COLORS.steel,
+        clipPath: 'polygon(50% 0%, 100% 15%, 100% 60%, 50% 100%, 0% 60%, 0% 15%)',
+        opacity: 0.8,
+        animation: 'borderPulse 1.5s ease-in-out infinite',
+      }}
+    />
   );
 }

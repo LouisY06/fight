@@ -1,12 +1,11 @@
 // =============================================================================
-// StunOverlay.tsx — Full-screen "SWORD CLASH!" text when swords collide
-// Modern UI: Orbitron font, subtle flash + electric border
+// StunOverlay.tsx — "IMPACT LOCK" overlay when swords collide
+// Military mech aesthetic
 // =============================================================================
 
 import { useState, useEffect, useCallback } from 'react';
 import { onClashEvent, STUN_DURATION_MS } from '../combat/ClashEvent';
-
-const FONT_HEADING = "'Orbitron', 'Rajdhani', sans-serif";
+import { COLORS, FONTS } from './theme';
 
 export function StunOverlay() {
   const [visible, setVisible] = useState(false);
@@ -52,10 +51,36 @@ export function StunOverlay() {
           position: 'absolute',
           inset: 0,
           background: phase === 'flash'
-            ? 'radial-gradient(ellipse at center, rgba(255,200,50,0.25) 0%, rgba(255,100,0,0.08) 50%, transparent 80%)'
+            ? 'radial-gradient(ellipse at center, rgba(255,140,0,0.2) 0%, rgba(255,100,0,0.06) 50%, transparent 80%)'
             : 'transparent',
           transition: 'background 0.2s ease-out',
           pointerEvents: 'none',
+        }}
+      />
+
+      {/* Warning stripe bands top/bottom */}
+      <div
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: '6px',
+          background: `repeating-linear-gradient(-45deg, ${COLORS.amber}, ${COLORS.amber} 4px, transparent 4px, transparent 8px)`,
+          opacity: phase === 'fade' ? 0 : 0.5,
+          transition: 'opacity 0.3s ease',
+        }}
+      />
+      <div
+        style={{
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: '6px',
+          background: `repeating-linear-gradient(-45deg, ${COLORS.amber}, ${COLORS.amber} 4px, transparent 4px, transparent 8px)`,
+          opacity: phase === 'fade' ? 0 : 0.5,
+          transition: 'opacity 0.3s ease',
         }}
       />
 
@@ -66,7 +91,7 @@ export function StunOverlay() {
           inset: 0,
           boxShadow:
             phase !== 'fade'
-              ? 'inset 0 0 60px rgba(255, 170, 0, 0.3), inset 0 0 120px rgba(255, 100, 0, 0.1)'
+              ? `inset 0 0 40px ${COLORS.amberGlow}, inset 0 0 80px rgba(255, 100, 0, 0.05)`
               : 'inset 0 0 0px transparent',
           transition: 'box-shadow 0.3s ease-out',
           pointerEvents: 'none',
@@ -81,38 +106,36 @@ export function StunOverlay() {
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          gap: '8px',
+          gap: '6px',
         }}
       >
         <div
           style={{
-            fontSize: '42px',
-            fontWeight: 900,
-            fontFamily: FONT_HEADING,
-            color: '#ffcc00',
-            textShadow:
-              '0 0 20px rgba(255, 200, 0, 0.8), 0 0 60px rgba(255, 100, 0, 0.4), 0 4px 8px rgba(0, 0, 0, 0.8)',
+            fontSize: '32px',
+            fontWeight: 700,
+            fontFamily: FONTS.heading,
+            color: COLORS.amber,
+            textShadow: `0 0 20px ${COLORS.amberGlow}, 0 0 40px rgba(255, 100, 0, 0.3), 0 4px 8px rgba(0, 0, 0, 0.8)`,
             letterSpacing: '8px',
             textTransform: 'uppercase',
             animation: phase === 'flash' ? 'clashTextPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)' : 'none',
           }}
         >
-          SWORD CLASH
+          IMPACT LOCK
         </div>
         <div
           style={{
-            fontSize: '14px',
+            fontSize: '11px',
             fontWeight: 600,
-            fontFamily: FONT_HEADING,
-            color: 'rgba(255, 150, 0, 0.7)',
-            textShadow: '0 0 12px rgba(255, 100, 0, 0.6)',
-            letterSpacing: '6px',
+            fontFamily: FONTS.mono,
+            color: COLORS.textDim,
+            letterSpacing: '4px',
             textTransform: 'uppercase',
-            opacity: phase === 'fade' ? 0 : 0.9,
+            opacity: phase === 'fade' ? 0 : 0.7,
             transition: 'opacity 0.3s ease-out',
           }}
         >
-          BOTH STUNNED
+          SYSTEMS LOCKED
         </div>
       </div>
 

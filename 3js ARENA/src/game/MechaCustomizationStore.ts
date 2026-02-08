@@ -1,6 +1,6 @@
 // =============================================================================
 // MechaCustomizationStore.ts — Player mech color + segment scale customization
-// Persisted across menu and used by IntroSequencer, menu preview, etc.
+// Persisted to localStorage for persistence across sessions
 // =============================================================================
 
 import { create } from 'zustand';
@@ -19,27 +19,88 @@ const DEFAULT_SCALES: MechaSegmentScales = {
   legs: 1,
 };
 
+const DEFAULT_COLOR = '#ff8c00';
+
+export type AvatarType = 'classic' | 'riggedPack';
+
 interface MechaCustomizationState {
   accentColor: string;
   segmentScales: MechaSegmentScales;
+  avatarType: AvatarType;
+  selectedPlayerMechId: number;
   setAccentColor: (color: string) => void;
   setSegmentScale: (segment: keyof MechaSegmentScales, value: number) => void;
   resetScales: () => void;
+  resetAll: () => void;
+  setAvatarType: (type: AvatarType) => void;
+  setSelectedPlayerMechId: (index: number) => void;
 }
 
-export const useMechaCustomizationStore = create<MechaCustomizationState>((set) => ({
-  accentColor: '#CC00FF',
-  segmentScales: { ...DEFAULT_SCALES },
+const STORAGE_KEY = 'smf-mech-customization';
 
-  setAccentColor: (color) => set({ accentColor: color }),
+function loadFromStorage(): Partial<MechaCustomizationState> {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch { /* ignore */ }
+  return {};
+}
+
+function persist(partial: Record<string, unknown>) {
+  try {
+    const prev = loadFromStorage();
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...prev, ...partial }));
+  } catch { /* ignore */ }
+}
+
+const saved = loadFromStorage();
+
+export const useMechaCustomizationStore = create<MechaCustomizationState>((set) => ({
+  accentColor: (saved.accentColor as string) ?? DEFAULT_COLOR,
+  segmentScales: (saved.segmentScales as MechaSegmentScales) ?? { ...DEFAULT_SCALES },
+  avatarType: (saved.avatarType as AvatarType) ?? 'classic',
+  selectedPlayerMechId: (saved.selectedPlayerMechId as number) ?? 0,
+
+  setAccentColor: (color) => {
+    persist({ accentColor: color });
+    set({ accentColor: color });
+  },
 
   setSegmentScale: (segment, value) =>
-    set((s) => ({
-      segmentScales: {
+    set((s) => {
+      const newScales = {
         ...s.segmentScales,
         [segment]: Math.max(0.5, Math.min(1.5, value)),
-      },
-    })),
+      };
+      persist({ segmentScales: newScales });
+      return { segmentScales: newScales };
+    }),
 
-  resetScales: () => set({ segmentScales: { ...DEFAULT_SCALES } }),
+  resetScales: () => {
+    const scales = { ...DEFAULT_SCALES };
+    persist({ segmentScales: scales });
+    set({ segmentScales: scales });
+  },
+
+  resetAll: () => {
+    const defaults = {
+      accentColor: DEFAULT_COLOR,
+      segmentScales: { ...DEFAULT_SCALES },
+      avatarType: 'classic' as AvatarType,
+      selectedPlayerMechId: 0,
+    };
+    persist(defaults);
+    set(defaults);
+  },
+
+  setAvatarType: (avatarType) => {
+    persist({ avatarType });
+    set({ avatarType });
+  },
+
+  setSelectedPlayerMechId: (selectedPlayerMechId) => {
+    const val = Math.max(0, selectedPlayerMechId);
+    persist({ selectedPlayerMechId: val });
+    set({ selectedPlayerMechId: val });
+  },
 }));

@@ -1,7 +1,6 @@
 // =============================================================================
 // RoundAnnouncer.tsx — Full-screen text: "ROUND 1", "FIGHT!", "K.O."
-// Modern UI: Orbitron font, clean text effects
-// ElevenLabs AI announcer voice + screen shake
+// Military mech aesthetic with warning stripes
 // =============================================================================
 
 import { useState, useEffect, useRef } from 'react';
@@ -9,8 +8,7 @@ import { useGameStore } from '../game/GameState';
 import { playKO } from '../audio/SoundManager';
 import { ElevenLabs } from '../audio/ElevenLabsService';
 import { useScreenShakeStore } from '../game/useScreenShake';
-
-const FONT_HEADING = "'Orbitron', 'Rajdhani', sans-serif";
+import { COLORS, FONTS } from './theme';
 
 export function RoundAnnouncer() {
   const phase = useGameStore((s) => s.phase);
@@ -136,12 +134,21 @@ export function RoundAnnouncer() {
   const isKo = variant === 'ko';
   const isDraw = variant === 'draw';
 
+  const textColor = isKo
+    ? COLORS.red
+    : isFight
+      ? COLORS.amber
+      : isDraw
+        ? '#ffcc44'
+        : COLORS.textPrimary;
+
   return (
     <div
       style={{
         position: 'absolute',
         inset: 0,
         display: 'flex',
+        flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
         pointerEvents: 'none',
@@ -154,23 +161,34 @@ export function RoundAnnouncer() {
           style={{
             position: 'absolute',
             inset: 0,
-            background: 'radial-gradient(ellipse at center, rgba(255,255,255,0.9) 0%, rgba(255,50,50,0.4) 50%, transparent 70%)',
+            background: 'radial-gradient(ellipse at center, rgba(255,100,50,0.6) 0%, rgba(204,34,34,0.3) 50%, transparent 70%)',
             animation: 'koFlash 0.2s ease-out forwards',
+          }}
+        />
+      )}
+
+      {/* Warning stripes above */}
+      {(isFight || isKo) && (
+        <div
+          style={{
+            width: '400px',
+            height: '4px',
+            background: `repeating-linear-gradient(-45deg, ${isKo ? COLORS.red : COLORS.amber}, ${isKo ? COLORS.red : COLORS.amber} 4px, transparent 4px, transparent 8px)`,
+            marginBottom: '16px',
+            opacity: 0.6,
           }}
         />
       )}
 
       <div
         style={{
-          color: isDraw ? '#ffcc44' : '#ffffff',
-          fontSize: isFight ? '72px' : isKo ? '88px' : '56px',
-          fontWeight: 900,
-          fontFamily: FONT_HEADING,
+          color: textColor,
+          fontSize: isFight ? '64px' : isKo ? '80px' : '48px',
+          fontWeight: 700,
+          fontFamily: FONTS.heading,
           textTransform: 'uppercase',
-          letterSpacing: isFight ? '16px' : isKo ? '20px' : '10px',
-          textShadow: isDraw
-            ? '0 0 40px rgba(255,200,0,0.6), 0 4px 8px rgba(0,0,0,0.8)'
-            : '0 0 40px rgba(255,100,0,0.6), 0 0 80px rgba(255,50,0,0.3), 0 4px 8px rgba(0,0,0,0.8)',
+          letterSpacing: isFight ? '16px' : isKo ? '20px' : '12px',
+          textShadow: `0 0 40px ${textColor}88, 0 0 80px ${textColor}33, 0 4px 8px rgba(0,0,0,0.8)`,
           transform: `scale(${scale})`,
           transition: 'transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)',
           animation: isFight ? 'shake 0.4s ease-out' : isKo ? 'scaleInBounce 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)' : 'none',
@@ -178,6 +196,19 @@ export function RoundAnnouncer() {
       >
         {text}
       </div>
+
+      {/* Warning stripes below */}
+      {(isFight || isKo) && (
+        <div
+          style={{
+            width: '400px',
+            height: '4px',
+            background: `repeating-linear-gradient(-45deg, ${isKo ? COLORS.red : COLORS.amber}, ${isKo ? COLORS.red : COLORS.amber} 4px, transparent 4px, transparent 8px)`,
+            marginTop: '16px',
+            opacity: 0.6,
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -1,12 +1,10 @@
 // =============================================================================
-// DamageIndicator.tsx — Floating damage numbers that drift up and fade
-// Modern UI: Rajdhani font, cleaner styling
+// DamageIndicator.tsx — Floating damage numbers with military styling
 // =============================================================================
 
 import { useState, useEffect } from 'react';
 import { create } from 'zustand';
-
-const FONT_HEADING = "'Orbitron', 'Rajdhani', sans-serif";
+import { COLORS, FONTS } from './theme';
 
 export interface DamageNumber {
   id: number;
@@ -76,8 +74,8 @@ function FloatingNumber({
     return () => cancelAnimationFrame(frame);
   }, []);
 
-  const color = isBlocked ? '#6688ff' : isCritical ? '#ff4444' : '#ffffff';
-  const size = isCritical ? '24px' : '18px';
+  const color = isBlocked ? COLORS.steel : isCritical ? COLORS.red : COLORS.amber;
+  const size = isCritical ? '22px' : '16px';
 
   return (
     <div
@@ -89,16 +87,19 @@ function FloatingNumber({
         color,
         fontSize: size,
         fontWeight: 700,
-        fontFamily: FONT_HEADING,
+        fontFamily: FONTS.mono,
         letterSpacing: '1px',
-        textShadow: `0 0 8px ${color}66, 0 2px 4px rgba(0,0,0,0.5)`,
+        textShadow: `0 0 8px ${color}66, 0 2px 4px rgba(0,0,0,0.8)`,
         opacity,
         pointerEvents: 'none',
         animation: 'scaleInBounce 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)',
       }}
     >
-      {isBlocked ? 'BLOCKED ' : ''}{Math.round(amount)}
-      {isCritical ? '!' : ''}
+      {isBlocked && (
+        <span style={{ fontSize: '10px', letterSpacing: '2px', marginRight: '4px', opacity: 0.7 }}>BLK</span>
+      )}
+      {Math.round(amount)}
+      {isCritical && <span style={{ fontSize: '10px', marginLeft: '2px' }}>!</span>}
     </div>
   );
 }

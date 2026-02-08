@@ -1,6 +1,6 @@
 // =============================================================================
 // ViewmodelGun.tsx — First-person gun that follows the camera
-// Click to shoot: hitscan raycast with recoil animation.
+// Click to shoot: spawns a visible bullet projectile with recoil animation.
 // =============================================================================
 
 import { useRef, useEffect, useState } from 'react';
@@ -9,29 +9,20 @@ import * as THREE from 'three';
 import { useGameStore } from '../game/GameState';
 import { useWeaponStore } from '../game/WeaponState';
 import { cvBridge } from '../cv/cvBridge';
-import { GAME_CONFIG } from '../game/GameConfig';
-import { fireHitEvent } from '../combat/HitEvent';
 import { useScreenShakeStore } from '../game/useScreenShake';
-import { gameSocket } from '../networking/socket';
+import { spawnBullet } from '../combat/BulletManager';
 
 // Gun resting position: lower-right, close to center
 const IDLE_OFFSET = new THREE.Vector3(0.28, -0.3, -0.4);
 const GUN_SCALE = 0.85;
 const FIRE_COOLDOWN = 0.5; // seconds between shots
 const RECOIL_DURATION = 0.2; // seconds
-const GUN_RANGE = 50; // max raycast distance
-
-// Opponent body approximated for hit detection
-const OPPONENT_RADIUS = 0.45;
 
 // Temp vectors
-const _raycaster = new THREE.Raycaster();
-const _oppPos = new THREE.Vector3();
-const _hitPoint = new THREE.Vector3();
 const _dir = new THREE.Vector3();
 
 export function ViewmodelGun() {
-  const { camera, scene } = useThree();
+  const { camera } = useThree();
   const groupRef = useRef<THREE.Group>(null!);
   const muzzleFlashRef = useRef<THREE.Mesh>(null!);
   const phase = useGameStore((s) => s.phase);
@@ -50,76 +41,26 @@ export function ViewmodelGun() {
       if (e.button === 0 && document.pointerLockElement) {
         const now = performance.now() / 1000;
         if (now - lastFireTime.current >= FIRE_COOLDOWN) {
+          const gamePhase = useGameStore.getState().phase;
+          if (gamePhase !== 'playing') return;
+
           fireTime.current = 0;
           lastFireTime.current = now;
           setForceRender((n) => n + 1);
-          fireGunshot();
+
+          // Spawn visible bullet from gun muzzle
+          const dir = camera.getWorldDirection(_dir).clone();
+          const muzzlePos = camera.position.clone().addScaledVector(dir, 0.5);
+          spawnBullet(muzzlePos, dir);
+
+          // Screen shake on fire
+          useScreenShakeStore.getState().trigger(0.15, 80);
         }
       }
     };
     window.addEventListener('mousedown', onMouseDown);
     return () => window.removeEventListener('mousedown', onMouseDown);
   }, [activeWeapon]);
-
-  /** Hitscan raycast from camera center forward. */
-  function fireGunshot() {
-    const gamePhase = useGameStore.getState().phase;
-    if (gamePhase !== 'playing') return;
-
-    // Raycast from camera forward
-    _raycaster.set(camera.position, camera.getWorldDirection(_dir));
-    _raycaster.far = GUN_RANGE;
-
-    // Check against all opponents
-    let hitOpponent = false;
-    scene.traverse((obj) => {
-      if (hitOpponent) return;
-      if (!obj.userData?.isOpponent) return;
-
-      obj.getWorldPosition(_oppPos);
-      if (camera.position.distanceTo(_oppPos) > GUN_RANGE) return;
-
-      // Simple sphere test against opponent capsule center
-      const capsuleCenter = _oppPos.clone();
-      capsuleCenter.y += 1.1; // capsule midpoint
-
-      // Project capsule center onto ray to find closest approach
-      const rayOrigin = camera.position.clone();
-      const rayDir = camera.getWorldDirection(_dir).normalize();
-      const toTarget = capsuleCenter.clone().sub(rayOrigin);
-      const projection = toTarget.dot(rayDir);
-
-      if (projection < 0) return; // behind camera
-
-      const closestPoint = rayOrigin.clone().add(rayDir.clone().multiplyScalar(projection));
-      const dist = closestPoint.distanceTo(capsuleCenter);
-
-      if (dist <= OPPONENT_RADIUS + 0.15) {
-        hitOpponent = true;
-        _hitPoint.copy(closestPoint);
-
-        const { playerSlot, isMultiplayer, dealDamage } = useGameStore.getState();
-        const opponentSlot: 'player1' | 'player2' =
-          playerSlot === 'player2' ? 'player1' : 'player2';
-        const amount = GAME_CONFIG.damage.gunShot;
-
-        dealDamage(opponentSlot, amount);
-        fireHitEvent({ point: _hitPoint.clone(), amount, isBlocked: false });
-        useScreenShakeStore.getState().trigger(0.3, 150);
-
-        if (isMultiplayer) {
-          gameSocket.send({
-            type: 'damage_event',
-            target: opponentSlot,
-            amount,
-          });
-        }
-      }
-    });
-
-    // Screen shake on fire regardless of hit
-    useScreenShakeStore.getState().trigger(0.15, 80);
-  }
 
   const cvEnabled = cvBridge.cvEnabled;
   const cvInputRef = cvBridge.cvInputRef;

@@ -67,7 +67,7 @@ class PoseTracker {
         console.log('[PoseTracker] Using GPU delegate');
       } catch (gpuErr) {
         console.warn('[PoseTracker] GPU delegate failed, falling back to CPU:', gpuErr);
-        opts.baseOptions.delegate = 'CPU' as const;
+        (opts.baseOptions as { delegate?: string }).delegate = 'CPU';
         this.landmarker = await PoseLandmarker.createFromOptions(vision, opts);
         console.log('[PoseTracker] Using CPU delegate');
       }

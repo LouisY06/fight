@@ -6,6 +6,7 @@
 
 import { useEffect, useRef } from 'react';
 import { useGameStore } from '../game/GameState';
+import { useSettingsStore } from '../game/SettingsStore';
 import { ElevenLabs, Priority } from '../audio/ElevenLabsService';
 import { GeminiCommentary, type CommentaryContext, type CommentaryEvent } from '../ai/GeminiCommentaryService';
 import { resetStun } from '../combat/ClashEvent';
@@ -49,6 +50,7 @@ export function CombatCommentator() {
   const p1Health = useGameStore((s) => s.player1.health);
   const p2Health = useGameStore((s) => s.player2.health);
   const timeRemaining = useGameStore((s) => s.roundTimeRemaining);
+  const commentaryEnabled = useSettingsStore((s) => s.commentaryEnabled);
 
   const hitCount = useRef(0);
   const lastP1Health = useRef(100);
@@ -78,7 +80,7 @@ export function CombatCommentator() {
 
   // Track hits and trigger commentary
   useEffect(() => {
-    if (phase !== 'playing') return;
+    if (phase !== 'playing' || !commentaryEnabled) return;
 
     // Player landed a hit on opponent
     if (p2Health < lastP2Health.current) {
@@ -119,7 +121,7 @@ export function CombatCommentator() {
 
   // Opponent low health — "FINISH THEM!"
   useEffect(() => {
-    if (phase !== 'playing') return;
+    if (phase !== 'playing' || !commentaryEnabled) return;
     if (p2Health <= 20 && p2Health > 0 && !lowHealthOpponentDone.current) {
       lowHealthOpponentDone.current = true;
       commentate('low_health_opponent', buildContext(), () => ElevenLabs.announceLowHealth());
@@ -128,7 +130,7 @@ export function CombatCommentator() {
 
   // Player low health — danger!
   useEffect(() => {
-    if (phase !== 'playing') return;
+    if (phase !== 'playing' || !commentaryEnabled) return;
     if (p1Health <= 20 && p1Health > 0 && !lowHealthPlayerDone.current) {
       lowHealthPlayerDone.current = true;
       commentate('low_health_player', buildContext(), async () => {
@@ -139,7 +141,7 @@ export function CombatCommentator() {
 
   // Time warning at 15s
   useEffect(() => {
-    if (phase !== 'playing') return;
+    if (phase !== 'playing' || !commentaryEnabled) return;
     if (timeRemaining <= 15 && timeRemaining > 0 && !timeWarningDone.current) {
       timeWarningDone.current = true;
       commentate('time_warning', buildContext(), () => ElevenLabs.announceTimeWarning());

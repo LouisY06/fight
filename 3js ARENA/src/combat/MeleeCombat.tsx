@@ -36,6 +36,11 @@ const PLAYER_HIT_RADIUS = 1.4;    // wide enough for bot sword to connect at att
 // This prevents "resting sword on opponent" from dealing damage
 const MIN_SWING_SPEED = 1.5;
 
+// Swing-speed damage scaling: damage = base × clamp(speed / REF, MIN_MULT, MAX_MULT)
+const SWING_REF_SPEED = 6.0;   // "normal" swing speed → 1× damage
+const SWING_MIN_MULT = 0.3;    // light taps deal 30% base
+const SWING_MAX_MULT = 3.0;    // hard swings cap at 3× base
+
 // Max distance from camera to opponent for hit to count
 const MAX_OPPONENT_DIST = 4.0;
 
@@ -115,6 +120,7 @@ export function MeleeCombat() {
   const lastPlayerHitTime = useRef(0);
   const lastBotHitTime = useRef(0);
   const lastClashTime = useRef(0);
+  const playerHitThisFrame = useRef(false);
   const CLASH_COOLDOWN_MS = 1500; // prevent rapid re-clashes
 
   useFrame(() => {
@@ -122,6 +128,7 @@ export function MeleeCombat() {
     if (phase !== 'playing') return;
 
     const now = Date.now();
+    playerHitThisFrame.current = false;
 
     // If player is stunned from a sword clash, skip all attack logic
     const stunned = isPlayerStunned();
@@ -135,7 +142,7 @@ export function MeleeCombat() {
       // Check against all opponents
     scene.traverse((obj) => {
       if (!obj.userData?.isOpponent) return;
-      if (lastPlayerHitTime.current === now) return; // already hit this frame
+      if (playerHitThisFrame.current) return; // already hit this frame
 
       obj.getWorldPosition(_oppPos);
 
@@ -156,13 +163,16 @@ export function MeleeCombat() {
       if (dist <= OPPONENT_RADIUS) {
         // HIT!
         lastPlayerHitTime.current = now;
+        playerHitThisFrame.current = true;
 
         _hitPoint.addVectors(_closestOnSword, _closestOnCapsule).multiplyScalar(0.5);
 
         const { playerSlot, isMultiplayer, dealDamage, player1, player2 } = useGameStore.getState();
         const opponentSlot: 'player1' | 'player2' =
           playerSlot === 'player2' ? 'player1' : 'player2';
-        const amount = GAME_CONFIG.damage.swordSlash;
+        // Scale damage by swing speed: faster swings hit harder
+        const speedMult = Math.max(SWING_MIN_MULT, Math.min(SWING_MAX_MULT, swordSpeed / SWING_REF_SPEED));
+        const amount = GAME_CONFIG.damage.swordSlash * speedMult;
         const opponent = opponentSlot === 'player1' ? player1 : player2;
         const isBlocked = opponent.isBlocking;
         const effectiveAmount = isBlocked
@@ -187,7 +197,9 @@ export function MeleeCombat() {
     });
     }
 
-    // Bot sword vs player (practice mode only) — separate cooldown from player
+    // Bot sword vs player — proximity-based hit detection (works in all modes)
+    // The bot's swing animation doesn't always reach the segment-to-capsule
+    // threshold, so we use sword-tip distance to camera as a reliable proxy.
     const { isMultiplayer, aiDifficulty } = useGameStore.getState();
     if (!isMultiplayer) {
       const botCooldownReady = now - lastBotHitTime.current >= GAME_CONFIG.attackCooldownMs;

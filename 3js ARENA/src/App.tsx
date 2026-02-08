@@ -29,6 +29,7 @@ import { MeleeCombat } from './combat/MeleeCombat';
 import { HitEffectManager } from './combat/HitEffectManager';
 import { SpellEffects } from './combat/SpellEffects';
 import { SpellCaster } from './combat/SpellCaster';
+import { BulletManager } from './combat/BulletManager';
 import { initWeaponKeyListener } from './game/WeaponState';
 
 import { CVProvider } from './cv/CVProvider';
@@ -80,9 +81,11 @@ function GameApp() {
     phase === 'paused' ||
     phase === 'roundEnd';
 
-  // Canvas: menu (hangar) + game. Menu scene is lightweight (no Physics).
+  // Canvas: menu (hangar) + lobby/waiting + game. Menu scene is lightweight (no Physics).
   const showCanvas =
     phase === 'menu' ||
+    phase === 'lobby' ||
+    phase === 'waiting' ||
     phase === 'arenaLoading' ||
     phase === 'intro' ||
     phase === 'countdown' ||
@@ -154,6 +157,7 @@ function GameApp() {
                 <HitEffectManager />
                 <SpellEffects />
                 <SpellCaster />
+                <BulletManager />
                 <InputSyncBridge />
 
                 {/* Arena environment */}

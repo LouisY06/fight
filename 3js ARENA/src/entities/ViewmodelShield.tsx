@@ -13,9 +13,9 @@ import { cvBridge } from '../cv/cvBridge';
 
 // Shield resting position: lower-right (same side as the mecha arm)
 const IDLE_OFFSET = new THREE.Vector3(0.4, -0.5, -0.55);
-// Shield raised position: center-right, high
-const BLOCK_OFFSET = new THREE.Vector3(0.15, -0.2, -0.5);
-const SHIELD_SCALE = 0.8;
+// Shield raised position: centered, high — covers more of the player view
+const BLOCK_OFFSET = new THREE.Vector3(0.05, -0.15, -0.45);
+const SHIELD_SCALE = 0.85;
 
 export function ViewmodelShield() {
   const { camera } = useThree();
@@ -28,35 +28,20 @@ export function ViewmodelShield() {
   const [isBlocking, setIsBlocking] = useState(false);
   const blockLerp = useRef(0);
 
-  // Right-click to block while pointer is locked
+  // Block on left-click or right-click while pointer is locked
   useEffect(() => {
     if (activeWeapon !== 'shield') return;
 
     const onMouseDown = (e: MouseEvent) => {
-      if (e.button === 2 && document.pointerLockElement) {
+      // Both left (0) and right (2) clicks activate block for shield
+      if ((e.button === 0 || e.button === 2) && document.pointerLockElement) {
         setIsBlocking(true);
         const slot = playerSlot ?? 'player1';
         setPlayerBlocking(slot, true);
       }
     };
     const onMouseUp = (e: MouseEvent) => {
-      if (e.button === 2) {
-        setIsBlocking(false);
-        const slot = playerSlot ?? 'player1';
-        setPlayerBlocking(slot, false);
-      }
-    };
-
-    // Also block on left click for shield
-    const onLeftDown = (e: MouseEvent) => {
-      if (e.button === 0 && document.pointerLockElement) {
-        setIsBlocking(true);
-        const slot = playerSlot ?? 'player1';
-        setPlayerBlocking(slot, true);
-      }
-    };
-    const onLeftUp = (e: MouseEvent) => {
-      if (e.button === 0) {
+      if (e.button === 0 || e.button === 2) {
         setIsBlocking(false);
         const slot = playerSlot ?? 'player1';
         setPlayerBlocking(slot, false);
@@ -65,13 +50,9 @@ export function ViewmodelShield() {
 
     window.addEventListener('mousedown', onMouseDown);
     window.addEventListener('mouseup', onMouseUp);
-    window.addEventListener('mousedown', onLeftDown);
-    window.addEventListener('mouseup', onLeftUp);
     return () => {
       window.removeEventListener('mousedown', onMouseDown);
       window.removeEventListener('mouseup', onMouseUp);
-      window.removeEventListener('mousedown', onLeftDown);
-      window.removeEventListener('mouseup', onLeftUp);
       // Ensure blocking is cleared when switching weapons
       const slot = playerSlot ?? 'player1';
       setPlayerBlocking(slot, false);
@@ -139,7 +120,7 @@ export function ViewmodelShield() {
       <group>
         {/* Main shield face */}
         <mesh castShadow>
-          <boxGeometry args={[0.45, 0.55, 0.04]} />
+          <boxGeometry args={[0.70, 0.85, 0.04]} />
           <meshStandardMaterial
             color="#2a2d33"
             roughness={0.2}
@@ -149,7 +130,7 @@ export function ViewmodelShield() {
 
         {/* Center boss (raised dome) */}
         <mesh position={[0, 0, 0.03]} castShadow>
-          <cylinderGeometry args={[0.08, 0.1, 0.04, 16]} />
+          <cylinderGeometry args={[0.12, 0.14, 0.04, 16]} />
           <meshStandardMaterial
             color="#4a4e55"
             roughness={0.15}
@@ -158,8 +139,8 @@ export function ViewmodelShield() {
         </mesh>
 
         {/* Top reinforcement strip */}
-        <mesh position={[0, 0.22, 0.02]} castShadow>
-          <boxGeometry args={[0.4, 0.04, 0.02]} />
+        <mesh position={[0, 0.34, 0.02]} castShadow>
+          <boxGeometry args={[0.62, 0.04, 0.02]} />
           <meshStandardMaterial
             color="#4a4e55"
             roughness={0.3}
@@ -168,8 +149,8 @@ export function ViewmodelShield() {
         </mesh>
 
         {/* Bottom reinforcement strip */}
-        <mesh position={[0, -0.22, 0.02]} castShadow>
-          <boxGeometry args={[0.4, 0.04, 0.02]} />
+        <mesh position={[0, -0.34, 0.02]} castShadow>
+          <boxGeometry args={[0.62, 0.04, 0.02]} />
           <meshStandardMaterial
             color="#4a4e55"
             roughness={0.3}
@@ -179,7 +160,7 @@ export function ViewmodelShield() {
 
         {/* Emissive edge trim */}
         <mesh position={[0, 0, 0.025]}>
-          <boxGeometry args={[0.47, 0.57, 0.005]} />
+          <boxGeometry args={[0.72, 0.87, 0.005]} />
           <meshStandardMaterial
             color="#00aaff"
             emissive="#00aaff"
@@ -194,7 +175,7 @@ export function ViewmodelShield() {
           [-1, 1].map((sy) => (
             <mesh
               key={`${sx}_${sy}`}
-              position={[sx * 0.18, sy * 0.2, 0.025]}
+              position={[sx * 0.28, sy * 0.34, 0.025]}
               castShadow
             >
               <sphereGeometry args={[0.015, 8, 8]} />

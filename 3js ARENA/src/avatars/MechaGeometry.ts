@@ -338,82 +338,115 @@ export function makeJoint(radius: number): THREE.Group {
 export function makeSword(): THREE.Group {
   const g = new THREE.Group();
 
-  // Blade — wide, aggressive profile
-  const bladeMain = new THREE.Mesh(new THREE.BoxGeometry(0.18, 2.0, 0.022), matBlade);
-  bladeMain.position.y = 1.08;
-  g.add(bladeMain);
+  // === BLADE — wider, longer, layered sci-fi greatsword ===
 
-  // Blade edge bevels
+  // Core blade slab
+  const bladeCore = new THREE.Mesh(new THREE.BoxGeometry(0.24, 3.0, 0.026), matBlade);
+  bladeCore.position.y = 1.6;
+  g.add(bladeCore);
+
+  // Outer edge plates — stepped bevel
   for (const side of [-1, 1]) {
-    const bevel = new THREE.Mesh(new THREE.BoxGeometry(0.02, 1.9, 0.026), matBevel);
-    bevel.position.set(side * 0.095, 1.08, 0);
-    bevel.rotation.z = side * 0.03;
-    g.add(bevel);
+    const edgePlate = new THREE.Mesh(new THREE.BoxGeometry(0.04, 2.8, 0.030), matBevel);
+    edgePlate.position.set(side * 0.13, 1.6, 0);
+    edgePlate.rotation.z = side * 0.02;
+    g.add(edgePlate);
+
+    const edgeBevel2 = new THREE.Mesh(new THREE.BoxGeometry(0.02, 2.6, 0.022), matChrome);
+    edgeBevel2.position.set(side * 0.16, 1.6, 0);
+    g.add(edgeBevel2);
   }
 
-  // Tip
-  const tip = new THREE.Mesh(new THREE.ConeGeometry(0.10, 0.30, 4), matBlade);
-  tip.position.y = 2.24;
+  // Tip — aggressive diamond
+  const tip = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.45, 4), matBlade);
+  tip.position.y = 3.30;
   tip.rotation.y = Math.PI / 4;
   g.add(tip);
 
-  // Fuller channel
-  const fuller = new THREE.Mesh(new THREE.BoxGeometry(0.05, 1.5, 0.026), matPanel);
-  fuller.position.set(0, 0.9, 0);
-  g.add(fuller);
+  // Tip glow
+  const tipGlow = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.25, 4), matGlow);
+  tipGlow.position.y = 3.32;
+  tipGlow.rotation.y = Math.PI / 4;
+  g.add(tipGlow);
 
-  // Central energy line — orange glow
-  const energyLine = new THREE.Mesh(new THREE.BoxGeometry(0.020, 1.5, 0.006), matGlow);
-  energyLine.position.set(0, 0.9, 0.014);
+  // Twin fuller channels
+  for (const side of [-1, 1]) {
+    const fuller = new THREE.Mesh(new THREE.BoxGeometry(0.04, 2.2, 0.030), matPanel);
+    fuller.position.set(side * 0.05, 1.4, 0);
+    g.add(fuller);
+  }
+
+  // Central energy lines — front + back
+  const energyLine = new THREE.Mesh(new THREE.BoxGeometry(0.025, 2.4, 0.008), matGlow);
+  energyLine.position.set(0, 1.4, 0.016);
   g.add(energyLine);
+  const energyLineBack = new THREE.Mesh(new THREE.BoxGeometry(0.025, 2.4, 0.008), matGlow);
+  energyLineBack.position.set(0, 1.4, -0.016);
+  g.add(energyLineBack);
 
   // Energy nodes along blade
-  for (let i = 0; i < 7; i++) {
-    const node = new THREE.Mesh(new THREE.SphereGeometry(0.014, 6, 4), matGlow);
-    node.position.set(0, 0.25 + i * 0.28, 0.014);
+  for (let i = 0; i < 10; i++) {
+    const node = new THREE.Mesh(new THREE.SphereGeometry(0.018, 6, 4), matGlow);
+    node.position.set(0, 0.35 + i * 0.30, 0.016);
     g.add(node);
   }
 
-  // Guard — angular orange wings
-  const guardMain = new THREE.Mesh(new THREE.BoxGeometry(0.40, 0.05, 0.06), matGuard);
-  guardMain.position.y = 0.07;
+  // Armored spine ridge
+  const spine = new THREE.Mesh(new THREE.BoxGeometry(0.06, 2.6, 0.04), matDark);
+  spine.position.set(0, 1.5, -0.025);
+  g.add(spine);
+
+  // === GUARD — massive angular crossguard ===
+
+  const guardMain = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.07, 0.08), matGuard);
+  guardMain.position.y = 0.08;
   g.add(guardMain);
 
   for (const side of [-1, 1]) {
-    const wing = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.07, 0.04), matGuard);
-    wing.position.set(side * 0.22, 0.10, -0.01);
-    wing.rotation.z = side * -0.35;
-    wing.rotation.x = -0.15;
+    const wing = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.09, 0.06), matGuard);
+    wing.position.set(side * 0.32, 0.12, -0.02);
+    wing.rotation.z = side * -0.4;
+    wing.rotation.x = -0.2;
     g.add(wing);
+
+    const wingTip = new THREE.Mesh(new THREE.SphereGeometry(0.020, 6, 4), matGlow);
+    wingTip.position.set(side * 0.38, 0.14, -0.02);
+    g.add(wingTip);
   }
 
-  const guardTrim = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.012, 0.065), matChrome);
-  guardTrim.position.y = 0.045;
+  const guardTrim = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.015, 0.085), matChrome);
+  guardTrim.position.y = 0.05;
   g.add(guardTrim);
 
-  const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.030, 0), matGlow);
-  gem.position.set(0, 0.07, 0.038);
+  const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.040, 0), matGlow);
+  gem.position.set(0, 0.08, 0.048);
   g.add(gem);
 
-  // Handle
-  const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.024, 0.32, 8), matHandle);
-  handle.position.y = -0.10;
+  // === HANDLE — longer two-handed grip ===
+
+  const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.034, 0.028, 0.45, 8), matHandle);
+  handle.position.y = -0.16;
   g.add(handle);
 
-  for (let i = 0; i < 5; i++) {
-    const wrap = new THREE.Mesh(new THREE.TorusGeometry(0.032, 0.005, 4, 8), matChrome);
-    wrap.position.y = -0.22 + i * 0.06;
+  for (let i = 0; i < 7; i++) {
+    const wrap = new THREE.Mesh(new THREE.TorusGeometry(0.038, 0.006, 4, 8), matChrome);
+    wrap.position.y = -0.34 + i * 0.06;
     wrap.rotation.x = Math.PI / 2;
     g.add(wrap);
   }
 
-  const pommel = new THREE.Mesh(new THREE.SphereGeometry(0.040, 8, 6), matPommel);
-  pommel.position.y = -0.28;
+  const pommel = new THREE.Mesh(new THREE.SphereGeometry(0.050, 8, 6), matPommel);
+  pommel.position.y = -0.40;
   g.add(pommel);
 
-  const pommelGlow = new THREE.Mesh(new THREE.SphereGeometry(0.016, 6, 4), matGlow);
-  pommelGlow.position.y = -0.28;
+  const pommelGlow = new THREE.Mesh(new THREE.SphereGeometry(0.022, 6, 4), matGlow);
+  pommelGlow.position.y = -0.40;
   g.add(pommelGlow);
+
+  const pommelSpike = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.08, 4), matChrome);
+  pommelSpike.position.y = -0.47;
+  pommelSpike.rotation.x = Math.PI;
+  g.add(pommelSpike);
 
   enableShadows(g);
   return g;

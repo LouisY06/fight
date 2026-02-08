@@ -1,6 +1,9 @@
 /* =============================================================================
    Global styles — SUPERMECHAFIGHTER ULTRAREALITY 3600 OF DOOM
+   Armored Core / Military Mech aesthetic
    ============================================================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap');
 
 * {
   margin: 0;
@@ -14,9 +17,9 @@ body,
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: #000000;
-  color: #ffffff;
-  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  background: #0a0c10;
+  color: #e8e8e8;
+  font-family: 'Rajdhani', system-ui, -apple-system, 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -32,210 +35,234 @@ canvas {
   display: block;
 }
 
-/* Pulse animation for low-timer warning */
-@keyframes pulse {
-  from {
-    opacity: 1;
-  }
-  to {
-    opacity: 0.6;
-  }
+/* =============================================================================
+   Utility classes
+   ============================================================================= */
+
+.noise-overlay {
+  position: relative;
+}
+.noise-overlay::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.03;
+  background: repeating-conic-gradient(#fff 0% 25%, transparent 0% 50%) 0 0 / 3px 3px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.scan-lines::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.08) 2px,
+    rgba(0, 0, 0, 0.08) 4px
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+
+.clipped-panel {
+  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px));
+}
+
+/* Warning stripe pattern */
+.warning-stripe {
+  background: repeating-linear-gradient(
+    -45deg,
+    rgba(255, 140, 0, 0.15),
+    rgba(255, 140, 0, 0.15) 8px,
+    transparent 8px,
+    transparent 16px
+  );
 }
 
 /* =============================================================================
    UI Animation Keyframes
    ============================================================================= */
 
+@keyframes pulse {
+  from { opacity: 1; }
+  to { opacity: 0.6; }
+}
+
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 @keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(24px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes slideUp {
-  from {
-    transform: translateY(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }
 
 @keyframes scaleIn {
-  from {
-    transform: scale(0.8);
-    opacity: 0;
-  }
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
+  from { transform: scale(0.8); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
 }
 
 @keyframes scaleInBounce {
-  0% {
-    transform: scale(0);
-    opacity: 0;
-  }
-  60% {
-    transform: scale(1.15);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
+  0% { transform: scale(0); opacity: 0; }
+  60% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
 }
 
 @keyframes shake {
-  0%, 100% {
-    transform: translateX(0);
-  }
-  10%, 30%, 50%, 70%, 90% {
-    transform: translateX(-4px);
-  }
-  20%, 40%, 60%, 80% {
-    transform: translateX(4px);
-  }
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
+  20%, 40%, 60%, 80% { transform: translateX(4px); }
 }
 
 @keyframes glowPulse {
-  0%, 100% {
-    filter: drop-shadow(0 0 8px currentColor);
-  }
-  50% {
-    filter: drop-shadow(0 0 20px currentColor);
-  }
+  0%, 100% { filter: drop-shadow(0 0 8px currentColor); }
+  50% { filter: drop-shadow(0 0 20px currentColor); }
 }
 
 @keyframes damageFlash {
-  0% {
-    opacity: 0.9;
-    box-shadow: 0 0 20px rgba(255, 0, 0, 0.8);
-  }
-  100% {
-    opacity: 0;
-    box-shadow: none;
-  }
+  0% { opacity: 0.9; box-shadow: 0 0 20px rgba(255, 0, 0, 0.8); }
+  100% { opacity: 0; box-shadow: none; }
 }
 
 @keyframes lowHealthPulse {
-  0%, 100% {
-    box-shadow: 0 0 12px rgba(255, 50, 50, 0.6);
-  }
-  50% {
-    box-shadow: 0 0 24px rgba(255, 50, 50, 0.9);
-  }
+  0%, 100% { box-shadow: 0 0 12px rgba(255, 50, 50, 0.6); }
+  50% { box-shadow: 0 0 24px rgba(255, 50, 50, 0.9); }
 }
 
 @keyframes winDotPop {
-  0% {
-    transform: scale(0);
-    opacity: 0;
-  }
-  70% {
-    transform: scale(1.2);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
+  0% { transform: scale(0); opacity: 0; }
+  70% { transform: scale(1.2); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
 }
 
 @keyframes crosshairHit {
-  0% {
-    transform: translate(-50%, -50%) scale(1.5);
-    opacity: 1;
-  }
-  100% {
-    transform: translate(-50%, -50%) scale(1);
-    opacity: 0.7;
-  }
+  0% { transform: translate(-50%, -50%) scale(1.5); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(1); opacity: 0.7; }
 }
 
 @keyframes confettiFall {
-  0% {
-    transform: translateY(-10vh) rotate(0deg);
-    opacity: 1;
-  }
-  100% {
-    transform: translateY(110vh) rotate(720deg);
-    opacity: 0;
-  }
+  0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
 }
 
 @keyframes countUp {
-  from {
-    opacity: 0;
-    transform: translateY(-10px) scale(1.2);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
+  from { opacity: 0; transform: translateY(-10px) scale(1.2); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 @keyframes koFlash {
-  0% {
-    opacity: 0.95;
-  }
-  30% {
-    opacity: 0.6;
-  }
-  100% {
-    opacity: 0;
-  }
+  0% { opacity: 0.95; }
+  30% { opacity: 0.6; }
+  100% { opacity: 0; }
 }
 
 @keyframes loadingBar {
-  0% {
-    transform: translateX(-100%);
-  }
-  50% {
-    transform: translateX(250%);
-  }
-  100% {
-    transform: translateX(-100%);
-  }
+  0% { transform: translateX(-100%); }
+  50% { transform: translateX(250%); }
+  100% { transform: translateX(-100%); }
 }
 
 @keyframes roomCodeGlow {
-  0%, 100% {
-    text-shadow: 0 0 30px rgba(255,0,80,0.5);
-  }
-  50% {
-    text-shadow: 0 0 50px rgba(255,0,80,0.8), 0 0 80px rgba(255,0,80,0.4);
-  }
+  0%, 100% { text-shadow: 0 0 30px rgba(255, 140, 0, 0.5); }
+  50% { text-shadow: 0 0 50px rgba(255, 140, 0, 0.8), 0 0 80px rgba(255, 140, 0, 0.4); }
 }
 
-/* Scrollbar styling for dev tools */
+/* New keyframes for mech theme */
+
+@keyframes scanLine {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
+
+@keyframes borderPulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(255, 140, 0, 0.2), inset 0 0 8px rgba(255, 140, 0, 0.05); }
+  50% { box-shadow: 0 0 20px rgba(255, 140, 0, 0.4), inset 0 0 16px rgba(255, 140, 0, 0.1); }
+}
+
+@keyframes warningStripe {
+  0% { background-position: 0 0; }
+  100% { background-position: 32px 0; }
+}
+
+@keyframes dataFlicker {
+  0%, 95%, 100% { opacity: 1; }
+  96% { opacity: 0.4; }
+  97% { opacity: 0.9; }
+  98% { opacity: 0.3; }
+}
+
+@keyframes bootLine {
+  from { opacity: 0; transform: translateX(-8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes metalDebrisFall {
+  0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; }
+  60% { opacity: 0.8; }
+  100% { transform: translateY(110vh) rotate(540deg); opacity: 0; }
+}
+
+@keyframes amberPulse {
+  0%, 100% { color: #ff8c00; text-shadow: 0 0 10px rgba(255, 140, 0, 0.5); }
+  50% { color: #ffaa33; text-shadow: 0 0 20px rgba(255, 140, 0, 0.8); }
+}
+
+/* =============================================================================
+   Scrollbar styling
+   ============================================================================= */
+
 ::-webkit-scrollbar {
   width: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #0a0a0a;
+  background: #0d0f13;
 }
 ::-webkit-scrollbar-thumb {
-  background: #333;
+  background: #2a2d33;
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #555;
+  background: #3a3d43;
+}
+
+/* =============================================================================
+   Custom range input styling
+   ============================================================================= */
+
+input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  background: rgba(255, 140, 0, 0.15);
+  border-radius: 0;
+  outline: none;
+}
+
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  background: #ff8c00;
+  border: 2px solid #0d0f13;
+  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+  cursor: pointer;
+}
+
+input[type='range']::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  background: #ff8c00;
+  border: 2px solid #0d0f13;
+  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+  cursor: pointer;
 }

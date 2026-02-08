@@ -1,12 +1,15 @@
 // =============================================================================
 // LobbyMenu.tsx — Online lobby: Quick Match / Create Room / Join Room
+// Military mech command center aesthetic
 // =============================================================================
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useGameStore } from '../game/GameState';
 import { useNetwork } from '../networking/NetworkProvider';
 import { ARENA_THEMES } from '../arena/arenaThemes';
 import { randomPick } from '../utils/random';
+import { COLORS, FONTS, CLIP } from './theme';
+import { MechButton } from './MainMenu';
 
 type LobbyView = 'choose' | 'create' | 'join' | 'searching' | 'waiting';
 
@@ -32,6 +35,15 @@ export function LobbyMenu() {
 
   const [view, setView] = useState<LobbyView>('choose');
   const [joinCode, setJoinCode] = useState('');
+  const [copied, setCopied] = useState(false);
+  const joinInputRef = useRef<HTMLInputElement>(null);
+
+  // Auto-focus join input
+  useEffect(() => {
+    if (view === 'join' && joinInputRef.current) {
+      joinInputRef.current.focus();
+    }
+  }, [view]);
 
   // When opponent connects, auto-start the game (host picks theme)
   useEffect(() => {
@@ -42,7 +54,6 @@ export function LobbyMenu() {
         playerSlot,
       });
 
-      // Host picks the arena and tells the opponent
       if (playerSlot === 'player1') {
         const theme = randomPick(ARENA_THEMES);
         sendGameStart(theme.id);
@@ -50,9 +61,6 @@ export function LobbyMenu() {
       }
     }
   }, [opponentConnected, roomId, playerSlot, setMultiplayerInfo, sendGameStart, startGame]);
-
-  // When we receive a game_start from the host (we're player2)
-  // This is handled by NetworkProvider dispatching startGame
 
   if (phase !== 'lobby' && phase !== 'waiting') return null;
 
@@ -81,6 +89,15 @@ export function LobbyMenu() {
     }
   };
 
+  const handleCopyCode = () => {
+    if (roomId) {
+      navigator.clipboard.writeText(roomId).then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      });
+    }
+  };
+
   return (
     <div
       style={{
@@ -90,13 +107,23 @@ export function LobbyMenu() {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        background:
-          'radial-gradient(ellipse at center, rgba(20,0,40,0.95) 0%, rgba(0,0,0,0.98) 100%)',
+        background: `linear-gradient(180deg, ${COLORS.bgDeep} 0%, ${COLORS.bgDark} 100%)`,
         zIndex: 200,
-        gap: '16px',
+        gap: '14px',
       }}
     >
-      {/* Connection status indicator */}
+      {/* Noise overlay */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          opacity: 0.03,
+          background: 'repeating-conic-gradient(#fff 0% 25%, transparent 0% 50%) 0 0 / 3px 3px',
+          pointerEvents: 'none',
+        }}
+      />
+
+      {/* Connection indicator */}
       <div
         style={{
           position: 'absolute',
@@ -105,9 +132,10 @@ export function LobbyMenu() {
           display: 'flex',
           alignItems: 'center',
           gap: '8px',
-          fontSize: '12px',
-          fontFamily: 'monospace',
-          color: isConnected ? '#44cc66' : '#cc4444',
+          fontSize: '11px',
+          fontFamily: FONTS.mono,
+          color: isConnected ? COLORS.green : COLORS.red,
+          letterSpacing: '1px',
         }}
       >
         <div
@@ -115,96 +143,115 @@ export function LobbyMenu() {
             width: '8px',
             height: '8px',
             borderRadius: '50%',
-            background: isConnected ? '#44cc66' : '#cc4444',
-            boxShadow: isConnected ? '0 0 8px #44cc66' : 'none',
+            background: isConnected ? COLORS.green : COLORS.red,
+            boxShadow: isConnected ? `0 0 6px ${COLORS.green}` : `0 0 6px ${COLORS.red}`,
           }}
         />
-        {isConnected ? 'CONNECTED' : 'CONNECTING...'}
+        {isConnected ? 'LINKED' : 'CONNECTING'}
       </div>
 
       {/* Title */}
       <h2
         style={{
-          color: '#ffffff',
-          fontSize: '36px',
-          fontWeight: '900',
-          fontFamily: "'Impact', 'Arial Black', sans-serif",
+          color: COLORS.textPrimary,
+          fontSize: '32px',
+          fontWeight: '700',
+          fontFamily: FONTS.heading,
           textTransform: 'uppercase',
-          letterSpacing: '6px',
-          marginBottom: '8px',
+          letterSpacing: '8px',
+          marginBottom: '4px',
         }}
       >
-        {view === 'choose' && 'ONLINE 1v1'}
-        {view === 'create' && 'YOUR ROOM'}
+        {view === 'choose' && 'COMMAND CENTER'}
+        {view === 'create' && 'ROOM CREATED'}
         {view === 'join' && 'JOIN ROOM'}
-        {view === 'searching' && 'SEARCHING...'}
-        {view === 'waiting' && 'WAITING...'}
+        {view === 'searching' && 'SCANNING'}
+        {view === 'waiting' && 'STANDBY'}
       </h2>
+
+      {/* Warning stripe */}
+      <div
+        style={{
+          width: '250px',
+          height: '2px',
+          background: `repeating-linear-gradient(-45deg, ${COLORS.amber}, ${COLORS.amber} 4px, transparent 4px, transparent 8px)`,
+          marginBottom: '8px',
+          opacity: 0.3,
+        }}
+      />
 
       {/* Error display */}
       {error && (
         <div
           style={{
             padding: '8px 20px',
-            background: '#331111',
-            border: '1px solid #662222',
-            borderRadius: '4px',
-            color: '#ff6666',
-            fontSize: '14px',
-            fontFamily: 'monospace',
+            background: COLORS.redDim,
+            border: `1px solid ${COLORS.red}`,
+            clipPath: CLIP.button,
+            color: '#ff8888',
+            fontSize: '12px',
+            fontFamily: FONTS.mono,
+            letterSpacing: '1px',
           }}
         >
-          {error}
+          ERROR: {error}
         </div>
       )}
 
       {/* ---- Choose mode ---- */}
       {view === 'choose' && (
         <>
-          <LobbyButton onClick={handleQuickMatch} primary disabled={!isConnected}>
+          <MechButton onClick={handleQuickMatch} variant="primary" disabled={!isConnected}>
             {isConnected ? 'QUICK MATCH' : 'CONNECTING...'}
-          </LobbyButton>
-          <LobbyButton onClick={handleCreateRoom} disabled={!isConnected}>CREATE ROOM</LobbyButton>
-          <LobbyButton onClick={() => setView('join')} disabled={!isConnected}>JOIN ROOM</LobbyButton>
+          </MechButton>
+          <MechButton onClick={handleCreateRoom} disabled={!isConnected}>CREATE ROOM</MechButton>
+          <MechButton onClick={() => setView('join')} disabled={!isConnected}>JOIN ROOM</MechButton>
         </>
       )}
 
       {/* ---- Create room: show code ---- */}
       {view === 'create' && (
         <>
-          <div
-            style={{
-              fontSize: '14px',
-              color: '#888',
-              fontFamily: 'monospace',
-            }}
-          >
-            Share this code with your friend:
+          <div style={{ fontSize: '12px', color: COLORS.textDim, fontFamily: FONTS.mono, letterSpacing: '2px' }}>
+            // SHARE THIS CODE
           </div>
           <div
             style={{
-              fontSize: '64px',
-              fontWeight: '900',
-              fontFamily: 'monospace',
-              color: '#ff4488',
+              fontSize: '56px',
+              fontWeight: '700',
+              fontFamily: FONTS.mono,
+              color: COLORS.amber,
               letterSpacing: '16px',
-              textShadow: '0 0 30px rgba(255,0,80,0.5)',
+              textShadow: `0 0 30px ${COLORS.amberGlow}`,
               userSelect: 'all',
               animation: 'roomCodeGlow 2s ease-in-out infinite',
+              cursor: 'pointer',
             }}
+            onClick={handleCopyCode}
+            title="Click to copy"
           >
             {roomId ?? '....'}
           </div>
-          <div
+          {/* Copy button */}
+          <button
+            onClick={handleCopyCode}
             style={{
-              fontSize: '16px',
-              color: '#666',
-              fontFamily: "'Impact', 'Arial Black', sans-serif",
-              textTransform: 'uppercase',
-              letterSpacing: '3px',
+              padding: '6px 16px',
+              fontSize: '11px',
+              fontFamily: FONTS.mono,
+              color: copied ? COLORS.green : COLORS.textDim,
+              background: 'rgba(255, 140, 0, 0.05)',
+              border: `1px solid ${copied ? COLORS.greenDim : COLORS.borderFaint}`,
+              clipPath: CLIP.button,
+              cursor: 'pointer',
+              letterSpacing: '2px',
+              transition: 'all 0.2s ease',
             }}
           >
-            Waiting for opponent...
+            {copied ? '[COPIED]' : '[COPY CODE]'}
+          </button>
+          <div style={{ fontSize: '13px', color: COLORS.textDim, fontFamily: FONTS.mono, letterSpacing: '2px', marginTop: '8px' }}>
+            AWAITING OPPONENT...
           </div>
           <Spinner />
         </>
@@ -213,16 +260,11 @@ export function LobbyMenu() {
       {/* ---- Join room: enter code ---- */}
       {view === 'join' && (
         <>
-          <div
-            style={{
-              fontSize: '14px',
-              color: '#888',
-              fontFamily: 'monospace',
-            }}
-          >
-            Enter the 4-letter room code:
+          <div style={{ fontSize: '12px', color: COLORS.textDim, fontFamily: FONTS.mono, letterSpacing: '2px' }}>
+            // ENTER 4-LETTER ROOM CODE
           </div>
           <input
+            ref={joinInputRef}
             type="text"
             value={joinCode}
             onChange={(e) => setJoinCode(e.target.value.toUpperCase().slice(0, 4))}
@@ -232,139 +274,76 @@ export function LobbyMenu() {
             onKeyDown={(e) => e.key === 'Enter' && handleJoinRoom()}
             style={{
               fontSize: '48px',
-              fontWeight: '900',
-              fontFamily: 'monospace',
+              fontWeight: '700',
+              fontFamily: FONTS.mono,
               textAlign: 'center',
               width: '240px',
               padding: '8px',
-              background: '#1a1a1a',
-              border: '2px solid #444',
-              borderRadius: '8px',
-              color: '#ffffff',
+              background: 'rgba(255, 140, 0, 0.04)',
+              border: `2px solid ${COLORS.borderDefault}`,
+              clipPath: CLIP.button,
+              color: COLORS.textPrimary,
               letterSpacing: '16px',
               outline: 'none',
               textTransform: 'uppercase',
+              caretColor: COLORS.amber,
             }}
           />
-          <LobbyButton
+          <MechButton
             onClick={handleJoinRoom}
-            primary
+            variant="primary"
             disabled={joinCode.trim().length < 4}
           >
             JOIN
-          </LobbyButton>
+          </MechButton>
         </>
       )}
 
       {/* ---- Searching for match ---- */}
       {view === 'searching' && (
         <>
-          <div
-            style={{
-              fontSize: '16px',
-              color: '#888',
-              fontFamily: "'Impact', 'Arial Black', sans-serif",
-              textTransform: 'uppercase',
-              letterSpacing: '3px',
-            }}
-          >
-            Looking for an opponent...
+          <div style={{ fontSize: '13px', color: COLORS.textDim, fontFamily: FONTS.mono, letterSpacing: '2px' }}>
+            SCANNING FOR OPPONENTS...
           </div>
           <Spinner />
+          <MechButton onClick={() => { cancelMatch(); setView('choose'); }} variant="secondary">
+            CANCEL
+          </MechButton>
         </>
       )}
 
       {/* ---- Waiting in room ---- */}
       {view === 'waiting' && (
         <>
-          <div
-            style={{
-              fontSize: '16px',
-              color: '#888',
-              fontFamily: "'Impact', 'Arial Black', sans-serif",
-              textTransform: 'uppercase',
-              letterSpacing: '3px',
-            }}
-          >
-            Joining room...
+          <div style={{ fontSize: '13px', color: COLORS.textDim, fontFamily: FONTS.mono, letterSpacing: '2px' }}>
+            JOINING ROOM...
           </div>
           <Spinner />
         </>
       )}
 
       {/* Back button */}
-      <div style={{ height: '8px' }} />
-      <LobbyButton onClick={handleBack}>BACK</LobbyButton>
+      <div style={{ height: '4px' }} />
+      <MechButton onClick={handleBack} variant="secondary">BACK</MechButton>
     </div>
   );
 }
 
-// ---- Components ----
-
-function LobbyButton({
-  onClick,
-  children,
-  primary,
-  disabled,
-}: {
-  onClick: () => void;
-  children: React.ReactNode;
-  primary?: boolean;
-  disabled?: boolean;
-}) {
-  return (
-    <button
-      onClick={disabled ? undefined : onClick}
-      onMouseDown={(e) => {
-        if (!disabled) e.currentTarget.style.transform = 'scale(0.97)';
-      }}
-      onMouseUp={(e) => {
-        e.currentTarget.style.transform = 'scale(1)';
-      }}
-      style={{
-        padding: '12px 48px',
-        fontSize: '18px',
-        fontWeight: 'bold',
-        fontFamily: "'Impact', 'Arial Black', sans-serif",
-        textTransform: 'uppercase',
-        letterSpacing: '3px',
-        color: disabled ? '#555' : '#ffffff',
-        background: disabled
-          ? '#222'
-          : primary
-            ? 'linear-gradient(180deg, #ff2266, #cc0044)'
-            : 'rgba(255, 255, 255, 0.08)',
-        border: primary ? '2px solid #ff4488' : '1px solid rgba(255, 255, 255, 0.15)',
-        borderRadius: '4px',
-        cursor: disabled ? 'default' : 'pointer',
-        minWidth: '240px',
-        transition: 'transform 0.15s ease',
-        opacity: disabled ? 0.4 : 1,
-      }}
-      onMouseEnter={(e) => {
-        if (!disabled) e.currentTarget.style.transform = 'scale(1.03)';
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.transform = 'scale(1)';
-      }}
-    >
-      {children}
-    </button>
-  );
-}
-
+// ---------------------------------------------------------------------------
+// Spinner
+// ---------------------------------------------------------------------------
 function Spinner() {
   return (
     <div
       style={{
-        width: '28px',
-        height: '28px',
-        border: '3px solid rgba(255,68,136,0.2)',
-        borderTop: '3px solid #ff4488',
+        width: '24px',
+        height: '24px',
+        border: `2px solid ${COLORS.amberGlow}`,
+        borderTop: `2px solid ${COLORS.amber}`,
         borderRadius: '50%',
         animation: 'spin 0.7s linear infinite',
         marginTop: '8px',
-        boxShadow: '0 0 12px rgba(255,68,136,0.3)',
+        boxShadow: `0 0 10px ${COLORS.amberGlow}`,
       }}
     >
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>

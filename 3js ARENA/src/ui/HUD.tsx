@@ -1,6 +1,6 @@
 // =============================================================================
 // HUD.tsx — In-game overlay: health bars, timer, round counter, win tracker
-// Modern UI: Orbitron/Rajdhani fonts, consistent styling
+// Military mech HUD aesthetic
 // =============================================================================
 
 import { useEffect, useState } from 'react';
@@ -14,6 +14,7 @@ import { DamageIndicator } from './DamageIndicator';
 import { WeaponSelector } from './WeaponSelector';
 import { StunOverlay } from './StunOverlay';
 import { onHitEvent } from '../combat/HitEvent';
+import { COLORS, FONTS } from './theme';
 
 export function HUD() {
   const phase = useGameStore((s) => s.phase);
@@ -33,11 +34,11 @@ export function HUD() {
 
   const isPlayer1 = playerSlot === 'player1' || playerSlot === null;
   const leftName = isPlayer1
-    ? (username || 'PLAYER 1')
-    : (opponentName || 'PLAYER 1');
+    ? (username || 'PILOT-1')
+    : (opponentName || 'PILOT-1');
   const rightName = isPlayer1
-    ? (opponentName || 'PLAYER 2')
-    : (username || 'PLAYER 2');
+    ? (opponentName || 'PILOT-2')
+    : (username || 'PILOT-2');
 
   return (
     <div
@@ -82,6 +83,15 @@ export function HUD() {
         </div>
       </div>
 
+      {/* Thin scan line separator */}
+      <div
+        style={{
+          width: '100%',
+          height: '1px',
+          background: `linear-gradient(90deg, transparent, ${COLORS.borderFaint}, ${COLORS.borderDefault}, ${COLORS.borderFaint}, transparent)`,
+        }}
+      />
+
       {/* Crosshair */}
       <Crosshair />
 
@@ -91,7 +101,7 @@ export function HUD() {
       {/* AI combat commentator (pure logic, no visuals) */}
       <CombatCommentator />
 
-      {/* Weapon selector (1=Shield, 2=Sword, 3=Gun) */}
+      {/* Weapon selector */}
       <WeaponSelector />
 
       {/* Sword clash / stun overlay */}
@@ -101,25 +111,25 @@ export function HUD() {
 }
 
 // ---------------------------------------------------------------------------
-// Crosshair — minimal dot + lines, flashes green on hit
+// Crosshair — angular targeting brackets, amber flash on hit
 // ---------------------------------------------------------------------------
 
 function Crosshair() {
   const [isHitFlash, setIsHitFlash] = useState(false);
-  const lineColor = isHitFlash ? 'rgba(0, 255, 136, 0.9)' : 'rgba(255, 255, 255, 0.5)';
-  const lineStyle: React.CSSProperties = {
-    position: 'absolute',
-    background: lineColor,
-    transition: 'background 0.1s ease',
-  };
 
   useEffect(() => {
     const unsub = onHitEvent(() => {
       setIsHitFlash(true);
-      setTimeout(() => setIsHitFlash(false), 120);
+      setTimeout(() => setIsHitFlash(false), 150);
     });
     return unsub;
   }, []);
+
+  const bracketColor = isHitFlash ? COLORS.amber : 'rgba(255, 255, 255, 0.5)';
+  const bracketSize = isHitFlash ? 8 : 10;
+  const bracketWidth = '1.5px';
+  const bracketLen = '6px';
+  const gapFromCenter = `${bracketSize}px`;
 
   return (
     <div
@@ -128,9 +138,10 @@ function Crosshair() {
         top: '50%',
         left: '50%',
         transform: 'translate(-50%, -50%)',
-        width: '20px',
-        height: '20px',
+        width: '24px',
+        height: '24px',
         pointerEvents: 'none',
+        transition: 'all 0.1s ease',
       }}
     >
       {/* Center dot */}
@@ -142,28 +153,43 @@ function Crosshair() {
           transform: 'translate(-50%, -50%)',
           width: '2px',
           height: '2px',
-          borderRadius: '50%',
-          background: isHitFlash ? '#00ff88' : 'rgba(255,255,255,0.8)',
+          background: isHitFlash ? COLORS.amber : 'rgba(255,255,255,0.8)',
           boxShadow: isHitFlash
-            ? '0 0 8px rgba(0,255,136,0.8)'
-            : 'none',
-          transition: 'background 0.1s, box-shadow 0.1s',
+            ? `0 0 8px ${COLORS.amber}`
+            : '0 0 3px rgba(0,0,0,0.8)',
+          transition: 'all 0.1s ease',
         }}
       />
-      {/* Top */}
-      <div style={{ ...lineStyle, top: 0, left: '50%', transform: 'translateX(-50%)', width: '1px', height: '6px' }} />
-      {/* Bottom */}
-      <div style={{ ...lineStyle, bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '1px', height: '6px' }} />
-      {/* Left */}
-      <div style={{ ...lineStyle, left: 0, top: '50%', transform: 'translateY(-50%)', width: '6px', height: '1px' }} />
-      {/* Right */}
-      <div style={{ ...lineStyle, right: 0, top: '50%', transform: 'translateY(-50%)', width: '6px', height: '1px' }} />
+
+      {/* Top-left bracket */}
+      <div style={{ position: 'absolute', top: 0, left: 0 }}>
+        <div style={{ position: 'absolute', top: 0, left: 0, width: bracketLen, height: bracketWidth, background: bracketColor, transition: 'background 0.1s' }} />
+        <div style={{ position: 'absolute', top: 0, left: 0, width: bracketWidth, height: bracketLen, background: bracketColor, transition: 'background 0.1s' }} />
+      </div>
+
+      {/* Top-right bracket */}
+      <div style={{ position: 'absolute', top: 0, right: 0 }}>
+        <div style={{ position: 'absolute', top: 0, right: 0, width: bracketLen, height: bracketWidth, background: bracketColor, transition: 'background 0.1s' }} />
+        <div style={{ position: 'absolute', top: 0, right: 0, width: bracketWidth, height: bracketLen, background: bracketColor, transition: 'background 0.1s' }} />
+      </div>
+
+      {/* Bottom-left bracket */}
+      <div style={{ position: 'absolute', bottom: 0, left: 0 }}>
+        <div style={{ position: 'absolute', bottom: 0, left: 0, width: bracketLen, height: bracketWidth, background: bracketColor, transition: 'background 0.1s' }} />
+        <div style={{ position: 'absolute', bottom: 0, left: 0, width: bracketWidth, height: bracketLen, background: bracketColor, transition: 'background 0.1s' }} />
+      </div>
+
+      {/* Bottom-right bracket */}
+      <div style={{ position: 'absolute', bottom: 0, right: 0 }}>
+        <div style={{ position: 'absolute', bottom: 0, right: 0, width: bracketLen, height: bracketWidth, background: bracketColor, transition: 'background 0.1s' }} />
+        <div style={{ position: 'absolute', bottom: 0, right: 0, width: bracketWidth, height: bracketLen, background: bracketColor, transition: 'background 0.1s' }} />
+      </div>
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Win tracker — small diamond indicators
+// Win tracker — angular diamond shapes
 // ---------------------------------------------------------------------------
 
 function WinTracker({
@@ -177,29 +203,40 @@ function WinTracker({
     <div
       style={{
         display: 'flex',
-        gap: '5px',
+        gap: '6px',
         marginTop: '6px',
+        alignItems: 'center',
         justifyContent: side === 'left' ? 'flex-start' : 'flex-end',
       }}
     >
-      {Array.from({ length: GAME_CONFIG.roundsToWin }).map((_, i) => {
-        const won = i < wins;
-        return (
-          <div
-            key={i}
-            style={{
-              width: '8px',
-              height: '8px',
-              transform: 'rotate(45deg)',
-              background: won ? '#ffcc00' : 'rgba(255, 255, 255, 0.08)',
-              border: `1px solid ${won ? 'rgba(255,200,0,0.6)' : 'rgba(255,255,255,0.12)'}`,
-              boxShadow: won ? '0 0 6px rgba(255, 200, 0, 0.5)' : 'none',
-              animation: won ? 'winDotPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)' : 'none',
-              transition: 'all 0.3s ease',
-            }}
-          />
-        );
-      })}
+      <span
+        style={{
+          fontSize: '9px',
+          fontFamily: FONTS.mono,
+          color: COLORS.textDim,
+          letterSpacing: '2px',
+          marginRight: side === 'left' ? '4px' : '0',
+          marginLeft: side === 'right' ? '4px' : '0',
+          order: side === 'right' ? 1 : 0,
+        }}
+      >
+        RND
+      </span>
+      {Array.from({ length: GAME_CONFIG.roundsToWin }).map((_, i) => (
+        <div
+          key={i}
+          style={{
+            width: '14px',
+            height: '14px',
+            background: i < wins ? COLORS.amber : 'rgba(255, 255, 255, 0.08)',
+            border: `1px solid ${i < wins ? COLORS.amber : COLORS.borderFaint}`,
+            clipPath: 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)',
+            boxShadow: i < wins ? `0 0 8px ${COLORS.amberGlow}` : 'none',
+            animation: i < wins ? 'winDotPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)' : 'none',
+            transition: 'all 0.3s ease',
+          }}
+        />
+      ))}
     </div>
   );
 }

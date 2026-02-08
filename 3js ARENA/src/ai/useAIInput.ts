@@ -76,6 +76,7 @@ export function useAIInput(): PlayerInput {
     weaponRotation: new THREE.Euler(),
     attack: false,
     block: false,
+    jump: false,
     gesture: 'idle',
   });
 
