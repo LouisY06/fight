@@ -14,19 +14,21 @@ import type { NormalizedLandmark } from '@mediapipe/tasks-vision';
 const NOSE = 0;
 const LEFT_SHOULDER = 11;
 const RIGHT_SHOULDER = 12;
-const _LEFT_ELBOW = 13; // unused — left arm on keyboard
+const LEFT_ELBOW = 13;
 const RIGHT_ELBOW = 14;
-const _LEFT_WRIST = 15; // unused — left arm on keyboard
+const LEFT_WRIST = 15;
 const RIGHT_WRIST = 16;
+const LEFT_EYE = 2;
+const RIGHT_EYE = 5;
+const LEFT_PINKY = 17;
+const LEFT_INDEX = 19;
 const LEFT_HIP = 23;
 const RIGHT_HIP = 24;
 
-// Suppress unused warnings
-void _LEFT_ELBOW;
-void _LEFT_WRIST;
+void LEFT_ELBOW; // used for future arm tracking
 
 // ---- Head look tuning ----
-const HEAD_YAW_SCALE = 12.0;   // radians per unit of normalized displacement (raised from 8)
+const HEAD_TILT_SCALE = 4.0;   // radians of yaw per radian of head tilt
 const HEAD_PITCH_SCALE = 9.0;  // (raised from 6)
 const HEAD_SMOOTH = 0.15;      // lower = smoother (was 0.12)
 const HEAD_YAW_MAX = Math.PI * 0.75;  // ±135°
@@ -81,6 +83,12 @@ export interface CVGameInput {
   /** True if left arm is in blocking position */
   isBlocking: boolean;
 
+  /** True if left arm is raised above shoulder */
+  leftArmRaised: boolean;
+
+  /** True if left hand is closed (fist) */
+  leftFistClosed: boolean;
+
   /** True if we have a valid pose this frame */
   isTracking: boolean;
 }
@@ -97,6 +105,8 @@ const defaultInput: CVGameInput = {
   swordRotZ: 0.4,
   isSwinging: false,
   isBlocking: false,
+  leftArmRaised: false,
+  leftFistClosed: false,
   isTracking: false,
 };
 
@@ -105,9 +115,11 @@ export class CVInputMapper {
   private neutralY = 0.5;
   private isCalibrated = false;
 
-  // Neutral nose offset relative to shoulder center (for head rotation)
-  private neutralNoseRelX = 0;
+  // Neutral nose offset relative to shoulder center (for head pitch)
   private neutralNoseRelY = 0;
+
+  // Neutral head tilt angle (for yaw)
+  private neutralTilt = 0;
 
   // Smoothed head look values
   private smoothLookYaw = 0;
@@ -124,6 +136,9 @@ export class CVInputMapper {
   private prevTimestamp = 0;
   private lastSwingTime = 0;
 
+  // Left hand fist detection (hysteresis)
+  private fistClosed = false;
+
   calibrate(): void {
     this.isCalibrated = false;
   }
@@ -138,6 +153,8 @@ export class CVInputMapper {
     }
 
     const nose = landmarks[NOSE];
+    const leftEye = landmarks[LEFT_EYE];
+    const rightEye = landmarks[RIGHT_EYE];
     const leftHip = landmarks[LEFT_HIP];
     const rightHip = landmarks[RIGHT_HIP];
     const rightWrist = landmarks[RIGHT_WRIST];
@@ -147,18 +164,22 @@ export class CVInputMapper {
 
     const hipCenterX = (leftHip.x + rightHip.x) / 2;
     const hipCenterY = (leftHip.y + rightHip.y) / 2;
-    const shoulderMidX = (leftShoulder.x + rightShoulder.x) / 2;
     const shoulderMidY = (leftShoulder.y + rightShoulder.y) / 2;
 
-    // Nose offset relative to shoulder center (body-relative, ignores body sway)
-    const noseRelX = nose.x - shoulderMidX;
+    // Nose offset relative to shoulder center (for pitch)
     const noseRelY = nose.y - shoulderMidY;
+
+    // Head tilt angle from eye landmarks (for yaw)
+    const tiltAngle = Math.atan2(
+      leftEye.y - rightEye.y,
+      leftEye.x - rightEye.x
+    );
 
     if (!this.isCalibrated) {
       this.neutralX = hipCenterX;
       this.neutralY = hipCenterY;
-      this.neutralNoseRelX = noseRelX;
       this.neutralNoseRelY = noseRelY;
+      this.neutralTilt = tiltAngle;
       this.prevWristX = rightWrist.x;
       this.prevWristY = rightWrist.y;
       this.prevTimestamp = timestamp;
@@ -172,13 +193,11 @@ export class CVInputMapper {
       this.isCalibrated = true;
     }
 
-    // ---- Head look: nose displacement from neutral → yaw / pitch ----
-    // The webcam PiP is mirrored (scaleX(-1)), so the user perceives directions
-    // as in a mirror. MediaPipe raw X must be negated to match what they see.
-    // Negate: user "turns left" in mirror = raw nose.x decreases → we want +yaw.
+    // ---- Head look ----
     const sens = headSensitivityConfig.multiplier;
-    const rawYaw = -(noseRelX - this.neutralNoseRelX) * HEAD_YAW_SCALE * sens;
-    // Look UP → nose moves UP → noseRelY decreases (0=top, 1=bottom)
+    // Yaw from head tilt: tilt right → turn right, tilt left → turn left
+    const rawYaw = -(tiltAngle - this.neutralTilt) * HEAD_TILT_SCALE * sens;
+    // Pitch from nose Y displacement
     const rawPitch = -(noseRelY - this.neutralNoseRelY) * HEAD_PITCH_SCALE * sens;
 
     const clampedYaw = Math.max(-HEAD_YAW_MAX, Math.min(HEAD_YAW_MAX, rawYaw));
@@ -252,6 +271,26 @@ export class CVInputMapper {
     // Block detection removed — left hand on keyboard
     const isBlocking = false;
 
+    // ---- Left hand gesture detection (dash spell) ----
+    const leftWrist = landmarks[LEFT_WRIST];
+    const leftPinky = landmarks[LEFT_PINKY];
+    const leftIndex = landmarks[LEFT_INDEX];
+
+    // Arm raised: left wrist above left shoulder (Y=0 is top in image coords)
+    const leftArmRaised = leftWrist.y < leftShoulder.y - 0.03;
+
+    // Fist detection: average distance of fingertip landmarks to wrist
+    const dPinky = Math.hypot(leftPinky.x - leftWrist.x, leftPinky.y - leftWrist.y);
+    const dIndex = Math.hypot(leftIndex.x - leftWrist.x, leftIndex.y - leftWrist.y);
+    const avgFingerDist = (dPinky + dIndex) / 2;
+
+    // Hysteresis: close at < 0.06, open at > 0.09
+    if (this.fistClosed) {
+      if (avgFingerDist > 0.09) this.fistClosed = false;
+    } else {
+      if (avgFingerDist < 0.06) this.fistClosed = true;
+    }
+
     return {
       lookYaw: this.smoothLookYaw,
       lookPitch: this.smoothLookPitch,
@@ -264,6 +303,8 @@ export class CVInputMapper {
       swordRotZ: this.smoothRotZ,
       isSwinging,
       isBlocking,
+      leftArmRaised,
+      leftFistClosed: this.fistClosed,
       isTracking: true,
     };
   }

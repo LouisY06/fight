@@ -30,6 +30,13 @@ export const GAME_CONFIG = {
   roundEndDelay: 3000, // ms to show round result before next round
   /** Glambot intro: orbit around mech + visor power-on (seconds). */
   introDuration: 3,
+  dashSpell: {
+    chargeDuration: 0.8,   // seconds to fully charge
+    dashSpeed: 35,          // units per second during dash
+    dashDuration: 0.35,     // seconds the dash lasts
+    dashDamage: 40,         // damage on hit during dash
+    cooldown: 6.0,          // seconds before next charge
+  },
 } as const;
 
 export type WeaponType = 'sword' | 'gun' | 'knife';

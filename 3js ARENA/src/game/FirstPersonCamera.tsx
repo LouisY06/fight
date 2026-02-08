@@ -16,6 +16,7 @@ import {
   useScreenShakeStore,
   computeShakeOffset,
 } from './useScreenShake';
+import { getDashVelocity, getDashState } from '../combat/DashSpell';
 
 const EYE_HEIGHT = 1.7;
 const MOVE_SPEED = 5; // units per second (keyboard mode)
@@ -291,6 +292,23 @@ export function FirstPersonCamera() {
         verticalVelocity.current = 0;
         isGrounded.current = true;
       }
+
+      // ---- Dash spell velocity ----
+      const dashVel = getDashVelocity();
+      if (dashVel) {
+        camera.position.addScaledVector(dashVel, delta);
+      }
+
+      // FOV animation: zoom out during dash, lerp back
+      const baseFov = 70;
+      const dashFov = 100;
+      const cam = camera as THREE.PerspectiveCamera;
+      if (getDashState() === 'dashing') {
+        cam.fov += (dashFov - cam.fov) * Math.min(1, delta * 12);
+      } else {
+        cam.fov += (baseFov - cam.fov) * Math.min(1, delta * 6);
+      }
+      cam.updateProjectionMatrix();
 
       // Screen shake
       const { intensity: si, durationMs: sd, startTime: st } =

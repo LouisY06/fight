@@ -8,6 +8,7 @@
 import { useFrame } from '@react-three/fiber';
 import { cvBridge } from './cvBridge';
 import { poseTracker } from './PoseTracker';
+import { detectRedStick } from './RedStickTracker';
 
 /**
  * Synchronous CV detection bridge.
@@ -15,23 +16,23 @@ import { poseTracker } from './PoseTracker';
  * No React state, no re-renders, zero latency.
  */
 export function CVSync() {
-  const cvEnabled = cvBridge.cvEnabled;
-  const cvInputRef = cvBridge.cvInputRef;
-  const worldLandmarksRef = cvBridge.worldLandmarksRef;
-  const mapperRef = cvBridge.mapperRef;
-
   useFrame(() => {
-    if (!cvEnabled || !mapperRef) return;
+    // Read bridge values every frame (not at mount) to avoid stale closures
+    if (!cvBridge.cvEnabled || !cvBridge.mapperRef) return;
 
     const data = poseTracker.detect();
     if (data) {
-      cvInputRef.current = mapperRef.current.process(
+      cvBridge.cvInputRef.current = cvBridge.mapperRef.current.process(
         data.landmarks,
         data.worldLandmarks,
         data.timestamp
       );
-      worldLandmarksRef.current = data.worldLandmarks;
+      cvBridge.worldLandmarksRef.current = data.worldLandmarks;
+      cvBridge.landmarksRef.current = data.landmarks;
     }
+
+    // Red stick color detection (runs on its own skip-frame schedule)
+    detectRedStick();
   });
 
   return null;

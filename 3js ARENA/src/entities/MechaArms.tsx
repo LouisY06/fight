@@ -17,6 +17,8 @@ import { updateSwordTransform } from '../combat/SwordState';
 import {
   makeUpperArm, makeForearm, makeHand, makeJoint, makeSword, makeGun, makeShield,
 } from '../avatars/MechaGeometry';
+import { updateDashSpell, getDashState, getDashCharge } from '../combat/DashSpell';
+import { getRedStickData } from '../cv/RedStickTracker';
 
 // ============================================================================
 // Cockpit anchors & tracking constants
@@ -118,7 +120,7 @@ const _tLHand = new THREE.Vector3();
 // ============================================================================
 
 export function MechaArms() {
-  const { camera } = useThree();
+  const { camera, scene } = useThree();
   const phase = useGameStore((s) => s.phase);
   const activeWeapon = useWeaponStore((s) => s.activeWeapon);
   const cvEnabled = cvBridge.cvEnabled;
@@ -305,6 +307,12 @@ export function MechaArms() {
 
     const weaponPosAlpha = la(SMOOTH_SWORD_POS);
 
+    // --- Color-based weapon switching: red detected → switch to sword ---
+    const stick = getRedStickData();
+    if (stick.detected && activeWeapon !== 'sword') {
+      useWeaponStore.getState().setActiveWeapon('sword');
+    }
+
     // --- Sword ---
     if (swordGroupRef.current) {
       swordGroupRef.current.visible = activeWeapon === 'sword';
@@ -347,6 +355,43 @@ export function MechaArms() {
     positionLimb(lUpperArm, s.lShoulder, s.lElbow, dims.upper, slerpA);
     positionLimb(lForearm, s.lElbow, s.lWrist, dims.fore, slerpA);
     positionLimb(lHand, s.lWrist, s.lHand, dims.hand, slerpA);
+
+    // ==== DASH SPELL ====
+    updateDashSpell(dt, cvInput.leftArmRaised, cvInput.leftFistClosed, camera, scene);
+
+    // Left hand + forearm charge glow effect
+    const dashState = getDashState();
+    const chargeLevel = getDashCharge();
+
+    let emissiveHex = 0x000000;
+    let emissiveIntensity = 0;
+
+    if (dashState === 'charging' && chargeLevel < 1) {
+      emissiveHex = 0xff6600;
+      emissiveIntensity = chargeLevel * 3;
+    } else if (dashState === 'charging' && chargeLevel >= 1) {
+      // Pulsing glow when fully charged, waiting for release
+      emissiveHex = 0xff6600;
+      emissiveIntensity = 2.5 + Math.sin(Date.now() * 0.01) * 1.5;
+    } else if (dashState === 'dashing') {
+      emissiveHex = 0xffaa00;
+      emissiveIntensity = 4;
+    }
+
+    // Apply glow to all left hand + forearm meshes
+    const applyGlow = (group: THREE.Group) => {
+      group.traverse((child) => {
+        if ((child as THREE.Mesh).isMesh) {
+          const mat = (child as THREE.Mesh).material as THREE.MeshStandardMaterial;
+          if (mat.emissive) {
+            mat.emissive.setHex(emissiveHex);
+            mat.emissiveIntensity = emissiveIntensity;
+          }
+        }
+      });
+    };
+    applyGlow(lHand);
+    if (dashState !== 'idle') applyGlow(lForearm);
   });
 
   return (
@@ -367,7 +412,7 @@ export function MechaArms() {
       <primitive object={lForearm} />
       <primitive object={lHand} />
 
-      {/* Greatsword — visible when sword is active */}
+      {/* Sword — extension of the arm, driven by red stick detection */}
       <group ref={swordGroupRef} scale={0.65}>
         <primitive object={sword} />
       </group>

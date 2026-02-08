@@ -27,6 +27,7 @@ let cvEnabled = false;
 let isTracking = false;
 let cvInputRef: { current: CVGameInput } = { current: { ...defaultCvInput } };
 let worldLandmarksRef: { current: NormalizedLandmark[] | null } = { current: null };
+let landmarksRef: { current: NormalizedLandmark[] | null } = { current: null };
 let mapperRef: { current: CVInputMapper } | null = null;
 const calibrateListeners = new Set<() => void>();
 
@@ -48,6 +49,9 @@ export const cvBridge = {
   },
   get worldLandmarksRef() {
     return worldLandmarksRef;
+  },
+  get landmarksRef() {
+    return landmarksRef;
   },
   get mapperRef() {
     return mapperRef;
