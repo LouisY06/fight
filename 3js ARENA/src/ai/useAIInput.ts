@@ -11,6 +11,7 @@ import type { PlayerInput } from '../game/InputManager';
 import { useGameStore } from '../game/GameState';
 import { GAME_CONFIG, AI_DIFFICULTY } from '../game/GameConfig';
 import { VultrAI, type AICombatDecision, type GameStateSnapshot } from './VultrAIService';
+import { FightMemory } from './FightMemory';
 
 // ---------------------------------------------------------------------------
 // Constants (defaults — overridden by difficulty config)
@@ -110,18 +111,41 @@ export function useAIInput(): PlayerInput {
     };
   }, [getPlayerPos]);
 
-  // Track opponent actions by watching health changes
+  // Track opponent (player) actions by watching health changes
+  const lastP1HealthRef = useRef(100);
+  const roundStartTimeRef = useRef(Date.now());
+
   const trackOpponentActions = useCallback(() => {
     const store = useGameStore.getState();
     const p2Health = store.player2.health;
+    const p1Health = store.player1.health;
     const prev = aiState.current.lastOpponentHealth;
+    const isTrueAI = store.aiDifficulty === 'trueai';
+    const now = Date.now() - roundStartTimeRef.current;
+
+    // Player hit the bot (bot took damage)
     if (p2Health < prev) {
       aiState.current.opponentRecentActions.push('attack');
       if (aiState.current.opponentRecentActions.length > 6) {
         aiState.current.opponentRecentActions.shift();
       }
+      // Only record to FightMemory in TRUE AI mode
+      if (isTrueAI) {
+        FightMemory.recordEvent({ t: now, actor: 'player', type: 'hit_landed' });
+        FightMemory.recordEvent({ t: now, actor: 'bot', type: 'hit_taken' });
+        FightMemory.recordEvent({ t: now, actor: 'player', type: 'attack' });
+      }
     }
     aiState.current.lastOpponentHealth = p2Health;
+
+    // Bot hit the player (player took damage)
+    if (p1Health < lastP1HealthRef.current) {
+      if (isTrueAI) {
+        FightMemory.recordEvent({ t: now, actor: 'bot', type: 'hit_landed' });
+        FightMemory.recordEvent({ t: now, actor: 'player', type: 'hit_taken' });
+      }
+    }
+    lastP1HealthRef.current = p1Health;
   }, []);
 
   // Request a new decision from Vultr LLM
@@ -240,17 +264,21 @@ export function useAIInput(): PlayerInput {
       state.actionScheduled = true;
       state.actionScheduleTime = now;
 
+      const isTrueAI = store.aiDifficulty === 'trueai';
+
       if (decision.action === 'attack' && !state.isAttacking && distToPlayer < 2.5) {
         // Only attack if close enough to the player
         state.isAttacking = true;
         state.attackStartTime = now;
         state.recentActions.push('attack');
         if (state.recentActions.length > 6) state.recentActions.shift();
+        if (isTrueAI) FightMemory.recordEvent({ t: now - roundStartTimeRef.current, actor: 'bot', type: 'attack' });
       } else if (decision.action === 'block' && !state.isBlocking) {
         state.isBlocking = true;
         state.blockStartTime = now;
         state.recentActions.push('block');
         if (state.recentActions.length > 6) state.recentActions.shift();
+        if (isTrueAI) FightMemory.recordEvent({ t: now - roundStartTimeRef.current, actor: 'bot', type: 'block' });
       }
     }
 
@@ -329,11 +357,37 @@ export function useAIInput(): PlayerInput {
     return () => cancelAnimationFrame(rafId);
   }, []);
 
-  // Reset AI state when round changes
+  // Reset AI state when round changes + record fight memory
   const phase = useGameStore((s) => s.phase);
+  const prevPhaseRef = useRef(phase);
+
   useEffect(() => {
+    const prev = prevPhaseRef.current;
+    prevPhaseRef.current = phase;
+    const store = useGameStore.getState();
+    const isTrueAI = store.aiDifficulty === 'trueai';
+
     if (phase === 'countdown') {
+      // Record round end if coming from 'roundEnd' (TRUE AI only)
+      if (prev === 'roundEnd' && isTrueAI) {
+        const playerWonRound = store.player1.score > store.player2.score ||
+          (store.player1.score === store.player2.score && store.player1.health > store.player2.health);
+        FightMemory.recordRoundEnd(playerWonRound);
+      }
+
       aiState.current = createInitialState();
+      lastP1HealthRef.current = 100;
+      roundStartTimeRef.current = Date.now();
+      VultrAI.resetConversation();
+    }
+
+    // Record match end (TRUE AI only — this is where the profile updates + saves to localStorage)
+    if (phase === 'gameOver' && prev !== 'gameOver') {
+      if (isTrueAI) {
+        const playerWon = store.player1.score >= GAME_CONFIG.roundsToWin;
+        FightMemory.recordMatchEnd(playerWon, store.aiDifficulty);
+      }
+      VultrAI.resetConversation();
     }
   }, [phase]);
 

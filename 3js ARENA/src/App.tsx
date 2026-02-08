@@ -43,6 +43,7 @@ import { PauseMenu } from './ui/PauseMenu';
 import { GameOverScreen } from './ui/GameOverScreen';
 import { ArenaLoadingOverlay } from './ui/ArenaLoadingOverlay';
 import { SpellHUD } from './ui/SpellHUD';
+import { RoundAnnouncer } from './ui/RoundAnnouncer';
 
 function App() {
   return (
@@ -187,6 +188,8 @@ function GameApp() {
         <ArenaLoadingOverlay />
         <HUD />
         <SpellHUD />
+        {/* RoundAnnouncer rendered outside HUD so it's visible during intro + countdown */}
+        <RoundAnnouncer />
         <PauseMenu />
         <GameOverScreen />
         <WebcamView />

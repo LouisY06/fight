@@ -9,15 +9,22 @@
 import { SPELL_CONFIGS, type SpellType } from '../combat/SpellSystem';
 
 type SpellCallback = (spell: SpellType) => void;
+type CommandCallback = (command: string) => void;
 
 const STT_ENDPOINT = 'https://api.elevenlabs.io/v1/speech-to-text';
 const STT_MODEL = 'scribe_v2';
 
-// Spell keywords to bias ElevenLabs transcription toward
+/** Wake word — all voice commands must start with "mechabot" */
+const WAKE_WORD_FUZZY = ['mechabot', 'mecha bot', 'meca bot', 'mega bot', 'mechbot', 'mech bot', 'mecca bot', 'mechanic bot'];
+
+// Spell keywords to bias ElevenLabs transcription toward (with mechabot prefix)
 const KEYTERMS = [
-  'fireball', 'fire ball', 'fire',
-  'laser', 'laser beam', 'beam', 'electric', 'lightning', 'shock', 'zap',
-  'ice blast', 'ice', 'freeze', 'frost', 'blizzard', 'cold', 'icy', 'blast',
+  'mechabot', 'mecha bot',
+  'mechabot fireball', 'mechabot fire', 'fireball', 'fire ball', 'fire',
+  'mechabot laser', 'laser', 'laser beam', 'beam', 'electric', 'lightning', 'shock', 'zap',
+  'mechabot ice blast', 'ice blast', 'ice', 'freeze', 'frost', 'blizzard', 'cold', 'icy', 'blast',
+  'mechabot turn around', 'turn around', 'turnaround', 'flip', 'about face',
+  'mechabot aimlock', 'aimlock', 'aim lock', 'calibrate', 'recenter',
 ];
 
 // Voice Activity Detection thresholds — tuned for fast spell detection
@@ -34,6 +41,7 @@ let analyser: AnalyserNode | null = null;
 let mediaRecorder: MediaRecorder | null = null;
 let isListening = false;
 let listeners: SpellCallback[] = [];
+let commandListeners: CommandCallback[] = [];
 let voiceStatus: 'idle' | 'active' | 'failed' = 'idle';
 
 // VAD state
@@ -133,6 +141,15 @@ export function onVoiceSpell(cb: SpellCallback): () => void {
   return () => {
     const i = listeners.indexOf(cb);
     if (i >= 0) listeners.splice(i, 1);
+  };
+}
+
+/** Register a callback for general voice commands (e.g. "aimlock") */
+export function onVoiceCommand(cb: CommandCallback): () => void {
+  commandListeners.push(cb);
+  return () => {
+    const i = commandListeners.indexOf(cb);
+    if (i >= 0) commandListeners.splice(i, 1);
   };
 }
 
@@ -279,7 +296,29 @@ async function transcribeClip(audioBlob: Blob): Promise<void> {
 
     console.log(`[VoiceCmd] Heard: "${transcript}"`);
 
-    const matched = matchSpell(transcript);
+    // Check for wake word "mechabot"
+    const hasWakeWord = WAKE_WORD_FUZZY.some((w) => transcript.includes(w));
+    if (!hasWakeWord) {
+      console.log(`[VoiceCmd] No wake word "mechabot" — ignoring`);
+      return;
+    }
+
+    // Strip the wake word to get the command portion
+    let command = transcript;
+    for (const w of WAKE_WORD_FUZZY) {
+      command = command.replace(w, '').trim();
+    }
+
+    // Check for "aimlock" command first
+    const matchedCommand = matchCommand(command);
+    if (matchedCommand) {
+      console.log(`[VoiceCmd] COMMAND: ${matchedCommand}!`);
+      for (const cb of commandListeners) cb(matchedCommand);
+      return;
+    }
+
+    // Check for spells
+    const matched = matchSpell(command);
     if (matched) {
       console.log(`[VoiceCmd] SPELL: ${matched}!`);
       for (const cb of listeners) cb(matched);
@@ -287,6 +326,28 @@ async function transcribeClip(audioBlob: Blob): Promise<void> {
   } catch (err) {
     console.warn('[VoiceCmd] Transcription failed:', err);
   }
+}
+
+// ---------------------------------------------------------------------------
+// Command matching — "turn around" / "aimlock"
+// ---------------------------------------------------------------------------
+
+const TURN_AROUND_FUZZY = [
+  'turn around', 'turnaround', 'turn round', 'turn-around',
+  'flip', 'flip around', '180', 'one eighty', 'about face',
+  'behind', 'look behind', 'look back',
+];
+
+const AIMLOCK_FUZZY = [
+  'aimlock', 'aim lock', 'aim locked', 'aimlocked',
+  'calibrate', 'recalibrate', 'recenter', 're-center', 're center',
+  'lock on', 'lockon', 'lock-on',
+];
+
+function matchCommand(transcript: string): string | null {
+  if (TURN_AROUND_FUZZY.some((w) => transcript.includes(w))) return 'turnaround';
+  if (AIMLOCK_FUZZY.some((w) => transcript.includes(w))) return 'aimlock';
+  return null;
 }
 
 // ---------------------------------------------------------------------------

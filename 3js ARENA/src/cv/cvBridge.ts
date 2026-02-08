@@ -7,6 +7,7 @@
 
 import type { CVGameInput, CVInputMapper } from './CVInputMapper';
 import type { NormalizedLandmark } from '@mediapipe/tasks-vision';
+import * as THREE from 'three';
 
 const defaultCvInput: CVGameInput = {
   lookYaw: 0,
@@ -25,14 +26,18 @@ const defaultCvInput: CVGameInput = {
 
 let cvEnabled = false;
 let isTracking = false;
+/** When true, CV input is temporarily paused (during calibration). */
+let cvPaused = false;
 let cvInputRef: { current: CVGameInput } = { current: { ...defaultCvInput } };
 let worldLandmarksRef: { current: NormalizedLandmark[] | null } = { current: null };
 let mapperRef: { current: CVInputMapper } | null = null;
 const calibrateListeners = new Set<() => void>();
+/** Live opponent world position — updated by BotOpponent / NetworkOpponent every frame */
+const opponentWorldPos = new THREE.Vector3(0, 0, 4);
 
 export const cvBridge = {
   get cvEnabled() {
-    return cvEnabled;
+    return cvEnabled && !cvPaused;
   },
   set cvEnabled(value: boolean) {
     cvEnabled = value;
@@ -42,6 +47,12 @@ export const cvBridge = {
   },
   set isTracking(value: boolean) {
     isTracking = value;
+  },
+  get cvPaused() {
+    return cvPaused;
+  },
+  set cvPaused(value: boolean) {
+    cvPaused = value;
   },
   get cvInputRef() {
     return cvInputRef;
@@ -61,6 +72,14 @@ export const cvBridge = {
     cvInputRef = refs.cvInputRef;
     worldLandmarksRef = refs.worldLandmarksRef;
     mapperRef = refs.mapperRef;
+  },
+  /** Update the opponent's world position (call from BotOpponent/NetworkOpponent each frame) */
+  setOpponentPosition(x: number, y: number, z: number): void {
+    opponentWorldPos.set(x, y, z);
+  },
+  /** Get the opponent's last known world position */
+  getOpponentPosition(): THREE.Vector3 {
+    return opponentWorldPos;
   },
   onCalibrate(cb: () => void): () => void {
     calibrateListeners.add(cb);

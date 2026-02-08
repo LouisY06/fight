@@ -322,6 +322,7 @@ const DIFF_COLORS: Record<AIDifficulty, string> = {
   easy: '#44cc66',
   medium: '#ffaa33',
   hard: '#ff3355',
+  trueai: '#aa44ff',
 };
 
 function DifficultyPicker({
@@ -423,6 +424,81 @@ function DifficultyPicker({
           </button>
         );
       })}
+
+      {/* TRUE AI — special separated option */}
+      <div style={{ width: '300px', borderTop: '1px solid rgba(255,255,255,0.08)', margin: '4px 0' }} />
+      {(() => {
+        const d: AIDifficulty = 'trueai';
+        const cfg = AI_DIFFICULTY[d];
+        const color = DIFF_COLORS[d];
+        const isActive = d === current;
+        return (
+          <button
+            key={d}
+            onClick={() => onSelect(d)}
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '4px',
+              padding: '16px 48px',
+              minWidth: '300px',
+              fontSize: '22px',
+              fontWeight: 'bold',
+              fontFamily: "'Impact', 'Arial Black', sans-serif",
+              textTransform: 'uppercase',
+              letterSpacing: '4px',
+              color: '#ffffff',
+              background: isActive
+                ? `${color}22`
+                : 'rgba(170, 68, 255, 0.06)',
+              border: isActive
+                ? `2px solid ${color}`
+                : '1px solid rgba(170, 68, 255, 0.25)',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+              boxShadow: isActive
+                ? `0 0 20px rgba(170, 68, 255, 0.3), inset 0 0 20px rgba(170, 68, 255, 0.05)`
+                : '0 0 10px rgba(170, 68, 255, 0.1)',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = `${color}33`;
+              e.currentTarget.style.borderColor = color;
+              e.currentTarget.style.transform = 'scale(1.03)';
+              e.currentTarget.style.boxShadow = `0 0 25px rgba(170, 68, 255, 0.4), inset 0 0 20px rgba(170, 68, 255, 0.08)`;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = isActive ? `${color}22` : 'rgba(170, 68, 255, 0.06)';
+              e.currentTarget.style.borderColor = isActive ? color : 'rgba(170, 68, 255, 0.25)';
+              e.currentTarget.style.transform = 'scale(1)';
+              e.currentTarget.style.boxShadow = isActive
+                ? `0 0 20px rgba(170, 68, 255, 0.3), inset 0 0 20px rgba(170, 68, 255, 0.05)`
+                : '0 0 10px rgba(170, 68, 255, 0.1)';
+            }}
+          >
+            <span style={{
+              color,
+              textShadow: `0 0 10px rgba(170, 68, 255, 0.6)`,
+            }}>
+              {cfg.label}
+            </span>
+            <span
+              style={{
+                fontSize: '11px',
+                color: '#aa88cc',
+                letterSpacing: '1px',
+                fontFamily: 'monospace',
+                fontWeight: 'normal',
+                textTransform: 'none',
+                fontStyle: 'italic',
+              }}
+            >
+              {cfg.description}
+            </span>
+          </button>
+        );
+      })()}
 
       <button
         onClick={onCancel}

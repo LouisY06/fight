@@ -139,8 +139,15 @@ export const useGameStore = create<GameState>((set, get) => ({
       ? GAME_CONFIG.maxHealth
       : Math.floor(GAME_CONFIG.maxHealth * diffConfig.playerHealthMultiplier);
 
+    // Round 1 coming from arenaLoading: enter 'intro' phase first
+    // (camera orbit + "ROUND 1" + "3, 2, 1" announcements).
+    // IntroSequencer will call startRound() again when the orbit ends,
+    // transitioning from 'intro' → 'countdown' (shows "FIGHT!").
+    // Rounds 2+: skip intro, go straight to 'countdown' (full sequence).
+    const useIntro = state.phase === 'arenaLoading';
+
     set({
-      phase: 'countdown',
+      phase: useIntro ? 'intro' : 'countdown',
       roundTimeRemaining: GAME_CONFIG.roundTime,
       roundWinner: null,
       lastDamagedPlayer: null,

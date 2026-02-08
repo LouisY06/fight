@@ -8,7 +8,7 @@ import { useGameStore } from '../game/GameState';
 import { GAME_CONFIG } from '../game/GameConfig';
 import { HealthBar } from './HealthBar';
 import { RoundTimer } from './RoundTimer';
-import { RoundAnnouncer } from './RoundAnnouncer';
+// RoundAnnouncer is rendered directly in App.tsx (needs to be visible during intro phase too)
 import { CombatCommentator } from './CombatCommentator';
 import { DamageIndicator } from './DamageIndicator';
 import { WeaponSelector } from './WeaponSelector';
@@ -87,9 +87,6 @@ export function HUD() {
 
       {/* Damage numbers */}
       <DamageIndicator />
-
-      {/* Round announcer */}
-      <RoundAnnouncer />
 
       {/* AI combat commentator (pure logic, no visuals) */}
       <CombatCommentator />
