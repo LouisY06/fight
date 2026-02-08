@@ -2,7 +2,7 @@
 // AttackTypes.ts — Enum/config for attack types
 // =============================================================================
 
-export type AttackType = 'slash' | 'stab' | 'shoot' | 'block' | 'parry' | 'idle';
+export type AttackType = 'slash' | 'stab' | 'block' | 'parry' | 'idle';
 
 export interface AttackConfig {
   type: AttackType;
@@ -29,14 +29,6 @@ export const ATTACK_CONFIGS: Record<string, AttackConfig> = {
     canBlock: true,
     isRanged: false,
     description: 'Forward sword thrust',
-  },
-  gunShot: {
-    type: 'shoot',
-    damage: 10,
-    cooldownMs: 500,
-    canBlock: false,
-    isRanged: true,
-    description: 'Instantaneous raycast shot',
   },
   knifeSlash: {
     type: 'slash',

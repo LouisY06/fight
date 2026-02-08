@@ -26,7 +26,6 @@ const KEYTERMS = [
   'mechabot forcefield', 'forcefield', 'force field', 'shield', 'barrier', 'protect', 'defense',
   'mechabot turn around', 'turn around', 'turnaround', 'flip', 'about face',
   'mechabot aimlock', 'aimlock', 'aim lock', 'calibrate', 'recenter',
-  'one', 'two', 'sword', 'gun',
 ];
 
 // Voice Activity Detection thresholds — tuned for fast spell detection
@@ -311,14 +310,6 @@ async function transcribeClip(audioBlob: Blob): Promise<void> {
 
     console.log(`[VoiceCmd] Heard: "${transcript}"`);
 
-    // Weapon voice commands — no wake word needed (say "1"/"one" or "2"/"two")
-    const weaponCmd = matchWeaponCommand(transcript);
-    if (weaponCmd) {
-      console.log(`[VoiceCmd] COMMAND: ${weaponCmd}!`);
-      for (const cb of commandListeners) cb(weaponCmd);
-      return;
-    }
-
     // Strip the wake word if present (optional — "mechabot fireball" and "fireball" both work)
     let command = transcript;
     for (const w of WAKE_WORD_FUZZY) {
@@ -369,17 +360,6 @@ const AIMLOCK_FUZZY = [
   'calibrate', 'recalibrate', 'recenter', 're-center', 're center',
   'lock on', 'lockon', 'lock-on',
 ];
-
-/** Voice words for weapon switching — "1"/"one" = sword, "2"/"two" = gun */
-const WEAPON_1_FUZZY = ['1', 'one', 'won', 'wan', 'wand', 'sword'];
-const WEAPON_2_FUZZY = ['2', 'two', 'too', 'to', 'tu', 'gun'];
-
-/** Match weapon switch commands — no wake word required */
-function matchWeaponCommand(transcript: string): string | null {
-  if (WEAPON_1_FUZZY.some((w) => transcript === w || transcript.endsWith(` ${w}`))) return 'weapon1';
-  if (WEAPON_2_FUZZY.some((w) => transcript === w || transcript.endsWith(` ${w}`))) return 'weapon2';
-  return null;
-}
 
 function matchCommand(transcript: string): string | null {
   if (TURN_AROUND_FUZZY.some((w) => transcript.includes(w))) return 'turnaround';

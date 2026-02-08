@@ -8,9 +8,6 @@
 import { useFrame } from '@react-three/fiber';
 import { cvBridge } from './cvBridge';
 import { poseTracker } from './PoseTracker';
-import { detectRedStick } from './RedStickTracker';
-import { detectGreenGun } from './GreenGunTracker';
-import { detectBlueLED } from './BlueLEDTracker';
 
 /**
  * Synchronous CV detection bridge.
@@ -35,12 +32,6 @@ export function CVSync() {
         cvBridge.landmarksRef.current = data.landmarks;
       }
     }
-
-    // Color detection runs independently of pose tracking —
-    // only needs the webcam video element (each tracker checks internally).
-    detectRedStick();
-    detectGreenGun();
-    detectBlueLED();
   });
 
   return null;

@@ -16,11 +16,10 @@ const BOOT_LINES = [
 ];
 
 const TIPS = [
-  'TIP: Switch weapons with 1, 2, 3 keys',
-  'TIP: Right-click to raise shield and block incoming attacks',
   'TIP: Sword clashes stun both pilots momentarily',
-  'TIP: The gun does less damage but works at range',
   'TIP: Watch the ghost bar — it shows recent damage taken',
+  'TIP: Say "mechabot fireball" to cast spells',
+  'TIP: Raise your left arm to activate the dash spell',
 ];
 
 export function ArenaLoadingOverlay() {

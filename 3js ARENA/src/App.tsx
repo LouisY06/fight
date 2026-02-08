@@ -20,7 +20,6 @@ import { BotOpponent } from './entities/BotOpponent';
 import { GAME_CONFIG } from './game/GameConfig';
 import { FirstPersonCamera } from './game/FirstPersonCamera';
 import { ViewmodelSword } from './entities/ViewmodelSword';
-import { ViewmodelGun } from './entities/ViewmodelGun';
 import { MechaArms } from './entities/MechaArms';
 import { NetworkProvider } from './networking/NetworkProvider';
 import { InputSyncBridge } from './networking/InputSyncBridge';
@@ -28,9 +27,6 @@ import { MeleeCombat } from './combat/MeleeCombat';
 import { HitEffectManager } from './combat/HitEffectManager';
 import { SpellEffects } from './combat/SpellEffects';
 import { SpellCaster } from './combat/SpellCaster';
-import { BulletManager } from './combat/BulletManager';
-// WeaponState.ts registers its own keydown listener at module level (1=sword, 2=gun)
-import './game/WeaponState';
 
 import { CVProvider } from './cv/CVProvider';
 import { CVSync } from './cv/CVSync';
@@ -217,13 +213,11 @@ function GameApp() {
                 {/* First-person camera + viewmodel weapons + input sync + combat */}
                 <FirstPersonCamera />
                 <ViewmodelSword />
-                <ViewmodelGun />
                 <MechaArms />
                 <MeleeCombat />
                 <HitEffectManager />
                 <SpellEffects />
                 <SpellCaster />
-                <BulletManager />
                 <InputSyncBridge />
 
                 {/* Arena environment */}

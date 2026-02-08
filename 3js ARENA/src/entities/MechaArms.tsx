@@ -1,8 +1,7 @@
 // =============================================================================
-// MechaArms.tsx — First-person cockpit RIGHT arm driven by CV pose tracking
-// Left arm removed (left hand is on keyboard for WASD movement).
-// Right hand holds a weapon (sword / gun) based on WeaponState.
-// All joints interpolated for smooth motion.
+// MechaArms.tsx — First-person cockpit arms driven by CV pose tracking
+// Left arm on keyboard for WASD movement.
+// Right hand holds the sword. All joints interpolated for smooth motion.
 // Geometry builders and materials live in MechaGeometry.ts (shared with MechaEntity).
 // =============================================================================
 
@@ -11,19 +10,13 @@ import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { cvBridge } from '../cv/cvBridge';
 import { useGameStore } from '../game/GameState';
-import { useWeaponStore, isManualOverrideActive } from '../game/WeaponState';
 import { fireSwing } from '../combat/SwingEvent';
 import { updateSwordTransform } from '../combat/SwordState';
 import {
-  makeUpperArm, makeForearm, makeHand, makeJoint, makeSword, makeGun,
+  makeUpperArm, makeForearm, makeHand, makeJoint, makeSword,
 } from '../avatars/MechaGeometry';
 import { updateDashSpell, getDashState, getDashCharge } from '../combat/DashSpell';
-import { getRedStickData } from '../cv/RedStickTracker';
-import { getGreenGunData } from '../cv/GreenGunTracker';
-import { getBlueLEDData } from '../cv/BlueLEDTracker';
 import { activateForceField, isForceFieldActive, useSpellStore, SPELL_CONFIGS } from '../combat/SpellSystem';
-import { spawnBullet } from '../combat/BulletManager';
-import { useScreenShakeStore } from '../game/useScreenShake';
 
 // ============================================================================
 // Cockpit anchors & tracking constants
@@ -127,7 +120,6 @@ const _tLHand = new THREE.Vector3();
 export function MechaArms() {
   const { camera, scene } = useThree();
   const phase = useGameStore((s) => s.phase);
-  const activeWeapon = useWeaponStore((s) => s.activeWeapon);
   const cvEnabled = cvBridge.cvEnabled;
   const cvInputRef = cvBridge.cvInputRef;
   const worldLandmarksRef = cvBridge.worldLandmarksRef;
@@ -140,7 +132,6 @@ export function MechaArms() {
   const rElbowJoint = useMemo(() => makeJoint(0.06), []);
   const rWristJoint = useMemo(() => makeJoint(0.05), []);
   const sword = useMemo(() => makeSword(), []);
-  const gun = useMemo(() => makeGun(), []);
 
   // ---- Left arm geometry (no sword) ----
   const lUpperArm = useMemo(() => makeUpperArm(), []);
@@ -152,7 +143,6 @@ export function MechaArms() {
 
   const groupRef = useRef<THREE.Group>(null!);
   const swordGroupRef = useRef<THREE.Group>(null!);
-  const gunGroupRef = useRef<THREE.Group>(null!);
 
   const smoothJoints = useRef({
     // Right arm
@@ -174,9 +164,6 @@ export function MechaArms() {
 
   const prevCvSwinging = useRef(false);
   const prevPalmExtended = useRef(false);
-  const prevBlueDetected = useRef(false);
-  const prevGreenDetected = useRef(false);
-  const prevRedDetected = useRef(false);
 
   const dims = useMemo(
     () => ({ upper: 0.35, fore: 0.32, hand: 0.12 }),
@@ -201,51 +188,6 @@ export function MechaArms() {
     }
     groupRef.current.visible = true;
 
-    // Clamp delta to avoid large jumps when tab is backgrounded
-    const dt = Math.min(delta, 0.1);
-
-    // ==== Color-based weapon switching + blue LED shooting ====
-    // These don't require body landmarks — only webcam color detection.
-    // Placed before the landmarks check so the gun fires even without
-    // full body tracking (e.g. when only the LED/gun tape is visible).
-    const stick = getRedStickData();
-    const greenGun = getGreenGunData();
-    const blueLED = getBlueLEDData();
-    // Green tape → gun, red stick → sword. Blue LED only fires; it doesn't
-    // force-switch the weapon so the player can stay on sword if they want.
-    // Rising-edge detection: only auto-switch when a prop is NEWLY detected
-    // (off→on transition), not every frame it stays visible. This prevents
-    // continuous false-positive green detections from locking the player on gun.
-    const greenRise = greenGun.detected && !prevGreenDetected.current;
-    const redRise = stick.detected && !prevRedDetected.current;
-    prevGreenDetected.current = greenGun.detected;
-    prevRedDetected.current = stick.detected;
-
-    if (!isManualOverrideActive()) {
-      if (greenRise && activeWeapon !== 'gun') {
-        useWeaponStore.getState().setActiveWeapon('gun');
-      } else if (redRise && !greenGun.detected && activeWeapon !== 'sword') {
-        useWeaponStore.getState().setActiveWeapon('sword');
-      }
-    }
-
-    // --- Blue LED → Single-Shot Trigger (Rising-Edge Detection) ---
-    // Fires exactly ONE bullet the moment blue light turns ON (off→on).
-    // Will NOT fire again until blue turns OFF and back ON.
-    if (blueLED.detected && !prevBlueDetected.current && activeWeapon === 'gun') {
-      const gamePhase = useGameStore.getState().phase;
-      if (gamePhase === 'playing') {
-        const _muzzleDir = new THREE.Vector3();
-        const _muzzlePos = new THREE.Vector3();
-        camera.getWorldDirection(_muzzleDir);
-        _muzzlePos.copy(camera.position).addScaledVector(_muzzleDir, 0.5);
-        spawnBullet(_muzzlePos, _muzzleDir);
-        useScreenShakeStore.getState().trigger(0.15, 80);
-      }
-    }
-    prevBlueDetected.current = blueLED.detected;
-
-    // ==== Body tracking-dependent code below ====
     const cvInput = cvInputRef.current;
     const worldLandmarks = worldLandmarksRef.current;
 
@@ -259,6 +201,9 @@ export function MechaArms() {
       groupRef.current.visible = false;
       return;
     }
+
+    // Clamp delta to avoid large jumps when tab is backgrounded
+    const dt = Math.min(delta, 0.1);
 
     const s = smoothJoints.current;
     const camQuat = camera.quaternion;
@@ -356,29 +301,15 @@ export function MechaArms() {
 
     const weaponPosAlpha = la(SMOOTH_SWORD_POS);
 
-    // --- Sword ---
+    // --- Sword (always visible — sole weapon) ---
     if (swordGroupRef.current) {
-      swordGroupRef.current.visible = activeWeapon === 'sword';
-      if (activeWeapon === 'sword') {
-        swordGroupRef.current.position.lerp(s.rHand, weaponPosAlpha);
-        if (weaponTargetQuat) {
-          swordGroupRef.current.quaternion.copy(s.swordQuat);
-        }
-        updateSwordTransform(swordGroupRef.current);
+      swordGroupRef.current.visible = true;
+      swordGroupRef.current.position.lerp(s.rHand, weaponPosAlpha);
+      if (weaponTargetQuat) {
+        swordGroupRef.current.quaternion.copy(s.swordQuat);
       }
+      updateSwordTransform(swordGroupRef.current);
     }
-
-    // --- Gun ---
-    if (gunGroupRef.current) {
-      gunGroupRef.current.visible = activeWeapon === 'gun';
-      if (activeWeapon === 'gun') {
-        gunGroupRef.current.position.lerp(s.rHand, weaponPosAlpha);
-        if (weaponTargetQuat) {
-          gunGroupRef.current.quaternion.copy(s.swordQuat);
-        }
-      }
-    }
-
 
     // ==== APPLY LEFT ARM ====
     lShoulderJoint.position.copy(s.lShoulder);
@@ -467,16 +398,10 @@ export function MechaArms() {
       <primitive object={lForearm} />
       <primitive object={lHand} />
 
-      {/* Sword — extension of the arm, driven by red stick detection */}
+      {/* Sword — always active, driven by CV hand tracking */}
       <group ref={swordGroupRef} scale={0.85}>
         <primitive object={sword} />
       </group>
-
-      {/* Gun — visible when gun is active */}
-      <group ref={gunGroupRef} scale={0.55}>
-        <primitive object={gun} />
-      </group>
-
     </group>
   );
 }

@@ -9,7 +9,6 @@ export const GAME_CONFIG = {
   damage: {
     swordSlash: 15,
     swordStab: 20,
-    gunShot: 10,
     knifeSlash: 12,
     knifeStab: 18,
   },
@@ -39,8 +38,8 @@ export const GAME_CONFIG = {
   },
 } as const;
 
-export type WeaponType = 'sword' | 'gun' | 'knife';
-export type AttackType = 'slash' | 'stab' | 'shoot' | 'block' | 'parry' | 'idle';
+export type WeaponType = 'sword' | 'knife';
+export type AttackType = 'slash' | 'stab' | 'block' | 'parry' | 'idle';
 
 // ---------------------------------------------------------------------------
 // AI Difficulty Presets

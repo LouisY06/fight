@@ -18,8 +18,6 @@ import {
   computeShakeOffset,
 } from './useScreenShake';
 import { getDashVelocity, getDashState } from '../combat/DashSpell';
-import { getGreenGunData, getGreenGunDelta } from '../cv/GreenGunTracker';
-import { useWeaponStore, GUN_AIM_CONFIG } from './WeaponState';
 
 
 const EYE_HEIGHT = 1.7;
@@ -72,21 +70,10 @@ export function FirstPersonCamera() {
   // ---- 180° quick-turn: press C or say "mechabot, turn around" ----
   const yawOffset = useRef(0);
 
-  // KrunkerStyle delta accumulator for smooth gun steering
-  // (equivalent to target_delta_x/y in KrunkerStyleMouseController)
-  const targetDeltaYaw = useRef(0);
-  const targetDeltaPitch = useRef(0);
-
-  // Diagnostic timer — logs full pipeline state every 2 seconds
-  const diagTimer = useRef(0);
-
   const flip180 = useCallback(() => {
     if (cvEnabled) {
-      // CV mode: toggle persistent yaw offset (used by head-tracking fallback)
+      // CV mode: toggle persistent yaw offset (added every frame)
       yawOffset.current = yawOffset.current === 0 ? Math.PI : 0;
-      // Delta mode: also flip euler directly since yawOffset isn't applied per-frame
-      // (harmless in head-tracking mode — euler is set absolutely each frame)
-      euler.current.y += Math.PI;
     } else {
       // Mouse mode: one-shot rotation since yaw accumulates from mouse
       euler.current.y += Math.PI;
@@ -119,18 +106,12 @@ export function FirstPersonCamera() {
     };
   }, [flip180]);
 
-  // ---- Voice commands: "turn around" → 180° flip, "1"/"2" → weapon switch ----
+  // ---- "Mechabot, turn around" voice command → 180° flip ----
   useEffect(() => {
     const unsub = onVoiceCommand((cmd) => {
       if (cmd === 'turnaround') {
         console.log('[Camera] Voice turn-around — flipping 180°');
         flip180();
-      } else if (cmd === 'weapon1') {
-        console.log('[Camera] Voice weapon switch → sword');
-        useWeaponStore.getState().setActiveWeapon('sword', true);
-      } else if (cmd === 'weapon2') {
-        console.log('[Camera] Voice weapon switch → gun');
-        useWeaponStore.getState().setActiveWeapon('gun', true);
       }
     });
     return unsub;
@@ -153,11 +134,6 @@ export function FirstPersonCamera() {
       verticalVelocity.current = 0;
       isGrounded.current = true;
       initialized.current = true;
-      // Clear KrunkerStyle delta accumulator on round reset
-      targetDeltaYaw.current = 0;
-      targetDeltaPitch.current = 0;
-      // Always start each round with sword
-      useWeaponStore.getState().setActiveWeapon('sword');
     }
     prevPhaseForReset.current = phase;
   }, [phase, spawnZ, facingYaw, camera]);
@@ -241,94 +217,16 @@ export function FirstPersonCamera() {
       }
 
       const cvInput = cvInputRef.current;
-      if (cvEnabled) {
-        // ---- CV mode: KrunkerStyle delta-based camera steering ----
-        // Ported from leaning_control_system.py KrunkerStyleMouseController.
-        // Instead of mapping absolute green position → camera angle each frame,
-        // we accumulate frame-to-frame deltas and drain them smoothly.
-        // This gives the weighted, pointer-lock feel of an FPS gaming mouse.
-        //
-        // NOTE: No OS mouse events (pyautogui / Quartz CGEvent) are involved.
-        // The camera euler angles are set directly in this useFrame callback —
-        // pointer lock is irrelevant in CV mode.
-        const greenGun = getGreenGunData();
-        const gunDelta = getGreenGunDelta();
-
-        if (greenGun.detected) {
-          // Accumulate raw delta from green gun movement
-          if (gunDelta.isValid) {
-            const { sensitivity, deadZone, invertX } = GUN_AIM_CONFIG;
-
-            // Dead zone filter — suppress hand tremor
-            // (mirrors Python dead_zone logic, lines 492-496)
-            const mag = Math.sqrt(gunDelta.deltaX ** 2 + gunDelta.deltaY ** 2);
-            if (mag > deadZone) {
-              const xMult = invertX ? -1 : 1;
-              targetDeltaYaw.current += gunDelta.deltaX * sensitivity * xMult;
-              targetDeltaPitch.current += gunDelta.deltaY * sensitivity;
-            }
-          }
-        } else if (cvInput.isTracking) {
-          // Head tracking aim (fallback when no green detected)
-          // Clear delta accumulator to prevent stale motion
-          targetDeltaYaw.current = 0;
-          targetDeltaPitch.current = 0;
-          euler.current.y = facingYaw - cvInput.lookYaw + yawOffset.current;
-          euler.current.x = cvInput.lookPitch;
-        }
-
-        // ---- Interpolated drain (smooth steering) ----
-        // Each render frame, drain a fraction of the accumulated delta.
-        // Frame-rate-independent: matches Python's 120Hz cursor thread behavior.
-        // (mirrors _cursor_update_thread logic, lines 400-429)
-        const drainAlpha = 1 - Math.pow(
-          1 - GUN_AIM_CONFIG.interpolationSpeed,
-          delta * 120  // scale to 120Hz base rate
-        );
-
-        if (Math.abs(targetDeltaYaw.current) > 0.00001 || Math.abs(targetDeltaPitch.current) > 0.00001) {
-          const drainYaw = targetDeltaYaw.current * drainAlpha;
-          const drainPitch = targetDeltaPitch.current * drainAlpha;
-
-          // Apply to euler angles:
-          // Raw webcam (front-facing): image-left = physical-right, so
-          // deltaX > 0 (moved right in image) = moved LEFT physically → yaw decreases
-          euler.current.y -= drainYaw;
-          // deltaY > 0 (moved down in image) = moved DOWN physically → pitch decreases
-          euler.current.x -= drainPitch;
-
-          // Subtract drained amount from accumulator (drain the queue)
-          targetDeltaYaw.current -= drainYaw;
-          targetDeltaPitch.current -= drainPitch;
-        } else {
-          // Below threshold — clear to prevent float drift
-          targetDeltaYaw.current = 0;
-          targetDeltaPitch.current = 0;
-        }
-
+      if (cvEnabled && cvInput.isTracking) {
+        // ---- CV mode ----
+        // Base: facingYaw - lookYaw (turn left → view goes left)
+        // yawOffset adds 180° when C is pressed or "mechabot turn around" is said
+        euler.current.y = facingYaw - cvInput.lookYaw + yawOffset.current;
+        euler.current.x = cvInput.lookPitch;
         euler.current.x = Math.max(
           -Math.PI * 0.47,
           Math.min(Math.PI * 0.47, euler.current.x)
         );
-
-        // ---- DIAGNOSTIC: pipeline health log (every 2s) ----
-        diagTimer.current += delta;
-        if (diagTimer.current > 2) {
-          diagTimer.current = 0;
-          const { sensitivity, deadZone, invertX } = GUN_AIM_CONFIG;
-          const mag = gunDelta.isValid
-            ? Math.sqrt(gunDelta.deltaX ** 2 + gunDelta.deltaY ** 2)
-            : 0;
-          console.log(
-            `[Camera/CV DIAG] green=${greenGun.detected} px=${greenGun.pixelCount}` +
-            ` | delta valid=${gunDelta.isValid} dX=${gunDelta.deltaX.toFixed(5)} dY=${gunDelta.deltaY.toFixed(5)} mag=${mag.toFixed(5)}` +
-            ` | deadZone=${deadZone} passedDZ=${mag > deadZone}` +
-            ` | accum yaw=${targetDeltaYaw.current.toFixed(4)} pitch=${targetDeltaPitch.current.toFixed(4)}` +
-            ` | euler y=${euler.current.y.toFixed(3)} x=${euler.current.x.toFixed(3)}` +
-            ` | sens=${sensitivity} invertX=${invertX}` +
-            ` | headTrack=${cvInput.isTracking}`
-          );
-        }
       }
 
       // ---- Debuff checks (stun / slow from spells) ----

@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 
 /** Gesture types detected by computer vision. */
-export type GestureType = 'idle' | 'slash' | 'stab' | 'shoot' | 'block' | 'none';
+export type GestureType = 'idle' | 'slash' | 'stab' | 'block' | 'none';
 
 /** Hand landmark data from MediaPipe. */
 export interface HandLandmarks {

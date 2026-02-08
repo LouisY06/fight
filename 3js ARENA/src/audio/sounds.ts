@@ -17,10 +17,6 @@ export const SOUNDS: Record<string, SoundConfig> = {
     src: '/assets/audio/sword-swing.mp3',
     volume: 0.5,
   },
-  gunshot: {
-    src: '/assets/audio/gunshot.mp3',
-    volume: 0.8,
-  },
   hitImpact: {
     src: '/assets/audio/hit-impact.mp3',
     volume: 0.6,

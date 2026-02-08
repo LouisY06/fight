@@ -12,7 +12,7 @@ export interface PlayerInput {
   attack: boolean;
   block: boolean;
   jump: boolean;
-  gesture: 'idle' | 'slash' | 'stab' | 'shoot' | 'block' | 'none';
+  gesture: 'idle' | 'slash' | 'stab' | 'block' | 'none';
 }
 
 const defaultInput = (): PlayerInput => ({
