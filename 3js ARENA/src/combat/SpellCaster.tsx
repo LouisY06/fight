@@ -93,8 +93,8 @@ export function SpellCaster() {
 
   // Start/stop voice recognition based on game phase (optional, may fail)
   useEffect(() => {
-    const unsubStore = useGameStore.subscribe((state) => {
-      const shouldListen = state.phase === 'playing' || state.phase === 'countdown';
+    const tryStartStop = (phase: string) => {
+      const shouldListen = phase === 'playing' || phase === 'countdown';
 
       if (shouldListen && !isListeningRef.current && isVoiceAvailable()) {
         startVoiceListening();
@@ -103,6 +103,13 @@ export function SpellCaster() {
         stopVoiceListening();
         isListeningRef.current = false;
       }
+    };
+
+    // Check initial state (subscribe only fires on *changes*)
+    tryStartStop(useGameStore.getState().phase);
+
+    const unsubStore = useGameStore.subscribe((state) => {
+      tryStartStop(state.phase);
     });
 
     return () => {

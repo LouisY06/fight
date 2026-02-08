@@ -14,7 +14,7 @@ import { AI_DIFFICULTY, type AIDifficulty } from '../game/GameConfig';
 import { preloadRiggedMechPack } from '../riggedMechs/RiggedMechEntity';
 import { COLORS, FONTS, CLIP, cornerBracketStyle } from './theme';
 
-function PreloadRiggedPack() {
+function PreloadCustomPack() {
   preloadRiggedMechPack();
   return null;
 }
@@ -58,7 +58,7 @@ export function MainMenu() {
 
   return (
     <>
-      <PreloadRiggedPack />
+      <PreloadCustomPack />
       <div
         style={{
           position: 'absolute',

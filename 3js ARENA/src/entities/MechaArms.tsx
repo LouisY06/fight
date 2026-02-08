@@ -11,7 +11,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { cvBridge } from '../cv/cvBridge';
 import { useGameStore } from '../game/GameState';
-import { useWeaponStore } from '../game/WeaponState';
+import { useWeaponStore, isManualOverrideActive } from '../game/WeaponState';
 import { fireSwing } from '../combat/SwingEvent';
 import { updateSwordTransform } from '../combat/SwordState';
 import {
@@ -175,6 +175,8 @@ export function MechaArms() {
   const prevCvSwinging = useRef(false);
   const prevPalmExtended = useRef(false);
   const prevBlueDetected = useRef(false);
+  const prevGreenDetected = useRef(false);
+  const prevRedDetected = useRef(false);
 
   const dims = useMemo(
     () => ({ upper: 0.35, fore: 0.32, hand: 0.12 }),
@@ -209,10 +211,22 @@ export function MechaArms() {
     const stick = getRedStickData();
     const greenGun = getGreenGunData();
     const blueLED = getBlueLEDData();
-    if ((greenGun.detected || blueLED.detected) && activeWeapon !== 'gun') {
-      useWeaponStore.getState().setActiveWeapon('gun');
-    } else if (stick.detected && !greenGun.detected && !blueLED.detected && activeWeapon !== 'sword') {
-      useWeaponStore.getState().setActiveWeapon('sword');
+    // Green tape → gun, red stick → sword. Blue LED only fires; it doesn't
+    // force-switch the weapon so the player can stay on sword if they want.
+    // Rising-edge detection: only auto-switch when a prop is NEWLY detected
+    // (off→on transition), not every frame it stays visible. This prevents
+    // continuous false-positive green detections from locking the player on gun.
+    const greenRise = greenGun.detected && !prevGreenDetected.current;
+    const redRise = stick.detected && !prevRedDetected.current;
+    prevGreenDetected.current = greenGun.detected;
+    prevRedDetected.current = stick.detected;
+
+    if (!isManualOverrideActive()) {
+      if (greenRise && activeWeapon !== 'gun') {
+        useWeaponStore.getState().setActiveWeapon('gun');
+      } else if (redRise && !greenGun.detected && activeWeapon !== 'sword') {
+        useWeaponStore.getState().setActiveWeapon('sword');
+      }
     }
 
     // --- Blue LED → Single-Shot Trigger (Rising-Edge Detection) ---

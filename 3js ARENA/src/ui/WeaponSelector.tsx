@@ -52,7 +52,6 @@ export function WeaponSelector() {
         return (
           <div
             key={w.id}
-            onClick={() => setActiveWeapon(w.id)}
             style={{
               position: 'relative',
               width: '68px',
@@ -61,8 +60,9 @@ export function WeaponSelector() {
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              cursor: 'pointer',
+              cursor: 'default',
               userSelect: 'none',
+              pointerEvents: 'none',
               background: isActive
                 ? 'rgba(255, 140, 0, 0.1)'
                 : 'rgba(0, 0, 0, 0.3)',

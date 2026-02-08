@@ -2,7 +2,7 @@
 // App.tsx — Root component: game state machine (first-person 1v1 arena)
 // =============================================================================
 
-import { Suspense, useEffect, Component, type ReactNode } from 'react';
+import { Suspense, Component, type ReactNode } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { Physics } from '@react-three/rapier';
 import * as THREE from 'three';
@@ -29,7 +29,8 @@ import { HitEffectManager } from './combat/HitEffectManager';
 import { SpellEffects } from './combat/SpellEffects';
 import { SpellCaster } from './combat/SpellCaster';
 import { BulletManager } from './combat/BulletManager';
-import { initWeaponKeyListener } from './game/WeaponState';
+// WeaponState.ts registers its own keydown listener at module level (1=sword, 2=gun)
+import './game/WeaponState';
 
 import { CVProvider } from './cv/CVProvider';
 import { CVSync } from './cv/CVSync';
@@ -131,11 +132,6 @@ function GameApp() {
   const phase = useGameStore((s) => s.phase);
   const currentThemeId = useGameStore((s) => s.currentThemeId);
   const isMultiplayer = useGameStore((s) => s.isMultiplayer);
-
-  // Init weapon key listener (1=sword, 2=gun)
-  useEffect(() => {
-    return initWeaponKeyListener();
-  }, []);
 
   const theme = currentThemeId ? getThemeById(currentThemeId) : ARENA_THEMES[0];
 

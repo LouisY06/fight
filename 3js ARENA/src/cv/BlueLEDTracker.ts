@@ -36,9 +36,16 @@ const BLUE_HUE_HIGH = 270;
 const BLUE_SAT_MIN = 0.06;
 const BLUE_VAL_MIN = 0.06;
 
-// 20% of frame area — blue must cover at least 20% of the frame to count as detected.
-// Prevents false positives from ambient blue in the scene.
-const BLUE_AREA_THRESHOLD = 0.20;
+// Blue area threshold — fraction of the 160×120 frame that must be blue.
+//
+// At 20%, MIN_BLUE_PIXELS = 3840, which requires a massive blue surface
+// (e.g. an iPad held at arm's length). For a phone screen or LED flashlight
+// held near the webcam, 3-5% is more practical while still filtering out
+// ambient blue from jeans, sky, etc.
+//
+// For reference: green gun uses MIN_GREEN_PIXELS = 80 (~0.4% of frame).
+// Tune this if blue never triggers (too high) or false-fires (too low).
+const BLUE_AREA_THRESHOLD = 0.04; // 4% ≈ 768 pixels at 160×120
 const MIN_BLUE_PIXELS = Math.floor(PROCESS_W * PROCESS_H * BLUE_AREA_THRESHOLD);
 const MIN_CONTOUR_AREA = Math.floor(PROCESS_W * PROCESS_H * BLUE_AREA_THRESHOLD);
 

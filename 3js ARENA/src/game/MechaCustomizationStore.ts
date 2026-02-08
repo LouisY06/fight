@@ -21,7 +21,7 @@ const DEFAULT_SCALES: MechaSegmentScales = {
 
 const DEFAULT_COLOR = '#ff8c00';
 
-export type AvatarType = 'classic' | 'riggedPack';
+export type AvatarType = 'classic' | 'customPack';
 
 interface MechaCustomizationState {
   accentColor: string;

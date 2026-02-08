@@ -108,14 +108,14 @@ export function CustomizationPanel({ onClose }: { onClose: () => void }) {
               label="CLASSIC"
             />
             <ChassisButton
-              active={avatarType === 'riggedPack'}
-              onClick={() => setAvatarType('riggedPack')}
-              label="RIGGED PACK"
+              active={avatarType === 'customPack'}
+              onClick={() => setAvatarType('customPack')}
+              label="CUSTOM PACK"
             />
           </div>
 
-          {/* Mech selection for rigged pack */}
-          {avatarType === 'riggedPack' && MECH_PACK_COUNT > 0 && (
+          {/* Mech selection for custom pack */}
+          {avatarType === 'customPack' && MECH_PACK_COUNT > 0 && (
             <div style={{ marginTop: '12px' }}>
               <label style={{ ...LABEL_STYLE, display: 'block', marginBottom: '8px', fontSize: '10px' }}>
                 // SELECT UNIT

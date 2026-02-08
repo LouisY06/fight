@@ -23,9 +23,21 @@ export interface GreenGunData {
   pixelCount: number;
 }
 
-// Processing canvas (downscaled for performance)
-const PROCESS_W = 160;
-const PROCESS_H = 120;
+/** Delta tracking for KrunkerStyle camera steering
+ *  (ported from leaning_control_system.py KrunkerStyleMouseController) */
+export interface GreenGunDelta {
+  /** Change in centerX since last detection (normalized) */
+  deltaX: number;
+  /** Change in centerY since last detection (normalized) */
+  deltaY: number;
+  /** Whether this delta is usable (false on first frame, after discontinuation, or skipped frames) */
+  isValid: boolean;
+}
+
+// Processing canvas — 320x240 gives 4× more pixels for centroid precision.
+// 160x120 was losing sub-pixel gun movements entirely.
+const PROCESS_W = 320;
+const PROCESS_H = 240;
 
 // Hand ROI: pose landmark indices
 const RIGHT_WRIST = 16;
@@ -48,8 +60,8 @@ const GREEN_HUE_HIGH = 160;
 const GREEN_SAT_MIN = 0.12;
 const GREEN_VAL_MIN = 0.12;
 
-const MIN_GREEN_PIXELS = 1;
-const MIN_CONTOUR_AREA = 1;
+const MIN_GREEN_PIXELS = 200;  // at 320x240, a real green object is ~300+ pixels (4× old threshold)
+const MIN_CONTOUR_AREA = 150;  // minimum blob area to avoid noise (scaled for 320x240)
 
 let canvas: HTMLCanvasElement | null = null;
 let ctx: CanvasRenderingContext2D | null = null;
@@ -62,9 +74,23 @@ let lastResult: GreenGunData = {
   pixelCount: 0,
 };
 
-// Skip frames for performance (process every 2nd frame, offset from red tracker)
-let frameCounter = 0;
+// No frame skipping — every frame matters for gun aiming responsiveness.
+// The old skip-every-2nd-frame approach invalidated deltas on skipped frames,
+// halving effective tracking rate and triggering constant discontinuations.
 let debugLogTimer = 0;
+
+// Delta tracking state for KrunkerStyle camera steering
+// (ported from leaning_control_system.py KrunkerStyleMouseController)
+let prevDeltaCenterX: number | null = null;
+let prevDeltaCenterY: number | null = null;
+let prevDeltaTime = 0;
+const DELTA_DISCONTINUATION_MS = 250; // reset baseline after 250ms gap (relaxed from 100ms — too aggressive)
+
+let lastDelta: GreenGunDelta = { deltaX: 0, deltaY: 0, isValid: false };
+
+export function getGreenGunDelta(): GreenGunDelta {
+  return lastDelta;
+}
 
 // OpenCV state: pre-allocated Mats
 let cvSrc: any = null;
@@ -309,9 +335,6 @@ function detectManual(pixels: Uint8ClampedArray, roi: ROI | null): GreenGunData 
  * Call once per frame from CVSync.
  */
 export function detectGreenGun(): GreenGunData {
-  frameCounter++;
-  if (frameCounter % 2 !== 0) return lastResult; // skip every other frame
-
   const video = poseTracker.getVideoElement();
   if (!video || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
     return lastResult;
@@ -339,6 +362,50 @@ export function detectGreenGun(): GreenGunData {
     }
   } else {
     lastResult = detectManual(imageData.data, null);
+  }
+
+  // ---- Compute delta for KrunkerStyle camera steering ----
+  // Mirrors KrunkerStyleMouseController.update() logic from leaning_control_system.py:
+  // - Track frame-to-frame position change (delta)
+  // - Detect discontinuations (gap > 100ms) to prevent snapping
+  //
+  // NOTE: This delta drives camera steering directly inside the browser.
+  // No OS mouse events (pyautogui/Quartz) are involved — the camera euler
+  // angles are set in FirstPersonCamera.tsx's useFrame callback.
+  const deltaTime = performance.now();
+  if (lastResult.detected) {
+    const gapMs = deltaTime - prevDeltaTime;
+    const isDiscontinuation = prevDeltaCenterX === null || prevDeltaCenterY === null ||
+      gapMs > DELTA_DISCONTINUATION_MS;
+
+    if (!isDiscontinuation) {
+      lastDelta = {
+        deltaX: lastResult.centerX - prevDeltaCenterX!,
+        deltaY: lastResult.centerY - prevDeltaCenterY!,
+        isValid: true,
+      };
+    } else {
+      // Discontinuation: set baseline without applying delta (prevents snap)
+      lastDelta = { deltaX: 0, deltaY: 0, isValid: false };
+      // Log discontinuation reason to help diagnose stuck camera
+      const now = performance.now();
+      if (now - debugLogTimer > 2000) {
+        debugLogTimer = now;
+        console.log(
+          `[GreenGun/Delta] DISCONTINUATION — prevX=${prevDeltaCenterX}` +
+          ` prevY=${prevDeltaCenterY} gapMs=${gapMs.toFixed(0)}` +
+          ` threshold=${DELTA_DISCONTINUATION_MS}ms`
+        );
+      }
+    }
+    prevDeltaCenterX = lastResult.centerX;
+    prevDeltaCenterY = lastResult.centerY;
+    prevDeltaTime = deltaTime;
+  } else {
+    // Lost tracking — clear baseline so next detection is treated as discontinuation
+    lastDelta = { deltaX: 0, deltaY: 0, isValid: false };
+    prevDeltaCenterX = null;
+    prevDeltaCenterY = null;
   }
 
   return lastResult;
