@@ -19,6 +19,11 @@ import {
 } from '../avatars/MechaGeometry';
 import { updateDashSpell, getDashState, getDashCharge } from '../combat/DashSpell';
 import { getRedStickData } from '../cv/RedStickTracker';
+import { getGreenGunData } from '../cv/GreenGunTracker';
+import { getBlueLEDData } from '../cv/BlueLEDTracker';
+import { activateForceField, isForceFieldActive, useSpellStore, SPELL_CONFIGS } from '../combat/SpellSystem';
+import { spawnBullet } from '../combat/BulletManager';
+import { useScreenShakeStore } from '../game/useScreenShake';
 
 // ============================================================================
 // Cockpit anchors & tracking constants
@@ -168,6 +173,8 @@ export function MechaArms() {
   });
 
   const prevCvSwinging = useRef(false);
+  const prevPalmExtended = useRef(false);
+  const prevBlueDetected = useRef(false);
 
   const dims = useMemo(
     () => ({ upper: 0.35, fore: 0.32, hand: 0.12 }),
@@ -305,11 +312,29 @@ export function MechaArms() {
 
     const weaponPosAlpha = la(SMOOTH_SWORD_POS);
 
-    // --- Color-based weapon switching: red detected → switch to sword ---
+    // --- Color-based weapon switching: green → gun (priority), yellow → sword ---
     const stick = getRedStickData();
-    if (stick.detected && activeWeapon !== 'sword') {
+    const greenGun = getGreenGunData();
+    const blueLED = getBlueLEDData();
+    if (greenGun.detected && activeWeapon !== 'gun') {
+      useWeaponStore.getState().setActiveWeapon('gun');
+    } else if (stick.detected && !greenGun.detected && activeWeapon !== 'sword') {
       useWeaponStore.getState().setActiveWeapon('sword');
     }
+
+    // --- Blue LED → fire one bullet per appearance ---
+    if (blueLED.detected && !prevBlueDetected.current && activeWeapon === 'gun') {
+      const gamePhase = useGameStore.getState().phase;
+      if (gamePhase === 'playing') {
+        const _muzzleDir = new THREE.Vector3();
+        const _muzzlePos = new THREE.Vector3();
+        camera.getWorldDirection(_muzzleDir);
+        _muzzlePos.copy(camera.position).addScaledVector(_muzzleDir, 0.5);
+        spawnBullet(_muzzlePos, _muzzleDir);
+        useScreenShakeStore.getState().trigger(0.15, 80);
+      }
+    }
+    prevBlueDetected.current = blueLED.detected;
 
     // --- Sword ---
     if (swordGroupRef.current) {
@@ -347,14 +372,36 @@ export function MechaArms() {
     // ==== DASH SPELL ====
     updateDashSpell(dt, cvInput.leftArmRaised, cvInput.leftFistClosed, camera, scene);
 
-    // Left hand + forearm charge glow effect
+    // ==== FORCEFIELD — left palm extended gesture ====
+    const palmExtended = cvInput.leftArmRaised && !cvInput.leftFistClosed;
+    if (palmExtended && !prevPalmExtended.current) {
+      // Rising edge: try to activate forcefield (respect cooldown)
+      const now = Date.now();
+      const cooldowns = useSpellStore.getState().cooldowns;
+      if (now - cooldowns.forcefield >= SPELL_CONFIGS.forcefield.cooldownMs) {
+        const playerSlot = (useGameStore.getState().playerSlot ?? 'player1') as 'player1' | 'player2';
+        useSpellStore.setState((s) => ({
+          cooldowns: { ...s.cooldowns, forcefield: now },
+        }));
+        activateForceField(playerSlot);
+      }
+    }
+    prevPalmExtended.current = palmExtended;
+
+    // Left hand + forearm glow effect
     const dashState = getDashState();
     const chargeLevel = getDashCharge();
+    const playerSlot = (useGameStore.getState().playerSlot ?? 'player1') as 'player1' | 'player2';
+    const forcefieldActive = isForceFieldActive(playerSlot);
 
     let emissiveHex = 0x000000;
     let emissiveIntensity = 0;
 
-    if (dashState === 'charging' && chargeLevel < 1) {
+    if (forcefieldActive) {
+      // Forcefield active — cyan/green glow
+      emissiveHex = 0x00ffcc;
+      emissiveIntensity = 2.5 + Math.sin(Date.now() * 0.008) * 1.0;
+    } else if (dashState === 'charging' && chargeLevel < 1) {
       emissiveHex = 0xff6600;
       emissiveIntensity = chargeLevel * 3;
     } else if (dashState === 'charging' && chargeLevel >= 1) {
@@ -379,7 +426,7 @@ export function MechaArms() {
       });
     };
     applyGlow(lHand);
-    if (dashState !== 'idle') applyGlow(lForearm);
+    if (dashState !== 'idle' || forcefieldActive) applyGlow(lForearm);
   });
 
   return (

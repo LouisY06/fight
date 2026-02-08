@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Color Detection Test — Yellow / Green / Blue</title>
+<style>
+  body {
+    margin: 0;
+    background: #0a0c10;
+    color: #eee;
+    font-family: 'Courier New', monospace;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+  }
+  h1 { margin-bottom: 4px; color: #ff8c00; letter-spacing: 2px; }
+  .subtitle { color: #666; margin-bottom: 16px; font-size: 13px; }
+
+  .main-row {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .panel { display: flex; flex-direction: column; align-items: center; }
+  .panel-label { margin-bottom: 4px; font-size: 13px; color: #888; }
+
+  video, canvas { border: 2px solid #222; border-radius: 6px; }
+
+  .video-wrap { position: relative; display: inline-block; }
+  #overlay { position: absolute; top: 0; left: 0; pointer-events: none; }
+
+  .masks-row {
+    display: flex;
+    gap: 12px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .mask-panel { text-align: center; }
+  .mask-panel canvas { image-rendering: pixelated; }
+  .mask-label { font-size: 12px; margin-bottom: 2px; }
+  .mask-label.yellow { color: #ffdd00; }
+  .mask-label.green { color: #44ff44; }
+  .mask-label.blue { color: #4488ff; }
+
+  #results {
+    margin-top: 16px;
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .color-card {
+    background: #161820;
+    border: 2px solid #222;
+    border-radius: 8px;
+    padding: 16px 20px;
+    min-width: 220px;
+    transition: border-color 0.15s;
+  }
+  .color-card.detected { border-color: currentColor; }
+  .color-card h3 { margin: 0 0 8px 0; font-size: 16px; letter-spacing: 2px; }
+  .color-card.yellow h3 { color: #ffdd00; }
+  .color-card.green h3 { color: #44ff44; }
+  .color-card.blue h3 { color: #4488ff; }
+  .stat { margin: 3px 0; font-size: 13px; color: #aaa; }
+  .stat b { color: #ddd; }
+  .status-tag {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 3px;
+    font-weight: bold;
+    font-size: 13px;
+  }
+  .status-tag.yes { background: rgba(0,255,0,0.12); color: #0f0; }
+  .status-tag.no { background: rgba(255,0,0,0.08); color: #f44; }
+
+  .bar-wrap {
+    display: inline-block; width: 120px; height: 10px;
+    background: #222; border-radius: 3px; vertical-align: middle; margin-left: 6px;
+  }
+  .bar-fill { height: 100%; border-radius: 3px; transition: width 0.1s; }
+
+  #pixelInfo {
+    margin-top: 12px; padding: 10px 16px;
+    background: #161820; border-radius: 6px;
+    font-size: 13px; color: #888; min-width: 500px; text-align: center;
+  }
+  #cvStatus {
+    padding: 6px 14px; border-radius: 4px; margin-bottom: 10px; font-size: 13px;
+  }
+  .cv-loading { background: #332; color: #ffa; }
+  .cv-ready { background: #232; color: #0f0; }
+  .cv-failed { background: #322; color: #f66; }
+
+  #thresholds {
+    margin-top: 12px; padding: 14px 18px;
+    background: #161820; border-radius: 8px; min-width: 500px;
+  }
+  #thresholds summary { cursor: pointer; color: #888; font-size: 13px; }
+  #thresholds .row { margin: 5px 0; font-size: 13px; }
+  #thresholds input[type=range] { width: 140px; vertical-align: middle; }
+  #thresholds .val { display: inline-block; width: 30px; text-align: right; color: #ff8c00; }
+</style>
+</head>
+<body>
+
+<h1>// COLOR DETECTION TEST</h1>
+<div class="subtitle">Hold yellow, green, or blue objects in front of the camera. Click video to inspect pixel HSV.</div>
+<div id="cvStatus" class="cv-loading">Loading OpenCV.js...</div>
+
+<div class="main-row">
+  <div class="panel">
+    <div class="panel-label">Webcam Feed (640x480)</div>
+    <div class="video-wrap">
+      <video id="webcam" width="640" height="480" autoplay playsinline muted></video>
+      <canvas id="overlay" width="640" height="480"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="masks-row">
+  <div class="mask-panel">
+    <div class="mask-label yellow">YELLOW MASK</div>
+    <canvas id="maskYellow" width="320" height="240"></canvas>
+  </div>
+  <div class="mask-panel">
+    <div class="mask-label green">GREEN MASK</div>
+    <canvas id="maskGreen" width="320" height="240"></canvas>
+  </div>
+  <div class="mask-panel">
+    <div class="mask-label blue">BLUE MASK</div>
+    <canvas id="maskBlue" width="320" height="240"></canvas>
+  </div>
+</div>
+
+<div id="results">
+  <div class="color-card yellow" id="cardYellow">
+    <h3>YELLOW</h3>
+    <div id="statusYellow"></div>
+  </div>
+  <div class="color-card green" id="cardGreen">
+    <h3>GREEN</h3>
+    <div id="statusGreen"></div>
+  </div>
+  <div class="color-card blue" id="cardBlue">
+    <h3>BLUE</h3>
+    <div id="statusBlue"></div>
+  </div>
+</div>
+
+<div id="pixelInfo">Click on the webcam feed to inspect a pixel's RGB and HSV values.</div>
+
+<details id="thresholds">
+  <summary>Adjust HSV Thresholds (OpenCV scale: H 0-180, S/V 0-255)</summary>
+  <br>
+  <b style="color:#ffdd00">Yellow:</b>
+  <div class="row">Hue: <input type="range" id="y_hueLow" min="10" max="30" value="20"> <span class="val" id="y_hueLow_v">20</span> - <input type="range" id="y_hueHigh" min="25" max="50" value="35"> <span class="val" id="y_hueHigh_v">35</span></div>
+  <div class="row">Min Sat: <input type="range" id="y_satMin" min="0" max="255" value="80"> <span class="val" id="y_satMin_v">80</span> | Min Val: <input type="range" id="y_valMin" min="0" max="255" value="80"> <span class="val" id="y_valMin_v">80</span></div>
+  <br>
+  <b style="color:#44ff44">Green:</b>
+  <div class="row">Hue: <input type="range" id="g_hueLow" min="20" max="60" value="35"> <span class="val" id="g_hueLow_v">35</span> - <input type="range" id="g_hueHigh" min="60" max="100" value="85"> <span class="val" id="g_hueHigh_v">85</span></div>
+  <div class="row">Min Sat: <input type="range" id="g_satMin" min="0" max="255" value="50"> <span class="val" id="g_satMin_v">50</span> | Min Val: <input type="range" id="g_valMin" min="0" max="255" value="50"> <span class="val" id="g_valMin_v">50</span></div>
+  <br>
+  <b style="color:#4488ff">Blue:</b>
+  <div class="row">Hue: <input type="range" id="b_hueLow" min="85" max="110" value="100"> <span class="val" id="b_hueLow_v">100</span> - <input type="range" id="b_hueHigh" min="110" max="140" value="130"> <span class="val" id="b_hueHigh_v">130</span></div>
+  <div class="row">Min Sat: <input type="range" id="b_satMin" min="0" max="255" value="50"> <span class="val" id="b_satMin_v">50</span> | Min Val: <input type="range" id="b_valMin" min="0" max="255" value="50"> <span class="val" id="b_valMin_v">50</span></div>
+  <br>
+  <b style="color:#888">General:</b>
+  <div class="row">Min contour area: <input type="range" id="minArea" min="10" max="500" value="40"> <span class="val" id="minArea_v">40</span> px</div>
+</details>
+
+<script src="opencv/opencv.js" async></script>
+<script>
+// ===========================================================================
+// Constants
+// ===========================================================================
+const PW = 160, PH = 120; // processing resolution
+
+const video = document.getElementById('webcam');
+const overlayCanvas = document.getElementById('overlay');
+const overlayCtx = overlayCanvas.getContext('2d');
+
+const maskCanvases = {
+  yellow: { canvas: document.getElementById('maskYellow'), ctx: null },
+  green:  { canvas: document.getElementById('maskGreen'),  ctx: null },
+  blue:   { canvas: document.getElementById('maskBlue'),   ctx: null },
+};
+for (const k of Object.keys(maskCanvases)) {
+  maskCanvases[k].ctx = maskCanvases[k].canvas.getContext('2d');
+}
+
+// Offscreen processing canvas
+const procCanvas = document.createElement('canvas');
+procCanvas.width = PW; procCanvas.height = PH;
+const procCtx = procCanvas.getContext('2d', { willReadFrequently: true });
+
+// Full-res inspect canvas
+const inspectCanvas = document.createElement('canvas');
+inspectCanvas.width = 640; inspectCanvas.height = 480;
+const inspectCtx = inspectCanvas.getContext('2d', { willReadFrequently: true });
+
+let cvLoaded = false;
+const cvStatusDiv = document.getElementById('cvStatus');
+
+// ===========================================================================
+// Slider wiring
+// ===========================================================================
+const sliderIds = [
+  'y_hueLow','y_hueHigh','y_satMin','y_valMin',
+  'g_hueLow','g_hueHigh','g_satMin','g_valMin',
+  'b_hueLow','b_hueHigh','b_satMin','b_valMin',
+  'minArea'
+];
+const S = {}; // slider elements
+for (const id of sliderIds) {
+  const el = document.getElementById(id);
+  S[id] = el;
+  el.addEventListener('input', () => {
+    document.getElementById(id + '_v').textContent = el.value;
+  });
+}
+function sv(id) { return parseInt(S[id].value); }
+
+// ===========================================================================
+// RGB to HSV (for pixel inspector)
+// ===========================================================================
+function rgbToHsv(r, g, b) {
+  const rn = r/255, gn = g/255, bn = b/255;
+  const max = Math.max(rn, gn, bn), min = Math.min(rn, gn, bn), d = max - min;
+  let h = 0;
+  if (d !== 0) {
+    if (max === rn) h = 60 * (((gn - bn) / d) % 6);
+    else if (max === gn) h = 60 * ((bn - rn) / d + 2);
+    else h = 60 * ((rn - gn) / d + 4);
+  }
+  if (h < 0) h += 360;
+  return [h, max === 0 ? 0 : d / max, max];
+}
+
+// Pixel click inspector
+overlayCanvas.style.cursor = 'crosshair';
+overlayCanvas.style.pointerEvents = 'auto';
+overlayCanvas.addEventListener('click', (e) => {
+  const rect = overlayCanvas.getBoundingClientRect();
+  const x = Math.floor((e.clientX - rect.left) * (640 / rect.width));
+  const y = Math.floor((e.clientY - rect.top) * (480 / rect.height));
+  inspectCtx.drawImage(video, 0, 0, 640, 480);
+  const px = inspectCtx.getImageData(x, y, 1, 1).data;
+  const [h360, s1, v1] = rgbToHsv(px[0], px[1], px[2]);
+  const hCv = Math.round(h360 / 2);
+  const sCv = Math.round(s1 * 255);
+  const vCv = Math.round(v1 * 255);
+
+  // Determine which color it would match
+  let match = 'none';
+  if (hCv >= sv('y_hueLow') && hCv <= sv('y_hueHigh') && sCv >= sv('y_satMin') && vCv >= sv('y_valMin')) match = 'YELLOW';
+  else if (hCv >= sv('g_hueLow') && hCv <= sv('g_hueHigh') && sCv >= sv('g_satMin') && vCv >= sv('g_valMin')) match = 'GREEN';
+  else if (hCv >= sv('b_hueLow') && hCv <= sv('b_hueHigh') && sCv >= sv('b_satMin') && vCv >= sv('b_valMin')) match = 'BLUE';
+
+  const matchColors = { YELLOW: '#ffdd00', GREEN: '#44ff44', BLUE: '#4488ff', none: '#666' };
+  document.getElementById('pixelInfo').innerHTML =
+    `<b>Pixel (${x}, ${y}):</b> ` +
+    `RGB(${px[0]}, ${px[1]}, ${px[2]}) ` +
+    `HSV(${h360.toFixed(1)}\u00b0, ${(s1*100).toFixed(0)}%, ${(v1*100).toFixed(0)}%) ` +
+    `OpenCV HSV(${hCv}, ${sCv}, ${vCv}) ` +
+    `<span style="display:inline-block;width:18px;height:18px;background:rgb(${px[0]},${px[1]},${px[2]});vertical-align:middle;border:1px solid #444;margin:0 8px;border-radius:3px"></span>` +
+    `Match: <b style="color:${matchColors[match]}">${match}</b>`;
+});
+
+// ===========================================================================
+// OpenCV init
+// ===========================================================================
+function waitForOpenCV() {
+  return new Promise((resolve) => {
+    const check = () => {
+      if (typeof cv !== 'undefined' && cv.Mat) {
+        cvLoaded = true;
+        cvStatusDiv.textContent = 'OpenCV.js Ready';
+        cvStatusDiv.className = 'cv-ready';
+        resolve();
+      } else if (typeof cv !== 'undefined' && cv.onRuntimeInitialized !== undefined) {
+        cv.onRuntimeInitialized = () => {
+          cvLoaded = true;
+          cvStatusDiv.textContent = 'OpenCV.js Ready';
+          cvStatusDiv.className = 'cv-ready';
+          resolve();
+        };
+      } else {
+        setTimeout(check, 100);
+      }
+    };
+    check();
+    setTimeout(() => {
+      if (!cvLoaded) {
+        cvStatusDiv.textContent = 'OpenCV.js failed — using manual fallback';
+        cvStatusDiv.className = 'cv-failed';
+        resolve();
+      }
+    }, 30000);
+  });
+}
+
+// Pre-allocated OpenCV mats
+let cvSrc, cvHsv;
+let cvMasks = {}; // { yellow: Mat, green: Mat, blue: Mat }
+let cvTemp1, cvTemp2, cvMorphKernel;
+let cvInited = false;
+
+function initCvMats() {
+  cvSrc = new cv.Mat(PH, PW, cv.CV_8UC4);
+  cvHsv = new cv.Mat();
+  cvMasks.yellow = new cv.Mat();
+  cvMasks.green = new cv.Mat();
+  cvMasks.blue = new cv.Mat();
+  cvTemp1 = new cv.Mat();
+  cvTemp2 = new cv.Mat();
+  cvMorphKernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, new cv.Size(3, 3));
+  cvInited = true;
+}
+
+// ===========================================================================
+// Detection (OpenCV)
+// ===========================================================================
+function detectColors(imageData) {
+  if (!cvInited) initCvMats();
+
+  cvSrc.data.set(imageData.data);
+  cv.cvtColor(cvSrc, cvHsv, cv.COLOR_RGBA2RGB);
+  cv.cvtColor(cvHsv, cvHsv, cv.COLOR_RGB2HSV);
+
+  const minArea = sv('minArea');
+  const results = {};
+
+  // --- YELLOW (single hue range) ---
+  {
+    const low = new cv.Mat(PH, PW, cv.CV_8UC3, new cv.Scalar(sv('y_hueLow'), sv('y_satMin'), sv('y_valMin'), 0));
+    const high = new cv.Mat(PH, PW, cv.CV_8UC3, new cv.Scalar(sv('y_hueHigh'), 255, 255, 0));
+    cv.inRange(cvHsv, low, high, cvMasks.yellow);
+    cv.morphologyEx(cvMasks.yellow, cvMasks.yellow, cv.MORPH_OPEN, cvMorphKernel);
+    cv.morphologyEx(cvMasks.yellow, cvMasks.yellow, cv.MORPH_CLOSE, cvMorphKernel);
+    low.delete(); high.delete();
+    results.yellow = analyzeMask(cvMasks.yellow, minArea);
+  }
+
+  // --- GREEN ---
+  {
+    const low = new cv.Mat(PH, PW, cv.CV_8UC3, new cv.Scalar(sv('g_hueLow'), sv('g_satMin'), sv('g_valMin'), 0));
+    const high = new cv.Mat(PH, PW, cv.CV_8UC3, new cv.Scalar(sv('g_hueHigh'), 255, 255, 0));
+    cv.inRange(cvHsv, low, high, cvMasks.green);
+    cv.morphologyEx(cvMasks.green, cvMasks.green, cv.MORPH_OPEN, cvMorphKernel);
+    cv.morphologyEx(cvMasks.green, cvMasks.green, cv.MORPH_CLOSE, cvMorphKernel);
+    low.delete(); high.delete();
+    results.green = analyzeMask(cvMasks.green, minArea);
+  }
+
+  // --- BLUE ---
+  {
+    const low = new cv.Mat(PH, PW, cv.CV_8UC3, new cv.Scalar(sv('b_hueLow'), sv('b_satMin'), sv('b_valMin'), 0));
+    const high = new cv.Mat(PH, PW, cv.CV_8UC3, new cv.Scalar(sv('b_hueHigh'), 255, 255, 0));
+    cv.inRange(cvHsv, low, high, cvMasks.blue);
+    cv.morphologyEx(cvMasks.blue, cvMasks.blue, cv.MORPH_OPEN, cvMorphKernel);
+    cv.morphologyEx(cvMasks.blue, cvMasks.blue, cv.MORPH_CLOSE, cvMorphKernel);
+    low.delete(); high.delete();
+    results.blue = analyzeMask(cvMasks.blue, minArea);
+  }
+
+  // Draw masks
+  for (const color of ['yellow', 'green', 'blue']) {
+    drawMask(cvMasks[color], maskCanvases[color], color);
+  }
+
+  return results;
+}
+
+function analyzeMask(mask, minArea) {
+  const pixelCount = cv.countNonZero(mask);
+  const contours = new cv.MatVector();
+  const hierarchy = new cv.Mat();
+  cv.findContours(mask, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+
+  let maxArea = 0, maxIdx = -1;
+  for (let i = 0; i < contours.size(); i++) {
+    const area = cv.contourArea(contours.get(i));
+    if (area > maxArea) { maxArea = area; maxIdx = i; }
+  }
+
+  let result = {
+    detected: false,
+    pixelCount,
+    contourCount: contours.size(),
+    maxArea,
+    centerX: 0, centerY: 0, angle: 0, length: 0,
+  };
+
+  if (maxIdx >= 0 && maxArea >= minArea) {
+    const rect = cv.minAreaRect(contours.get(maxIdx));
+    const center = rect.center;
+    const size = rect.size;
+    let angle = rect.angle;
+    let length;
+    if (size.width < size.height) { length = size.height; }
+    else { length = size.width; angle += 90; }
+
+    result.detected = true;
+    result.centerX = center.x / PW;
+    result.centerY = center.y / PH;
+    result.angle = (angle * Math.PI) / 180;
+    result.length = length / PW;
+  }
+
+  contours.delete();
+  hierarchy.delete();
+  return result;
+}
+
+// Tint mask with color then draw scaled
+const tintColors = { yellow: [255,220,0], green: [80,255,80], blue: [80,140,255] };
+const tintCanvas = document.createElement('canvas');
+tintCanvas.width = PW; tintCanvas.height = PH;
+const tintCtx = tintCanvas.getContext('2d');
+
+function drawMask(mask, target, colorName) {
+  const rgba = new cv.Mat();
+  cv.cvtColor(mask, rgba, cv.COLOR_GRAY2RGBA);
+
+  // Tint the white pixels with the color
+  const data = rgba.data;
+  const [tr, tg, tb] = tintColors[colorName];
+  for (let i = 0; i < data.length; i += 4) {
+    if (data[i] > 0) {
+      data[i] = tr;
+      data[i+1] = tg;
+      data[i+2] = tb;
+      data[i+3] = 255;
+    }
+  }
+
+  const imgData = new ImageData(new Uint8ClampedArray(data), PW, PH);
+  tintCtx.putImageData(imgData, 0, 0);
+  target.ctx.imageSmoothingEnabled = false;
+  target.ctx.clearRect(0, 0, 320, 240);
+  target.ctx.drawImage(tintCanvas, 0, 0, 320, 240);
+  rgba.delete();
+}
+
+// ===========================================================================
+// Manual fallback (no OpenCV)
+// ===========================================================================
+function detectManual(imageData) {
+  const px = imageData.data;
+  const counts = { yellow: 0, green: 0, blue: 0 };
+  const sums = {
+    yellow: { x: 0, y: 0 }, green: { x: 0, y: 0 }, blue: { x: 0, y: 0 }
+  };
+  // Also build mask images for display
+  const maskData = {
+    yellow: new Uint8ClampedArray(PW * PH * 4),
+    green: new Uint8ClampedArray(PW * PH * 4),
+    blue: new Uint8ClampedArray(PW * PH * 4),
+  };
+
+  for (let i = 0; i < px.length; i += 4) {
+    const idx = i / 4;
+    const x = idx % PW;
+    const y = Math.floor(idx / PW);
+    const [h360, s, v] = rgbToHsv(px[i], px[i+1], px[i+2]);
+    const hCv = h360 / 2; // to OpenCV scale
+    const sCv = s * 255;
+    const vCv = v * 255;
+
+    // Yellow
+    if (hCv >= sv('y_hueLow') && hCv <= sv('y_hueHigh') && sCv >= sv('y_satMin') && vCv >= sv('y_valMin')) {
+      counts.yellow++;
+      sums.yellow.x += x;
+      sums.yellow.y += y;
+      maskData.yellow[i] = 255; maskData.yellow[i+1] = 220; maskData.yellow[i+2] = 0; maskData.yellow[i+3] = 255;
+    }
+    // Green
+    if (hCv >= sv('g_hueLow') && hCv <= sv('g_hueHigh') && sCv >= sv('g_satMin') && vCv >= sv('g_valMin')) {
+      counts.green++;
+      sums.green.x += x;
+      sums.green.y += y;
+      maskData.green[i] = 80; maskData.green[i+1] = 255; maskData.green[i+2] = 80; maskData.green[i+3] = 255;
+    }
+    // Blue
+    if (hCv >= sv('b_hueLow') && hCv <= sv('b_hueHigh') && sCv >= sv('b_satMin') && vCv >= sv('b_valMin')) {
+      counts.blue++;
+      sums.blue.x += x;
+      sums.blue.y += y;
+      maskData.blue[i] = 80; maskData.blue[i+1] = 140; maskData.blue[i+2] = 255; maskData.blue[i+3] = 255;
+    }
+  }
+
+  const minArea = sv('minArea');
+  const results = {};
+
+  for (const color of ['yellow', 'green', 'blue']) {
+    // Draw manual mask
+    const img = new ImageData(maskData[color], PW, PH);
+    tintCtx.putImageData(img, 0, 0);
+    maskCanvases[color].ctx.imageSmoothingEnabled = false;
+    maskCanvases[color].ctx.clearRect(0, 0, 320, 240);
+    maskCanvases[color].ctx.drawImage(tintCanvas, 0, 0, 320, 240);
+
+    const c = counts[color];
+    if (c >= minArea) {
+      results[color] = {
+        detected: true,
+        pixelCount: c,
+        contourCount: 1,
+        maxArea: c,
+        centerX: (sums[color].x / c) / PW,
+        centerY: (sums[color].y / c) / PH,
+        angle: 0,
+        length: 0,
+      };
+    } else {
+      results[color] = {
+        detected: false,
+        pixelCount: c,
+        contourCount: 0,
+        maxArea: c,
+        centerX: 0, centerY: 0, angle: 0, length: 0,
+      };
+    }
+  }
+
+  return results;
+}
+
+// ===========================================================================
+// Overlay drawing
+// ===========================================================================
+const overlayColors = { yellow: '#ffdd00', green: '#44ff44', blue: '#4488ff' };
+
+function drawOverlay(results) {
+  overlayCtx.clearRect(0, 0, 640, 480);
+
+  for (const color of ['yellow', 'green', 'blue']) {
+    const r = results[color];
+    if (!r || !r.detected) continue;
+
+    const sx = r.centerX * 640;
+    const sy = r.centerY * 480;
+    const c = overlayColors[color];
+
+    // Crosshair
+    overlayCtx.strokeStyle = c;
+    overlayCtx.lineWidth = 2;
+    overlayCtx.beginPath();
+    overlayCtx.moveTo(sx - 20, sy); overlayCtx.lineTo(sx + 20, sy);
+    overlayCtx.moveTo(sx, sy - 20); overlayCtx.lineTo(sx, sy + 20);
+    overlayCtx.stroke();
+
+    // Circle
+    overlayCtx.beginPath();
+    overlayCtx.arc(sx, sy, 25, 0, Math.PI * 2);
+    overlayCtx.stroke();
+
+    // Label
+    overlayCtx.fillStyle = c;
+    overlayCtx.font = 'bold 14px monospace';
+    overlayCtx.fillText(color.toUpperCase(), sx + 30, sy - 10);
+    overlayCtx.font = '12px monospace';
+    overlayCtx.fillText(`${r.pixelCount}px`, sx + 30, sy + 6);
+  }
+}
+
+// ===========================================================================
+// Status cards
+// ===========================================================================
+function updateCards(results) {
+  for (const color of ['yellow', 'green', 'blue']) {
+    const r = results[color] || { detected: false, pixelCount: 0, contourCount: 0, maxArea: 0 };
+    const capName = color.charAt(0).toUpperCase() + color.slice(1);
+    const card = document.getElementById('card' + capName);
+    const div = document.getElementById('status' + capName);
+
+    card.classList.toggle('detected', r.detected);
+
+    const pct = (r.pixelCount / (PW * PH) * 100).toFixed(1);
+    const barColor = r.detected ? overlayColors[color] : '#333';
+    const barWidth = Math.min(100, pct * 2);
+
+    div.innerHTML = `
+      <span class="status-tag ${r.detected ? 'yes' : 'no'}">${r.detected ? 'DETECTED' : 'NOT FOUND'}</span>
+      <div class="stat"><b>Pixels:</b> ${r.pixelCount} (${pct}%)
+        <div class="bar-wrap"><div class="bar-fill" style="width:${barWidth}%;background:${barColor}"></div></div>
+      </div>
+      <div class="stat"><b>Contours:</b> ${r.contourCount} | <b>Largest:</b> ${r.maxArea.toFixed ? r.maxArea.toFixed(0) : r.maxArea}</div>
+      ${r.detected ? `<div class="stat"><b>Center:</b> (${r.centerX.toFixed(2)}, ${r.centerY.toFixed(2)})</div>` : ''}
+    `;
+  }
+}
+
+// ===========================================================================
+// Main loop
+// ===========================================================================
+let fps = 0, frameCount = 0, lastFpsTime = performance.now();
+
+function loop() {
+  if (video.readyState < video.HAVE_CURRENT_DATA) {
+    requestAnimationFrame(loop);
+    return;
+  }
+
+  procCtx.drawImage(video, 0, 0, PW, PH);
+  const imageData = procCtx.getImageData(0, 0, PW, PH);
+
+  let results;
+  if (cvLoaded) {
+    try {
+      results = detectColors(imageData);
+    } catch (e) {
+      console.warn('OpenCV error:', e);
+      cvLoaded = false;
+      results = detectManual(imageData);
+    }
+  } else {
+    results = detectManual(imageData);
+  }
+
+  drawOverlay(results);
+  updateCards(results);
+
+  // FPS counter
+  frameCount++;
+  const now = performance.now();
+  if (now - lastFpsTime >= 1000) {
+    fps = frameCount;
+    frameCount = 0;
+    lastFpsTime = now;
+  }
+  overlayCtx.fillStyle = '#888';
+  overlayCtx.font = '12px monospace';
+  overlayCtx.fillText(`${fps} FPS | ${cvLoaded ? 'OpenCV' : 'Manual'}`, 10, 20);
+
+  requestAnimationFrame(loop);
+}
+
+// ===========================================================================
+// Start
+// ===========================================================================
+async function start() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { width: 640, height: 480, facingMode: 'user' },
+      audio: false,
+    });
+    video.srcObject = stream;
+    await new Promise(r => { video.onloadeddata = r; });
+    await waitForOpenCV();
+    requestAnimationFrame(loop);
+  } catch (err) {
+    document.getElementById('pixelInfo').innerHTML =
+      '<span style="color:#f44">Webcam error: ' + err.message + '</span>';
+  }
+}
+
+start();
+</script>
+</body>
+</html>

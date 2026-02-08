@@ -18,6 +18,8 @@ import {
   computeShakeOffset,
 } from './useScreenShake';
 import { getDashVelocity, getDashState } from '../combat/DashSpell';
+import { getGreenGunData } from '../cv/GreenGunTracker';
+import { useWeaponStore } from './WeaponState';
 
 const EYE_HEIGHT = 1.7;
 const MOVE_SPEED = 5; // units per second (keyboard mode)
@@ -133,6 +135,8 @@ export function FirstPersonCamera() {
       verticalVelocity.current = 0;
       isGrounded.current = true;
       initialized.current = true;
+      // Always start each round with sword
+      useWeaponStore.getState().setActiveWeapon('sword');
     }
     prevPhaseForReset.current = phase;
   }, [phase, spawnZ, facingYaw, camera]);
@@ -216,12 +220,23 @@ export function FirstPersonCamera() {
       }
 
       const cvInput = cvInputRef.current;
-      if (cvEnabled && cvInput.isTracking) {
+      if (cvEnabled) {
         // ---- CV mode ----
-        // Base: facingYaw - lookYaw (turn left → view goes left)
-        // yawOffset adds 180° when C is pressed or "mechabot turn around" is said
-        euler.current.y = facingYaw - cvInput.lookYaw + yawOffset.current;
-        euler.current.x = cvInput.lookPitch;
+        const greenGun = getGreenGunData();
+
+        if (greenGun.detected) {
+          // Green object aiming: map green position to camera aim
+          // Webcam is mirrored, so centerX=0 is player's right
+          const aimYaw = (greenGun.centerX - 0.5) * 1.4;   // ~80° horizontal range
+          const aimPitch = -(greenGun.centerY - 0.5) * 1.0; // ~57° vertical range
+          euler.current.y = facingYaw - aimYaw + yawOffset.current;
+          euler.current.x = aimPitch;
+        } else if (cvInput.isTracking) {
+          // Head tracking aim (fallback when no green detected)
+          euler.current.y = facingYaw - cvInput.lookYaw + yawOffset.current;
+          euler.current.x = cvInput.lookPitch;
+        }
+
         euler.current.x = Math.max(
           -Math.PI * 0.47,
           Math.min(Math.PI * 0.47, euler.current.x)

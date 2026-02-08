@@ -64,15 +64,16 @@ export function updateDashSpell(
 
   switch (state) {
     case 'idle':
-      if (leftArmRaised) {
+      // Only start charging when fist is closed (open palm = forcefield gesture)
+      if (leftArmRaised && leftFistClosed) {
         state = 'charging';
         charge = 0;
       }
       break;
 
     case 'charging':
-      // Arm dropped → cancel
-      if (!leftArmRaised) {
+      // Arm dropped or fist opened → cancel
+      if (!leftArmRaised || !leftFistClosed) {
         state = 'idle';
         charge = 0;
         break;
