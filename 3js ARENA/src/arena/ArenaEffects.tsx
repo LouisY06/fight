@@ -3,7 +3,7 @@
 // Bloom intensity spikes during countdown for impact; MotionBlur not in package.
 // =============================================================================
 
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useMemo } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';

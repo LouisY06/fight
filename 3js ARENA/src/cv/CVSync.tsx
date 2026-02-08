@@ -5,7 +5,6 @@
 // Must be placed inside the <Canvas>.
 // =============================================================================
 
-import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { cvBridge } from './cvBridge';
 import { poseTracker } from './PoseTracker';
@@ -13,20 +12,13 @@ import { detectRedStick } from './RedStickTracker';
 
 /**
  * Synchronous CV detection bridge.
- * Throttled to ~20fps (every ~50ms) to reduce MediaPipe overhead.
- * Pose data is written to refs — no React state, no re-renders.
+ * Runs every frame for responsive head tracking — throttling adds
+ * noticeable input latency. Pose data is written to refs — no React
+ * state, no re-renders.
  */
-const CV_INTERVAL_MS = 50; // ~20fps for pose detection (was 60fps)
-
 export function CVSync() {
-  const lastDetectTime = useRef(0);
-
   useFrame(() => {
     if (!cvBridge.cvEnabled || !cvBridge.mapperRef) return;
-
-    const now = performance.now();
-    if (now - lastDetectTime.current < CV_INTERVAL_MS) return;
-    lastDetectTime.current = now;
 
     const data = poseTracker.detect();
     if (data) {

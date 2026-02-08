@@ -26,11 +26,6 @@ const JUMP_FORCE = 7; // units per second
 const GRAVITY = 20; // units per second squared
 const MAX_FALL_SPEED = 20;
 
-// Pre-allocated temp objects (avoid per-frame GC pressure)
-const _move = new THREE.Vector3();
-const _camRight = new THREE.Vector3();
-const _camUp = new THREE.Vector3();
-
 export function FirstPersonCamera() {
   const { camera, gl } = useThree();
   const phase = useGameStore((s) => s.phase);

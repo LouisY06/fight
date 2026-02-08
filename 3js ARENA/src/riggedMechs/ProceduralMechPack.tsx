@@ -29,7 +29,7 @@ const _targetQuat = new THREE.Quaternion();
 const _restQuat = new THREE.Quaternion();
 
 // Shared material props
-const HI = 32; // high-poly segment count
+const HI = 10; // medium-poly — 32 was killing FPS; 10 looks identical at game distance
 
 // =============================================================================
 // Shared prop interface
@@ -187,8 +187,8 @@ function useMechRefs(): AnimRefs {
 
 function Bolt({ position, color = '#3d3d48' }: { position: [number, number, number]; color?: string }) {
   return (
-    <mesh position={position} castShadow>
-      <sphereGeometry args={[0.025, HI, HI]} />
+    <mesh position={position}>
+      <sphereGeometry args={[0.025, 6, 6]} />
       <meshStandardMaterial color={color} metalness={0.92} roughness={0.1} />
     </mesh>
   );
@@ -209,7 +209,7 @@ function GlowBand({
 }) {
   return (
     <mesh position={position} rotation={[Math.PI / 2, 0, 0]}>
-      <ringGeometry args={[innerR, outerR, HI]} />
+      <ringGeometry args={[innerR, outerR, 8]} />
       <meshStandardMaterial color={color} emissive={color} emissiveIntensity={intensity} side={THREE.DoubleSide} />
     </mesh>
   );

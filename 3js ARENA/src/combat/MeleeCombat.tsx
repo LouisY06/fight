@@ -37,9 +37,9 @@ const PLAYER_HIT_RADIUS = 1.4;    // wide enough for bot sword to connect at att
 const MIN_SWING_SPEED = 1.5;
 
 // Swing-speed damage scaling: damage = base × clamp(speed / REF, MIN_MULT, MAX_MULT)
-const SWING_REF_SPEED = 6.0;   // "normal" swing speed → 1× damage
-const SWING_MIN_MULT = 0.3;    // light taps deal 30% base
-const SWING_MAX_MULT = 3.0;    // hard swings cap at 3× base
+const SWING_REF_SPEED = 12.0;  // "normal" swing speed → 1× damage (was 6 — too low)
+const SWING_MIN_MULT = 0.4;    // light taps deal 40% base
+const SWING_MAX_MULT = 1.6;    // hard swings cap at 1.6× base (was 3× — way too punishing)
 
 // Max distance from camera to opponent for hit to count
 const MAX_OPPONENT_DIST = 4.0;
