@@ -80,9 +80,11 @@ function GameApp() {
     phase === 'paused' ||
     phase === 'roundEnd';
 
-  // Canvas: menu (hangar) + game. Menu scene is lightweight (no Physics).
+  // Canvas: menu (hangar) + lobby/waiting + game. Menu scene is lightweight (no Physics).
   const showCanvas =
     phase === 'menu' ||
+    phase === 'lobby' ||
+    phase === 'waiting' ||
     phase === 'arenaLoading' ||
     phase === 'intro' ||
     phase === 'countdown' ||

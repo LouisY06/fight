@@ -10,6 +10,12 @@ import { MenuCharacterPreview } from './MenuCharacterPreview';
 import { CustomizationPanel } from './CustomizationPanel';
 import { MapSelector } from './MapSelector';
 import { AI_DIFFICULTY, type AIDifficulty } from '../game/GameConfig';
+import { preloadRiggedMechPack } from '../riggedMechs/RiggedMechEntity';
+
+function PreloadRiggedPack() {
+  preloadRiggedMechPack();
+  return null;
+}
 
 export function MainMenu() {
   const phase = useGameStore((s) => s.phase);
@@ -48,6 +54,8 @@ export function MainMenu() {
   };
 
   return (
+    <>
+      <PreloadRiggedPack />
     <div
       style={{
         position: 'absolute',
@@ -311,6 +319,7 @@ export function MainMenu() {
         />
       )}
     </div>
+    </>
   );
 }
 

@@ -6,11 +6,12 @@ import { useRef } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { MechaEntity } from '../entities/MechaEntity';
+import { RiggedMechEntity } from '../riggedMechs/RiggedMechEntity';
 import { useMechaCustomizationStore } from '../game/MechaCustomizationStore';
 
 function MenuMech() {
   const groupRef = useRef<THREE.Group>(null!);
-  const { accentColor, segmentScales } = useMechaCustomizationStore();
+  const { accentColor, segmentScales, avatarType, selectedPlayerMechId } = useMechaCustomizationStore();
 
   useFrame((state) => {
     if (groupRef.current) {
@@ -21,13 +22,25 @@ function MenuMech() {
 
   return (
     <group ref={groupRef} position={[0, -1.0, 0]} scale={0.9}>
-      <MechaEntity
-        color={accentColor}
-        scaleHead={segmentScales.head}
-        scaleTorso={segmentScales.torso}
-        scaleArms={segmentScales.arms}
-        scaleLegs={segmentScales.legs}
-      />
+      {avatarType === 'classic' ? (
+        <MechaEntity
+          color={accentColor}
+          scaleHead={segmentScales.head}
+          scaleTorso={segmentScales.torso}
+          scaleArms={segmentScales.arms}
+          scaleLegs={segmentScales.legs}
+        />
+      ) : (
+        <RiggedMechEntity
+          key={`menu-rigged-${selectedPlayerMechId}`}
+          color={accentColor}
+          mechIndex={selectedPlayerMechId}
+          scaleHead={segmentScales.head}
+          scaleTorso={segmentScales.torso}
+          scaleArms={segmentScales.arms}
+          scaleLegs={segmentScales.legs}
+        />
+      )}
     </group>
   );
 }

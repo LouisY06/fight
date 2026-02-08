@@ -169,13 +169,14 @@ function AnimatedAvatarModelInner(props: AnimatedAvatarModelProps) {
         mesh.receiveShadow = true;
         if (accentColor && mesh.material) {
           const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-          mesh.material = mats.map((m) => {
-            if (!(m as THREE.Material).isMeshStandardMaterial) return m;
+          const result = mats.map((m) => {
+            if (!(m as THREE.MeshStandardMaterial).isMeshStandardMaterial) return m;
             const mat = (m as THREE.MeshStandardMaterial).clone();
             mat.emissive.set(accentColor);
             mat.emissiveIntensity = 0.12;
-            return mat;
-          }) as THREE.Material;
+            return mat as THREE.Material;
+          });
+          mesh.material = result.length === 1 ? result[0] : result;
         }
       }
     });

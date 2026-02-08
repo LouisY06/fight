@@ -14,6 +14,8 @@ import { GAME_CONFIG } from '../game/GameConfig';
 import { OpponentHitbox } from './OpponentHitbox';
 import { MechaEntity } from './MechaEntity';
 import { DebuffVFX } from '../combat/DebuffVFX';
+import { RiggedMechEntity } from '../riggedMechs/RiggedMechEntity';
+import { useMechaCustomizationStore } from '../game/MechaCustomizationStore';
 
 interface PlayerProps {
   playerId: 'player1' | 'player2';
@@ -26,6 +28,7 @@ export function Player({ playerId, input, color, spawnPosition }: PlayerProps) {
   const groupRef = useRef<THREE.Group>(null!);
   const phase = useGameStore((s) => s.phase);
   const playerState = useGameStore((s) => playerId === 'player1' ? s.player1 : s.player2);
+  const { avatarType, selectedPlayerMechId, segmentScales } = useMechaCustomizationStore();
 
   const [isDead, setIsDead] = useState(false);
   const [deathPosition, setDeathPosition] = useState<[number, number, number]>([0, 0, 0]);
@@ -94,11 +97,29 @@ export function Player({ playerId, input, color, spawnPosition }: PlayerProps) {
             <RigidBody type="kinematicPosition" colliders={false}>
               <CapsuleCollider args={[0.5, 0.3]} position={[0, 1, 0]} />
 
-              {/* Procedural mecha body */}
-              <MechaEntity
-                isWalking={input.moveDirection.lengthSq() > 0.0001}
-                isSwinging={input.gesture === 'slash' || input.gesture === 'stab'}
-              />
+              {avatarType === 'classic' ? (
+                <MechaEntity
+                  color={color}
+                  scaleHead={segmentScales.head}
+                  scaleTorso={segmentScales.torso}
+                  scaleArms={segmentScales.arms}
+                  scaleLegs={segmentScales.legs}
+                  isWalking={input.moveDirection.lengthSq() > 0.0001}
+                  isSwinging={input.gesture === 'slash' || input.gesture === 'stab'}
+                />
+              ) : (
+                <RiggedMechEntity
+                  key={`player-rigged-${selectedPlayerMechId}`}
+                  color={color}
+                  mechIndex={selectedPlayerMechId}
+                  scaleHead={segmentScales.head}
+                  scaleTorso={segmentScales.torso}
+                  scaleArms={segmentScales.arms}
+                  scaleLegs={segmentScales.legs}
+                  isWalking={input.moveDirection.lengthSq() > 0.0001}
+                  isSwinging={input.gesture === 'slash' || input.gesture === 'stab'}
+                />
+              )}
 
               {/* Hitbox visualization (only for opponent) */}
               {isOpponent && <OpponentHitbox />}

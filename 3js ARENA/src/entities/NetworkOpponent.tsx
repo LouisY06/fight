@@ -1,10 +1,10 @@
 // =============================================================================
 // NetworkOpponent.tsx — Renders the remote opponent using network state
 // Position and rotation are interpolated from WebSocket updates.
-// Uses procedural MechaEntity (full armored body + greatsword).
+// Uses RiggedMechEntity (rigged_mechs_pack_2.glb) with random mech from pack.
 // =============================================================================
 
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { RigidBody, CapsuleCollider } from '@react-three/rapier';
 import * as THREE from 'three';
@@ -12,7 +12,8 @@ import { DeathEffect } from './DeathEffect';
 import { useNetwork } from '../networking/NetworkProvider';
 import { useGameStore } from '../game/GameState';
 import { OpponentHitbox } from './OpponentHitbox';
-import { MechaEntity } from './MechaEntity';
+import { RiggedMechEntity } from '../riggedMechs/RiggedMechEntity';
+import { MECH_PACK_COUNT } from '../riggedMechs/riggedMechPackConstants';
 
 interface NetworkOpponentProps {
   color?: string;
@@ -21,6 +22,10 @@ interface NetworkOpponentProps {
 export function NetworkOpponent({ color = '#ff4444' }: NetworkOpponentProps) {
   const groupRef = useRef<THREE.Group>(null!);
   const phase = useGameStore((s) => s.phase);
+  const randomEnemyMechIndex = useMemo(
+    () => Math.floor(Math.random() * Math.max(1, MECH_PACK_COUNT)),
+    []
+  );
   const { opponentState } = useNetwork();
   const player2 = useGameStore((s) => s.player2);
 
@@ -106,9 +111,10 @@ export function NetworkOpponent({ color = '#ff4444' }: NetworkOpponentProps) {
           <RigidBody type="kinematicPosition" colliders={false}>
             <CapsuleCollider args={[0.5, 0.3]} position={[0, 1, 0]} />
 
-            {/* SR-3600 mecha with walk + swing animation */}
-            <MechaEntity
+            <RiggedMechEntity
+              key={`network-mech-${randomEnemyMechIndex}`}
               color={color}
+              mechIndex={randomEnemyMechIndex}
               isSwinging={isSwinging}
               isWalkingRef={isMovingRef}
             />

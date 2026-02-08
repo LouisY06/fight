@@ -10,6 +10,7 @@ import { Text } from '@react-three/drei';
 import { useGameStore } from './GameState';
 import { GAME_CONFIG } from './GameConfig';
 import { MechaEntity } from '../entities/MechaEntity';
+import { RiggedMechEntity } from '../riggedMechs/RiggedMechEntity';
 import { useMechaCustomizationStore } from './MechaCustomizationStore';
 
 const INTRO_TARGET = new THREE.Vector3(0, 1, 0);
@@ -22,7 +23,7 @@ export function IntroSequencer() {
   const { camera } = useThree();
   const phase = useGameStore((s) => s.phase);
   const startRound = useGameStore((s) => s.startRound);
-  const { accentColor, segmentScales } = useMechaCustomizationStore();
+  const { accentColor, segmentScales, avatarType, selectedPlayerMechId } = useMechaCustomizationStore();
   const introTime = useRef(0);
   const azimuth = useRef(0);
   const countdownSnapDone = useRef(false);
@@ -69,13 +70,25 @@ export function IntroSequencer() {
       {/* Glambot mech during intro only — uses player customization */}
       {phase === 'intro' && (
         <group position={[0, 0, 0]}>
-          <MechaEntity
-            color={accentColor}
-            scaleHead={segmentScales.head}
-            scaleTorso={segmentScales.torso}
-            scaleArms={segmentScales.arms}
-            scaleLegs={segmentScales.legs}
-          />
+          {avatarType === 'classic' ? (
+            <MechaEntity
+              color={accentColor}
+              scaleHead={segmentScales.head}
+              scaleTorso={segmentScales.torso}
+              scaleArms={segmentScales.arms}
+              scaleLegs={segmentScales.legs}
+            />
+          ) : (
+            <RiggedMechEntity
+              key={`intro-rigged-${selectedPlayerMechId}`}
+              color={accentColor}
+              mechIndex={selectedPlayerMechId}
+              scaleHead={segmentScales.head}
+              scaleTorso={segmentScales.torso}
+              scaleArms={segmentScales.arms}
+              scaleLegs={segmentScales.legs}
+            />
+          )}
         </group>
       )}
 

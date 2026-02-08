@@ -1,8 +1,9 @@
 // =============================================================================
-// CustomizationPanel.tsx — Color + segment size sliders for mech customization
+// CustomizationPanel.tsx — Color + segment size sliders + avatar type for mech customization
 // =============================================================================
 
 import { useMechaCustomizationStore } from '../game/MechaCustomizationStore';
+import { MECH_PACK_COUNT } from '../riggedMechs/riggedMechPackConstants';
 
 const PRESET_COLORS = [
   '#CC00FF', '#ff4488', '#00ffcc', '#ffcc00', '#ff6600',
@@ -17,9 +18,13 @@ export function CustomizationPanel({
   const {
     accentColor,
     segmentScales,
+    avatarType,
+    selectedPlayerMechId,
     setAccentColor,
     setSegmentScale,
     resetScales,
+    setAvatarType,
+    setSelectedPlayerMechId,
   } = useMechaCustomizationStore();
 
   return (
@@ -81,6 +86,94 @@ export function CustomizationPanel({
           >
             ×
           </button>
+        </div>
+
+        {/* Avatar type: Classic mech vs Rigged mechs pack */}
+        <div style={{ marginBottom: '24px' }}>
+          <label
+            style={{
+              display: 'block',
+              color: '#aaa',
+              fontSize: '12px',
+              textTransform: 'uppercase',
+              letterSpacing: '2px',
+              marginBottom: '10px',
+            }}
+          >
+            Avatar
+          </label>
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+            <button
+              onClick={() => setAvatarType('classic')}
+              style={{
+                padding: '10px 16px',
+                fontSize: '14px',
+                fontFamily: "'Impact', 'Arial Black', sans-serif",
+                textTransform: 'uppercase',
+                letterSpacing: '1px',
+                color: avatarType === 'classic' ? '#fff' : '#888',
+                background: avatarType === 'classic' ? 'rgba(255,68,136,0.35)' : 'rgba(255,255,255,0.06)',
+                border: avatarType === 'classic' ? '2px solid #ff4488' : '1px solid rgba(255,255,255,0.2)',
+                borderRadius: 8,
+                cursor: 'pointer',
+              }}
+            >
+              Classic Mech
+            </button>
+            <button
+              onClick={() => setAvatarType('riggedPack')}
+              style={{
+                padding: '10px 16px',
+                fontSize: '14px',
+                fontFamily: "'Impact', 'Arial Black', sans-serif",
+                textTransform: 'uppercase',
+                letterSpacing: '1px',
+                color: avatarType === 'riggedPack' ? '#fff' : '#888',
+                background: avatarType === 'riggedPack' ? 'rgba(255,68,136,0.35)' : 'rgba(255,255,255,0.06)',
+                border: avatarType === 'riggedPack' ? '2px solid #ff4488' : '1px solid rgba(255,255,255,0.2)',
+                borderRadius: 8,
+                cursor: 'pointer',
+              }}
+            >
+              Rigged Mechs Pack
+            </button>
+          </div>
+          {avatarType === 'riggedPack' && MECH_PACK_COUNT > 0 && (
+            <div style={{ marginTop: '12px' }}>
+              <label
+                style={{
+                  display: 'block',
+                  color: '#888',
+                  fontSize: '11px',
+                  textTransform: 'uppercase',
+                  letterSpacing: '2px',
+                  marginBottom: '8px',
+                }}
+              >
+                Choose your mech
+              </label>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {Array.from({ length: MECH_PACK_COUNT }, (_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setSelectedPlayerMechId(i)}
+                    style={{
+                      minWidth: 44,
+                      padding: '8px 12px',
+                      fontSize: '13px',
+                      color: selectedPlayerMechId === i ? '#fff' : '#aaa',
+                      background: selectedPlayerMechId === i ? accentColor : 'rgba(255,255,255,0.08)',
+                      border: selectedPlayerMechId === i ? `2px solid ${accentColor}` : '1px solid rgba(255,255,255,0.15)',
+                      borderRadius: 6,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {i + 1}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Accent color */}
