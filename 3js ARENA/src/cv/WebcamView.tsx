@@ -30,6 +30,8 @@ export function WebcamView() {
     return true;
   }, []);
 
+  // Include `phase` so the effect re-runs when the <video> first mounts
+  // (CV may start in the menu before the PiP element exists).
   useEffect(() => {
     if (!isTracking) return;
 
@@ -46,7 +48,7 @@ export function WebcamView() {
     }, 300);
 
     return () => clearInterval(interval);
-  }, [isTracking, attachStream]);
+  }, [isTracking, attachStream, phase]);
 
   // Keyboard shortcut: C to calibrate
   useEffect(() => {
