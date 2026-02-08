@@ -3,33 +3,56 @@
 // Press C to calibrate (resets head tracking center + faces opponent).
 // =============================================================================
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { useCVContext } from './CVProvider';
 import { useGameStore } from '../game/GameState';
+import { poseTracker } from './PoseTracker';
 
 const PIP_WIDTH = 200;
 const PIP_HEIGHT = 150;
 
 export function WebcamView() {
-  const { cvEnabled, isTracking, videoElement, calibrate } = useCVContext();
+  const { cvEnabled, isTracking, calibrate } = useCVContext();
   const phase = useGameStore((s) => s.phase);
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  // Pipe the tracker's stream into our visible <video>
-  useEffect(() => {
-    if (!videoRef.current || !videoElement?.srcObject) return;
-    videoRef.current.srcObject = videoElement.srcObject;
+  // Attach the webcam stream to our display video element.
+  // Uses a cloned MediaStream (same tracks, no double-decode).
+  const attachStream = useCallback(() => {
+    if (!videoRef.current) return false;
+    const trackerVideo = poseTracker.getVideoElement();
+    const srcObj = trackerVideo?.srcObject as MediaStream | null;
+    if (!srcObj || srcObj.getTracks().length === 0) return false;
+
+    // Clone tracks into a fresh MediaStream — standard way to share a camera
+    videoRef.current.srcObject = new MediaStream(srcObj.getTracks());
     videoRef.current.play().catch(() => {});
-  }, [videoElement, isTracking]);
+    return true;
+  }, []);
+
+  useEffect(() => {
+    if (!isTracking) return;
+
+    // Try immediately
+    if (attachStream()) return;
+
+    // Retry a few times (tracker may still be initializing)
+    let attempts = 0;
+    const interval = setInterval(() => {
+      attempts++;
+      if (attachStream() || attempts > 10) {
+        clearInterval(interval);
+      }
+    }, 300);
+
+    return () => clearInterval(interval);
+  }, [isTracking, attachStream]);
 
   // Keyboard shortcut: C to calibrate
   useEffect(() => {
     if (!cvEnabled) return;
-
     const onKey = (e: KeyboardEvent) => {
-      if (e.code === 'KeyC' && !e.repeat) {
-        calibrate();
-      }
+      if (e.code === 'KeyC' && !e.repeat) calibrate();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -55,7 +78,6 @@ export function WebcamView() {
         pointerEvents: 'auto',
       }}
     >
-      {/* Webcam feed */}
       <div
         style={{
           width: `${PIP_WIDTH}px`,
@@ -83,8 +105,6 @@ export function WebcamView() {
             background: '#111',
           }}
         />
-
-        {/* Status overlay */}
         <div
           style={{
             position: 'absolute',
@@ -100,7 +120,6 @@ export function WebcamView() {
         </div>
       </div>
 
-      {/* Calibrate button */}
       <button
         onClick={(e) => {
           e.stopPropagation();
