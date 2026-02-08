@@ -234,6 +234,13 @@ export const ElevenLabs = {
     playVoice(audio, Priority.HIGH, 0.9);
   },
 
+  async announceSwordClash(): Promise<void> {
+    const audio = await getOrGenerate('sword-clash', () =>
+      generateTTS('Sword clash! Both stunned!')
+    );
+    playVoice(audio, Priority.HIGH, 0.95);
+  },
+
   // === LOW priority — only if nothing else is queued ===
 
   async announceLowHealth(): Promise<void> {
@@ -284,6 +291,7 @@ export const ElevenLabs = {
       ['announce-you-lose', 'Defeated!'],
       ['first-blood', 'First blood!'],
       ['finish-them', 'Finish them!'],
+      ['sword-clash', 'Sword clash! Both stunned!'],
     ];
 
     lines.forEach(([key, text], i) => {

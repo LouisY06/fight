@@ -12,7 +12,7 @@ import type { PlayerInput } from '../game/InputManager';
 import { useGameStore } from '../game/GameState';
 import { GAME_CONFIG } from '../game/GameConfig';
 import { OpponentHitbox } from './OpponentHitbox';
-import { MechaEntity } from '../avatars/MechaEntity';
+import { MechaEntity } from './MechaEntity';
 
 interface PlayerProps {
   playerId: 'player1' | 'player2';

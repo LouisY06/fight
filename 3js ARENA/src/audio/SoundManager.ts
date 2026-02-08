@@ -148,6 +148,84 @@ export function playSwordSwing(): void {
 }
 
 // ---------------------------------------------------------------------------
+// Sword Clash / Stun — bright metallic clash + electric crackle
+// Louder and more dramatic than a regular hit — both swords collide.
+// ---------------------------------------------------------------------------
+
+export function playSwordClash(): void {
+  const ac = getCtx();
+  const now = ac.currentTime;
+
+  // --- Heavy metallic impact (dual noise burst) ---
+  const noiseDuration = 0.18;
+  const bufferSize = Math.ceil(ac.sampleRate * noiseDuration);
+  const noiseBuffer = ac.createBuffer(1, bufferSize, ac.sampleRate);
+  const data = noiseBuffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) {
+    data[i] = (Math.random() * 2 - 1) * 1.0;
+  }
+  const noise = ac.createBufferSource();
+  noise.buffer = noiseBuffer;
+
+  const bp = ac.createBiquadFilter();
+  bp.type = 'bandpass';
+  bp.frequency.setValueAtTime(4500, now);
+  bp.Q.setValueAtTime(12, now);
+
+  const noiseGain = ac.createGain();
+  noiseGain.gain.setValueAtTime(0.7, now);
+  noiseGain.gain.exponentialRampToValueAtTime(0.001, now + noiseDuration);
+
+  noise.connect(bp).connect(noiseGain).connect(ac.destination);
+  noise.start(now);
+  noise.stop(now + noiseDuration);
+
+  // --- Bright metallic ring (high-pitched resonance) ---
+  const ring = ac.createOscillator();
+  ring.type = 'sine';
+  ring.frequency.setValueAtTime(2800 + Math.random() * 800, now);
+
+  const ringGain = ac.createGain();
+  ringGain.gain.setValueAtTime(0.25, now);
+  ringGain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+
+  const hp = ac.createBiquadFilter();
+  hp.type = 'highpass';
+  hp.frequency.setValueAtTime(1200, now);
+
+  ring.connect(hp).connect(ringGain).connect(ac.destination);
+  ring.start(now);
+  ring.stop(now + 0.5);
+
+  // --- Second harmonic ring (octave up, electric sparkle) ---
+  const ring2 = ac.createOscillator();
+  ring2.type = 'sawtooth';
+  ring2.frequency.setValueAtTime(5600 + Math.random() * 1000, now);
+
+  const ring2Gain = ac.createGain();
+  ring2Gain.gain.setValueAtTime(0.08, now);
+  ring2Gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+
+  ring2.connect(ring2Gain).connect(ac.destination);
+  ring2.start(now);
+  ring2.stop(now + 0.35);
+
+  // --- Deep sub thud (bigger than normal hit) ---
+  const thud = ac.createOscillator();
+  thud.type = 'sine';
+  thud.frequency.setValueAtTime(180, now);
+  thud.frequency.exponentialRampToValueAtTime(40, now + 0.15);
+
+  const thudGain = ac.createGain();
+  thudGain.gain.setValueAtTime(0.5, now);
+  thudGain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+
+  thud.connect(thudGain).connect(ac.destination);
+  thud.start(now);
+  thud.stop(now + 0.15);
+}
+
+// ---------------------------------------------------------------------------
 // KO / Round End — deep boom
 // ---------------------------------------------------------------------------
 

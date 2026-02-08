@@ -7,6 +7,7 @@ import { useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useNetwork } from './NetworkProvider';
 import { useGameStore } from '../game/GameState';
+import { keyboardSwingActive, swordSpeed } from '../combat/SwordState';
 
 const SYNC_INTERVAL = 1 / 30; // 30 updates per second
 
@@ -34,10 +35,13 @@ export function InputSyncBridge() {
     if (timeSinceLastSend.current < SYNC_INTERVAL) return;
     timeSinceLastSend.current = 0;
 
+    // Sword is active if keyboard swing is in progress or CV arm is moving fast
+    const isSwinging = keyboardSwingActive || swordSpeed > 1.5;
+
     sendInput({
       position: [camera.position.x, camera.position.y, camera.position.z],
       rotation: [camera.rotation.x, camera.rotation.y],
-      isSwinging: false, // TODO: wire to ViewmodelSword swing state
+      isSwinging,
       isBlocking: false,
     });
   });

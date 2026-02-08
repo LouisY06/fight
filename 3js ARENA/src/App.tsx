@@ -2,7 +2,7 @@
 // App.tsx — Root component: game state machine (first-person 1v1 arena)
 // =============================================================================
 
-import { Suspense } from 'react';
+import { Suspense, useEffect } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { Physics } from '@react-three/rapier';
 import * as THREE from 'three';
@@ -20,11 +20,14 @@ import { BotOpponent } from './entities/BotOpponent';
 import { GAME_CONFIG } from './game/GameConfig';
 import { FirstPersonCamera } from './game/FirstPersonCamera';
 import { ViewmodelSword } from './entities/ViewmodelSword';
+import { ViewmodelGun } from './entities/ViewmodelGun';
+import { ViewmodelShield } from './entities/ViewmodelShield';
 import { MechaArms } from './entities/MechaArms';
 import { NetworkProvider } from './networking/NetworkProvider';
 import { InputSyncBridge } from './networking/InputSyncBridge';
 import { MeleeCombat } from './combat/MeleeCombat';
 import { HitEffectManager } from './combat/HitEffectManager';
+import { initWeaponKeyListener } from './game/WeaponState';
 
 import { CVProvider } from './cv/CVProvider';
 import { CVSync } from './cv/CVSync';
@@ -56,6 +59,11 @@ function GameApp() {
   const phase = useGameStore((s) => s.phase);
   const currentThemeId = useGameStore((s) => s.currentThemeId);
   const isMultiplayer = useGameStore((s) => s.isMultiplayer);
+
+  // Init weapon key listener (1=shield, 2=sword, 3=gun)
+  useEffect(() => {
+    return initWeaponKeyListener();
+  }, []);
 
   const theme = currentThemeId ? getThemeById(currentThemeId) : ARENA_THEMES[0];
 
@@ -123,16 +131,29 @@ function GameApp() {
           ) : (
             <>
               <Physics gravity={[0, -9.81, 0]}>
+                {/* Game logic loop */}
                 <GameEngine />
+
+                {/* Glambot intro: orbit mech + Power On visor (runs during intro phase) */}
                 <IntroSequencer />
+
+                {/* CV pose detection (runs every frame inside render loop) */}
                 <CVSync />
+
+                {/* First-person camera + viewmodel weapons + input sync + combat */}
                 <FirstPersonCamera />
                 <ViewmodelSword />
+                <ViewmodelGun />
+                <ViewmodelShield />
                 <MechaArms />
                 <MeleeCombat />
                 <HitEffectManager />
                 <InputSyncBridge />
+
+                {/* Arena environment */}
                 {showArena && <Arena theme={theme} />}
+
+                {/* Opponent */}
                 {showPlayers && (
                   isMultiplayer ? (
                     <NetworkOpponent color="#CC00FF" />

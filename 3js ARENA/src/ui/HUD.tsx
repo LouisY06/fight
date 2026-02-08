@@ -10,6 +10,8 @@ import { RoundTimer } from './RoundTimer';
 import { RoundAnnouncer } from './RoundAnnouncer';
 import { CombatCommentator } from './CombatCommentator';
 import { DamageIndicator } from './DamageIndicator';
+import { WeaponSelector } from './WeaponSelector';
+import { StunOverlay } from './StunOverlay';
 import { onHitEvent } from '../combat/HitEvent';
 
 export function HUD() {
@@ -91,6 +93,12 @@ export function HUD() {
 
       {/* AI combat commentator (pure logic, no visuals) */}
       <CombatCommentator />
+
+      {/* Weapon selector (1=Shield, 2=Sword, 3=Gun) */}
+      <WeaponSelector />
+
+      {/* Sword clash / stun overlay */}
+      <StunOverlay />
     </div>
   );
 }

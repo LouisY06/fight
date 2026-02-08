@@ -1,5 +1,6 @@
 // =============================================================================
-// DeathEffect.tsx — Pixelated death effect with floating particles
+// DeathEffect.tsx — Mecha death: rapid outward burst of glowing voxel shards
+// Particles explode outward, arc with gravity, shrink + fade, then vanish.
 // =============================================================================
 
 import { useRef, useEffect } from 'react';
@@ -18,92 +19,98 @@ interface Particle {
   lifetime: number;
   maxLifetime: number;
   rotationSpeed: THREE.Vector3;
+  initialScale: number;
 }
 
-/**
- * Creates a pixelated death effect where the player explodes into
- * voxel-like cubes that float upward and disappear.
- */
+const GRAVITY = -12; // strong downward pull — shards hit the floor fast
+const EFFECT_DURATION = 1.5; // seconds before full cleanup
+
 export function DeathEffect({ position, color, onComplete }: DeathEffectProps) {
   const groupRef = useRef<THREE.Group>(null!);
   const particlesRef = useRef<Particle[]>([]);
   const startTimeRef = useRef(Date.now());
 
-  // Create particles on mount
   useEffect(() => {
     if (!groupRef.current) return;
 
     const particles: Particle[] = [];
-    const particleCount = 120; // Number of voxel particles
-    const geometry = new THREE.BoxGeometry(0.12, 0.12, 0.12);
-    const material = new THREE.MeshStandardMaterial({
-      color,
-      roughness: 0.7,
-      metalness: 0.3,
-      transparent: true,
-    });
+    const particleCount = 80;
 
-    // Create particles in a clear humanoid shape (head, torso, arms, legs)
+    // Shared geometry — small voxel shards
+    const geoSmall = new THREE.BoxGeometry(0.06, 0.06, 0.06);
+    const geoMed = new THREE.BoxGeometry(0.09, 0.09, 0.09);
+    const geoLg = new THREE.BoxGeometry(0.12, 0.04, 0.06);
+
+    const geos = [geoSmall, geoSmall, geoSmall, geoMed, geoMed, geoLg];
+
     for (let i = 0; i < particleCount; i++) {
-      const mesh = new THREE.Mesh(geometry, material.clone());
-      
-      // Distribute particles to form a humanoid shape
+      const geo = geos[Math.floor(Math.random() * geos.length)];
+      const mat = new THREE.MeshStandardMaterial({
+        color,
+        emissive: color,
+        emissiveIntensity: 0.6 + Math.random() * 0.8,
+        roughness: 0.5,
+        metalness: 0.6,
+        transparent: true,
+      });
+
+      const mesh = new THREE.Mesh(geo, mat);
+
+      // Distribute in humanoid silhouette
       let x = 0, y = 0, z = 0;
       const part = Math.random();
-      
-      if (part < 0.15) {
-        // Head (15% of particles)
-        const angle = Math.random() * Math.PI * 2;
-        const radius = Math.random() * 0.2;
-        x = Math.cos(angle) * radius;
-        y = 1.8 + (Math.random() - 0.5) * 0.3;
-        z = Math.sin(angle) * radius;
-      } else if (part < 0.45) {
-        // Torso (30% of particles)
-        const angle = Math.random() * Math.PI * 2;
-        const radius = Math.random() * 0.3;
-        x = Math.cos(angle) * radius;
-        y = 0.8 + Math.random() * 0.8;
-        z = Math.sin(angle) * radius;
-      } else if (part < 0.7) {
-        // Arms (25% of particles)
-        const side = Math.random() < 0.5 ? -1 : 1;
-        x = side * (0.3 + Math.random() * 0.3);
-        y = 1.0 + Math.random() * 0.6;
+
+      if (part < 0.12) {
+        // Head
+        x = (Math.random() - 0.5) * 0.3;
+        y = 1.6 + (Math.random() - 0.5) * 0.25;
         z = (Math.random() - 0.5) * 0.25;
-      } else {
-        // Legs (30% of particles)
+      } else if (part < 0.42) {
+        // Torso
+        x = (Math.random() - 0.5) * 0.5;
+        y = 0.8 + Math.random() * 0.7;
+        z = (Math.random() - 0.5) * 0.3;
+      } else if (part < 0.65) {
+        // Arms
         const side = Math.random() < 0.5 ? -1 : 1;
-        x = side * (0.1 + Math.random() * 0.15);
-        y = Math.random() * 0.9;
+        x = side * (0.3 + Math.random() * 0.35);
+        y = 0.9 + Math.random() * 0.5;
+        z = (Math.random() - 0.5) * 0.2;
+      } else {
+        // Legs
+        const side = Math.random() < 0.5 ? -1 : 1;
+        x = side * (0.05 + Math.random() * 0.18);
+        y = Math.random() * 0.85;
         z = (Math.random() - 0.5) * 0.2;
       }
-      
+
       mesh.position.set(x, y, z);
 
-      // Velocity based on position - particles explode outward from their body part
-      const explosionForce = 1.5 + Math.random() * 1.5;
-      const velocity = new THREE.Vector3(
-        x * explosionForce + (Math.random() - 0.5) * 0.5, // Outward from center
-        4 + Math.random() * 2, // VERY strong upward force - minimum 4 units/sec
-        z * explosionForce + (Math.random() - 0.5) * 0.5 // Outward from center
-      );
+      // Outward burst — mostly horizontal with a small upward pop
+      const burstStrength = 2.0 + Math.random() * 2.5;
+      const dirX = x * 2 + (Math.random() - 0.5) * 1.0;
+      const dirY = 0.5 + Math.random() * 1.5; // small upward pop, gravity does the rest
+      const dirZ = z * 2 + (Math.random() - 0.5) * 1.0;
+      const dir = new THREE.Vector3(dirX, dirY, dirZ).normalize().multiplyScalar(burstStrength);
 
-      // Random rotation speed
       const rotationSpeed = new THREE.Vector3(
-        (Math.random() - 0.5) * 5,
-        (Math.random() - 0.5) * 5,
-        (Math.random() - 0.5) * 5
+        (Math.random() - 0.5) * 10,
+        (Math.random() - 0.5) * 10,
+        (Math.random() - 0.5) * 10
       );
 
-      const maxLifetime = 2 + Math.random() * 0.5;
+      const initialScale = 0.7 + Math.random() * 0.6;
+      mesh.scale.setScalar(initialScale);
+
+      const maxLifetime = 0.6 + Math.random() * 0.5;
 
       particles.push({
         mesh,
-        velocity,
+        velocity: dir,
         lifetime: 0,
         maxLifetime,
         rotationSpeed,
+        initialScale,
       });
 
       groupRef.current.add(mesh);
@@ -111,9 +118,8 @@ export function DeathEffect({ position, color, onComplete }: DeathEffectProps) {
 
     particlesRef.current = particles;
 
-    // Cleanup
     return () => {
-      particles.forEach(p => {
+      particles.forEach((p) => {
         groupRef.current?.remove(p.mesh);
         p.mesh.geometry.dispose();
         (p.mesh.material as THREE.Material).dispose();
@@ -121,58 +127,49 @@ export function DeathEffect({ position, color, onComplete }: DeathEffectProps) {
     };
   }, [color]);
 
-  // Animate particles
   useFrame((_, delta) => {
     if (!groupRef.current) return;
 
     const elapsed = (Date.now() - startTimeRef.current) / 1000;
     let allDead = true;
 
-    particlesRef.current.forEach((particle) => {
-      if (particle.lifetime < particle.maxLifetime) {
-        allDead = false;
+    for (const p of particlesRef.current) {
+      if (p.lifetime >= p.maxLifetime) continue;
+      allDead = false;
 
-        // Update lifetime
-        particle.lifetime += delta;
-        const lifeProgress = particle.lifetime / particle.maxLifetime;
+      p.lifetime += delta;
+      const t = p.lifetime / p.maxLifetime; // 0→1
 
-        // Update position with velocity - NO GRAVITY, only upward drift
-        // Add continuous upward acceleration to ensure ALL particles float up
-        particle.velocity.y += 1.5 * delta; // Strong upward acceleration
-        
-        // Apply velocity
-        particle.mesh.position.add(
-          particle.velocity.clone().multiplyScalar(delta)
-        );
-        
-        // Safety check - never let particles fall below their starting Y position
-        if (particle.mesh.position.y < 0) {
-          particle.mesh.position.y = 0;
-          particle.velocity.y = Math.abs(particle.velocity.y) + 2; // Bounce up with force
-        }
+      // Apply gravity to velocity
+      p.velocity.y += GRAVITY * delta;
 
-        // Rotate particle
-        particle.mesh.rotation.x += particle.rotationSpeed.x * delta;
-        particle.mesh.rotation.y += particle.rotationSpeed.y * delta;
-        particle.mesh.rotation.z += particle.rotationSpeed.z * delta;
+      // Drag — slow down over time
+      p.velocity.multiplyScalar(1 - 1.2 * delta);
 
-        // Fade out
-        const material = particle.mesh.material as THREE.MeshStandardMaterial;
-        material.opacity = Math.max(0, 1 - lifeProgress);
+      // Move
+      p.mesh.position.addScaledVector(p.velocity, delta);
 
-        // Scale down as it fades
-        const scale = Math.max(0, 1 - lifeProgress);
-        particle.mesh.scale.setScalar(scale);
+      // Spin
+      p.mesh.rotation.x += p.rotationSpeed.x * delta;
+      p.mesh.rotation.y += p.rotationSpeed.y * delta;
+      p.mesh.rotation.z += p.rotationSpeed.z * delta;
 
-        // Hide when dead
-        if (particle.lifetime >= particle.maxLifetime) {
-          particle.mesh.visible = false;
-        }
+      // Shrink + fade: fast at the end
+      const fade = t < 0.3 ? 1 : 1 - ((t - 0.3) / 0.7);
+      const scale = p.initialScale * Math.max(0, fade);
+      p.mesh.scale.setScalar(scale);
+
+      const mat = p.mesh.material as THREE.MeshStandardMaterial;
+      mat.opacity = Math.max(0, fade);
+      // Emissive pulse at start, then dim
+      mat.emissiveIntensity = (1 - t) * 1.5;
+
+      if (p.lifetime >= p.maxLifetime) {
+        p.mesh.visible = false;
       }
-    });
+    }
 
-    // Notify completion
-    if (allDead) {
+    if (allDead || elapsed > EFFECT_DURATION) {
       onComplete?.();
     }
   });

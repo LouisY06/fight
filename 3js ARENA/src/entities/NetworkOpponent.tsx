@@ -12,7 +12,7 @@ import { DeathEffect } from './DeathEffect';
 import { useNetwork } from '../networking/NetworkProvider';
 import { useGameStore } from '../game/GameState';
 import { OpponentHitbox } from './OpponentHitbox';
-import { MechaEntity } from '../avatars/MechaEntity';
+import { MechaEntity } from './MechaEntity';
 
 interface NetworkOpponentProps {
   color?: string;
@@ -106,10 +106,11 @@ export function NetworkOpponent({ color = '#ff4444' }: NetworkOpponentProps) {
           <RigidBody type="kinematicPosition" colliders={false}>
             <CapsuleCollider args={[0.5, 0.3]} position={[0, 1, 0]} />
 
-            {/* Full procedural mecha body with greatsword */}
+            {/* SR-3600 mecha with walk + swing animation */}
             <MechaEntity
-              isWalkingRef={isMovingRef}
+              color={color}
               isSwinging={isSwinging}
+              isWalkingRef={isMovingRef}
             />
 
             {/* Hitbox visualization */}

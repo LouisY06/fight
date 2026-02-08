@@ -1,7 +1,8 @@
 // =============================================================================
 // MechaArms.tsx — First-person cockpit RIGHT arm driven by CV pose tracking
 // Left arm removed (left hand is on keyboard for WASD movement).
-// Right hand holds a greatsword. All joints interpolated for smooth motion.
+// Right hand holds a weapon (sword / gun / shield) based on WeaponState.
+// All joints interpolated for smooth motion.
 // Geometry builders and materials live in MechaGeometry.ts (shared with MechaEntity).
 // =============================================================================
 
@@ -10,10 +11,11 @@ import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { cvBridge } from '../cv/cvBridge';
 import { useGameStore } from '../game/GameState';
+import { useWeaponStore } from '../game/WeaponState';
 import { fireSwing } from '../combat/SwingEvent';
 import { updateSwordTransform } from '../combat/SwordState';
 import {
-  makeUpperArm, makeForearm, makeHand, makeJoint, makeSword,
+  makeUpperArm, makeForearm, makeHand, makeJoint, makeSword, makeGun, makeShield,
 } from '../avatars/MechaGeometry';
 
 // ============================================================================
@@ -22,7 +24,10 @@ import {
 
 const R_SHOULDER = new THREE.Vector3(0.5, -0.45, -0.55);
 const ARM_SCALE = 3.5;
-const DEPTH_SCALE = 5.0;
+const DEPTH_SCALE = 8.0;
+/** Forward bias so the arm's resting position sits slightly extended,
+ *  giving more backward (close-to-body) range before hitting the camera. */
+const DEPTH_BIAS = -0.15;
 
 const SMOOTH_SHOULDER = 0.25;
 const SMOOTH_ELBOW = 0.2;
@@ -43,7 +48,7 @@ function getDelta(
   return new THREE.Vector3(
     -(lm.x - shoulderLm.x) * ARM_SCALE,
     -(lm.y - shoulderLm.y) * ARM_SCALE,
-    (lm.z - shoulderLm.z) * DEPTH_SCALE
+    (lm.z - shoulderLm.z) * DEPTH_SCALE + DEPTH_BIAS
   );
 }
 
@@ -92,6 +97,7 @@ const _tRHand = new THREE.Vector3();
 export function MechaArms() {
   const { camera } = useThree();
   const phase = useGameStore((s) => s.phase);
+  const activeWeapon = useWeaponStore((s) => s.activeWeapon);
   const cvEnabled = cvBridge.cvEnabled;
   const cvInputRef = cvBridge.cvInputRef;
   const worldLandmarksRef = cvBridge.worldLandmarksRef;
@@ -104,9 +110,13 @@ export function MechaArms() {
   const elbowJoint = useMemo(() => makeJoint(0.06), []);
   const wristJoint = useMemo(() => makeJoint(0.05), []);
   const sword = useMemo(() => makeSword(), []);
+  const gun = useMemo(() => makeGun(), []);
+  const shield = useMemo(() => makeShield(), []);
 
   const groupRef = useRef<THREE.Group>(null!);
   const swordGroupRef = useRef<THREE.Group>(null!);
+  const gunGroupRef = useRef<THREE.Group>(null!);
+  const shieldGroupRef = useRef<THREE.Group>(null!);
 
   const smoothJoints = useRef({
     rShoulder: new THREE.Vector3(),
@@ -195,23 +205,51 @@ export function MechaArms() {
     positionLimb(forearm, s.rElbow, s.rWrist, dims.fore);
     positionLimb(hand, s.rWrist, s.rHand, dims.hand);
 
-    // Sword at right hand, oriented along forearm
-    if (swordGroupRef.current) {
-      swordGroupRef.current.position.lerp(s.rHand, SMOOTH_SWORD_POS);
-
-      const swordDir = _tmpDir.subVectors(s.rHand, s.rWrist);
-      if (swordDir.lengthSq() > 0.0001) {
-        swordDir.normalize();
-        if (Math.abs(swordDir.dot(_UP)) > 0.999) {
-          swordDir.x += 0.001;
-          swordDir.normalize();
-        }
-        const targetQuat = _tmpQuat.setFromUnitVectors(_UP, swordDir);
-        s.swordQuat.slerp(targetQuat, SMOOTH_SWORD_ROT);
-        swordGroupRef.current.quaternion.copy(s.swordQuat);
+    // Weapon at right hand, oriented along forearm
+    const weaponDir = _tmpDir.subVectors(s.rHand, s.rWrist);
+    let weaponTargetQuat: THREE.Quaternion | null = null;
+    if (weaponDir.lengthSq() > 0.0001) {
+      weaponDir.normalize();
+      if (Math.abs(weaponDir.dot(_UP)) > 0.999) {
+        weaponDir.x += 0.001;
+        weaponDir.normalize();
       }
+      weaponTargetQuat = _tmpQuat.setFromUnitVectors(_UP, weaponDir);
+      s.swordQuat.slerp(weaponTargetQuat, SMOOTH_SWORD_ROT);
+    }
 
-      updateSwordTransform(swordGroupRef.current);
+    // --- Sword ---
+    if (swordGroupRef.current) {
+      swordGroupRef.current.visible = activeWeapon === 'sword';
+      if (activeWeapon === 'sword') {
+        swordGroupRef.current.position.lerp(s.rHand, SMOOTH_SWORD_POS);
+        if (weaponTargetQuat) {
+          swordGroupRef.current.quaternion.copy(s.swordQuat);
+        }
+        updateSwordTransform(swordGroupRef.current);
+      }
+    }
+
+    // --- Gun ---
+    if (gunGroupRef.current) {
+      gunGroupRef.current.visible = activeWeapon === 'gun';
+      if (activeWeapon === 'gun') {
+        gunGroupRef.current.position.lerp(s.rHand, SMOOTH_SWORD_POS);
+        if (weaponTargetQuat) {
+          gunGroupRef.current.quaternion.copy(s.swordQuat);
+        }
+      }
+    }
+
+    // --- Shield ---
+    if (shieldGroupRef.current) {
+      shieldGroupRef.current.visible = activeWeapon === 'shield';
+      if (activeWeapon === 'shield') {
+        shieldGroupRef.current.position.lerp(s.rHand, SMOOTH_SWORD_POS);
+        if (weaponTargetQuat) {
+          shieldGroupRef.current.quaternion.copy(s.swordQuat);
+        }
+      }
     }
   });
 
@@ -227,9 +265,19 @@ export function MechaArms() {
       <primitive object={forearm} />
       <primitive object={hand} />
 
-      {/* Greatsword */}
+      {/* Greatsword — visible when sword is active */}
       <group ref={swordGroupRef} scale={0.65}>
         <primitive object={sword} />
+      </group>
+
+      {/* Gun — visible when gun is active */}
+      <group ref={gunGroupRef} scale={0.55}>
+        <primitive object={gun} />
+      </group>
+
+      {/* Shield — visible when shield is active */}
+      <group ref={shieldGroupRef} scale={0.45}>
+        <primitive object={shield} />
       </group>
     </group>
   );

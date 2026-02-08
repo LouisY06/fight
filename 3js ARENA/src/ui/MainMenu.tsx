@@ -6,10 +6,9 @@ import { useState } from 'react';
 import { useGameStore } from '../game/GameState';
 import { useNetwork } from '../networking/NetworkProvider';
 import { useCVContext } from '../cv/CVProvider';
-import { ARENA_THEMES } from '../arena/arenaThemes';
-import { randomPick } from '../utils/random';
 import { MenuCharacterPreview } from './MenuCharacterPreview';
 import { CustomizationPanel } from './CustomizationPanel';
+import { MapSelector } from './MapSelector';
 
 export function MainMenu() {
   const phase = useGameStore((s) => s.phase);
@@ -20,17 +19,22 @@ export function MainMenu() {
   const { connect } = useNetwork();
   const { cvEnabled, setCvEnabled } = useCVContext();
   const [showCustomize, setShowCustomize] = useState(false);
+  const [showMapSelector, setShowMapSelector] = useState(false);
 
   if (phase !== 'menu') return null;
 
   const handleLocalPlay = () => {
-    const theme = randomPick(ARENA_THEMES);
-    startGame(theme.id);
+    setShowMapSelector(true);
   };
 
   const handleOnlinePlay = () => {
     connect();
     goToLobby();
+  };
+
+  const handleMapSelected = (themeId: string) => {
+    setShowMapSelector(false);
+    startGame(themeId);
   };
 
   return (
@@ -288,6 +292,14 @@ export function MainMenu() {
 
       {showCustomize && (
         <CustomizationPanel onClose={() => setShowCustomize(false)} />
+      )}
+
+      {showMapSelector && (
+        <MapSelector
+          mode="practice"
+          onSelect={handleMapSelected}
+          onCancel={() => setShowMapSelector(false)}
+        />
       )}
     </div>
   );

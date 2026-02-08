@@ -32,7 +32,7 @@ export async function generateArenaFromPrompt(
   const fullPrompt = buildArenaPrompt(prompt);
 
   const response = await client.models.generateContent({
-    model: 'gemini-2.0-flash-exp',
+    model: 'gemini-2.5-flash-image',
     contents: fullPrompt,
     config: {
       responseModalities: ['TEXT', 'IMAGE'],
@@ -67,7 +67,7 @@ export async function generateArenaFromImage(
   const fullPrompt = buildArenaPrompt(prompt);
 
   const response = await client.models.generateContent({
-    model: 'gemini-2.0-flash-exp',
+    model: 'gemini-2.5-flash-image',
     contents: [
       { inlineData: { mimeType, data: imageBase64 } },
       { text: fullPrompt },

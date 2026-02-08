@@ -3,8 +3,9 @@
 // Shows cursor and provides Resume, Quit to Menu, and Quit Game options
 // =============================================================================
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useGameStore, type GamePhase } from '../game/GameState';
+import { headSensitivityConfig } from '../cv/CVInputMapper';
 
 /** Phases where ESC opens the pause overlay (gameplay) */
 const PAUSABLE_PHASES: GamePhase[] = ['playing', 'countdown', 'roundEnd', 'gameOver'];
@@ -116,6 +117,9 @@ export function PauseMenu() {
         Quit Game
       </MenuButton>
 
+      {/* Head sensitivity slider */}
+      <SensitivitySlider />
+
       <p
         style={{
           color: '#555555',
@@ -195,5 +199,73 @@ function MenuButton({
     >
       {children}
     </button>
+  );
+}
+
+/** Slider to control head tracking sensitivity */
+function SensitivitySlider() {
+  const [value, setValue] = useState(headSensitivityConfig.multiplier);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = parseFloat(e.target.value);
+    setValue(v);
+    headSensitivityConfig.multiplier = v;
+  };
+
+  const pct = Math.round(value * 100);
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: '6px',
+        marginTop: '20px',
+        padding: '12px 24px',
+        background: 'rgba(100, 200, 255, 0.06)',
+        border: '1px solid rgba(100, 200, 255, 0.15)',
+        borderRadius: '6px',
+        minWidth: '280px',
+      }}
+    >
+      <label
+        style={{
+          color: '#aaaaaa',
+          fontSize: '11px',
+          fontFamily: 'monospace',
+          textTransform: 'uppercase',
+          letterSpacing: '2px',
+        }}
+      >
+        Head Sensitivity: {pct}%
+      </label>
+      <input
+        type="range"
+        min="0.3"
+        max="2.5"
+        step="0.1"
+        value={value}
+        onChange={handleChange}
+        style={{
+          width: '240px',
+          accentColor: '#4488ff',
+          cursor: 'pointer',
+        }}
+      />
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          width: '240px',
+          color: '#555555',
+          fontSize: '9px',
+          fontFamily: 'monospace',
+        }}
+      >
+        <span>LOW</span>
+        <span>HIGH</span>
+      </div>
+    </div>
   );
 }

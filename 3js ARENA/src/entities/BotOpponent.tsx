@@ -12,13 +12,13 @@ import { useGameStore } from '../game/GameState';
 import { GAME_CONFIG } from '../game/GameConfig';
 import { OpponentHitbox } from './OpponentHitbox';
 import { MechaEntity } from './MechaEntity';
-import { Weapon } from './Weapon';
 import { setBotSwordState } from '../combat/OpponentSwordState';
 
 const BOT_MOVE_SPEED = 2.5;
 const ATTACK_RANGE = 2.2;
 const ATTACK_COOLDOWN = 1.2;
 const SWING_DURATION = 0.4;
+const SWORD_BLADE_LENGTH = 0.7; // world-space blade length (scaled)
 
 interface BotOpponentProps {
   color?: string;
@@ -39,12 +39,13 @@ export function BotOpponent({ color = '#ff4444' }: BotOpponentProps) {
   const isMovingRef = useRef(false);
   const swingProgressRef = useRef(0);
   const lastAttackTimeRef = useRef(0);
-
-  const weaponPosRef = useRef(new THREE.Vector3(0.4, 1.2, 0.3));
-  const weaponRotRef = useRef(new THREE.Euler(0, 0, 0.2));
+  const swordGroupRef = useRef<THREE.Group | null>(null);
 
   const _dirToPlayer = new THREE.Vector3();
   const _playerPos = new THREE.Vector3();
+  const _swordHilt = new THREE.Vector3();
+  const _swordTipLocal = new THREE.Vector3();
+  const _swordQuat = new THREE.Quaternion();
 
   // Detect when bot dies
   useEffect(() => {
@@ -63,10 +64,6 @@ export function BotOpponent({ color = '#ff4444' }: BotOpponentProps) {
     }
     previousHealthRef.current = player2.health;
   }, [player2.health, isDead]);
-
-  const handlePublishSword = (hilt: THREE.Vector3, tip: THREE.Vector3, active: boolean) => {
-    setBotSwordState(hilt, tip, active);
-  };
 
   useFrame((_, delta) => {
     if (!groupRef.current || isDead) return;
@@ -111,10 +108,10 @@ export function BotOpponent({ color = '#ff4444' }: BotOpponentProps) {
       isMovingRef.current = false;
     }
 
-    // Face player
+    // Face player (MechaEntity model faces +Z, so use atan2(x, z) directly)
     if (distXZ > 0.01) {
       _dirToPlayer.normalize();
-      const targetYaw = Math.atan2(-_dirToPlayer.x, -_dirToPlayer.z);
+      const targetYaw = Math.atan2(_dirToPlayer.x, _dirToPlayer.z);
       groupRef.current.rotation.y = THREE.MathUtils.lerp(
         groupRef.current.rotation.y,
         targetYaw,
@@ -133,11 +130,14 @@ export function BotOpponent({ color = '#ff4444' }: BotOpponentProps) {
       groupRef.current.position.z = dz * scale;
     }
 
-    // Weapon pose — swing animation
-    const swingT = swingProgressRef.current;
-    const swingAngle = swingT > 0 && swingT < 1 ? Math.sin(swingT * Math.PI) * -1.2 : 0;
-    weaponPosRef.current.set(0.4, 1.2, 0.3);
-    weaponRotRef.current.set(swingAngle * 0.5, 0, 0.2);
+    // Publish sword world-space segment for hit detection (reads from MechaEntity's built-in sword)
+    if (swordGroupRef.current) {
+      swordGroupRef.current.getWorldPosition(_swordHilt);
+      swordGroupRef.current.getWorldQuaternion(_swordQuat);
+      _swordTipLocal.set(0, SWORD_BLADE_LENGTH, 0);
+      _swordTipLocal.applyQuaternion(_swordQuat).add(_swordHilt);
+      setBotSwordState(_swordHilt.clone(), _swordTipLocal.clone(), isSwinging);
+    }
   });
 
   return (
@@ -148,23 +148,16 @@ export function BotOpponent({ color = '#ff4444' }: BotOpponentProps) {
             <RigidBody type="kinematicPosition" colliders={false}>
               <CapsuleCollider args={[0.5, 0.3]} position={[0, 1, 0]} />
 
-              {/* Procedural mecha (no GLB) */}
-              <MechaEntity color={color} />
+              {/* SR-3600 mecha with walk + swing animation + built-in sword */}
+              <MechaEntity
+                color={color}
+                isSwinging={isSwinging}
+                isWalkingRef={isMovingRef}
+                swordRef={swordGroupRef}
+              />
 
               <OpponentHitbox />
             </RigidBody>
-
-            {/* Bot's sword */}
-            <Weapon
-              playerId="player2"
-              position={weaponPosRef.current}
-              rotation={weaponRotRef.current}
-              gesture={isSwinging ? 'slash' : 'idle'}
-              accentColor={color}
-              positionRef={weaponPosRef}
-              rotationRef={weaponRotRef}
-              publishSwordSegment={handlePublishSword}
-            />
           </>
         )}
       </group>

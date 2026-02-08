@@ -438,6 +438,192 @@ export function makeSword(): THREE.Group {
   return g;
 }
 
+export function makeGun(): THREE.Group {
+  const g = new THREE.Group();
+
+  // Main receiver — angular, chunky sci-fi pistol
+  const receiver = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.14, 0.44), matDark);
+  receiver.position.set(0, 0, -0.06);
+  g.add(receiver);
+
+  // Top rail — chrome strip
+  const topRail = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.02, 0.36), matChrome);
+  topRail.position.set(0, 0.08, -0.04);
+  g.add(topRail);
+
+  // Barrel — forward-extending cylinder
+  const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.038, 0.35, 10), matBlue);
+  barrel.position.set(0, 0.02, -0.40);
+  barrel.rotation.x = Math.PI / 2;
+  g.add(barrel);
+
+  // Barrel shroud — angular armor casing around barrel
+  const shroud = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.09, 0.25), matBlue);
+  shroud.position.set(0, 0.02, -0.30);
+  g.add(shroud);
+
+  const shroudInset = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.22), matPanel);
+  shroudInset.position.set(0, 0.02, -0.30);
+  g.add(shroudInset);
+
+  // Muzzle — chrome ring at barrel tip
+  const muzzle = new THREE.Mesh(new THREE.TorusGeometry(0.04, 0.008, 4, 8), matChrome);
+  muzzle.position.set(0, 0.02, -0.58);
+  g.add(muzzle);
+
+  // Muzzle glow insert
+  const muzzleGlow = new THREE.Mesh(new THREE.SphereGeometry(0.025, 6, 4), matGlow);
+  muzzleGlow.position.set(0, 0.02, -0.58);
+  g.add(muzzleGlow);
+
+  // Grip
+  const grip = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.22, 0.08), matHandle);
+  grip.position.set(0, -0.15, 0.06);
+  grip.rotation.x = 0.15;
+  g.add(grip);
+
+  // Grip chrome wraps
+  for (let i = 0; i < 3; i++) {
+    const wrap = new THREE.Mesh(new THREE.BoxGeometry(0.075, 0.012, 0.085), matChrome);
+    wrap.position.set(0, -0.08 - i * 0.06, 0.06);
+    wrap.rotation.x = 0.15;
+    g.add(wrap);
+  }
+
+  // Trigger guard
+  const triggerGuard = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.02, 0.12), matDark);
+  triggerGuard.position.set(0, -0.04, 0);
+  g.add(triggerGuard);
+
+  // Side energy accent strips — orange glow
+  for (const side of [-1, 1]) {
+    const strip = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.05, 0.25), matGlow);
+    strip.position.set(side * 0.052, 0, -0.10);
+    g.add(strip);
+
+    // Energy nodes
+    for (let i = 0; i < 3; i++) {
+      const node = new THREE.Mesh(new THREE.SphereGeometry(0.008, 4, 4), matGlow);
+      node.position.set(side * 0.054, 0, -0.02 - i * 0.10);
+      g.add(node);
+    }
+  }
+
+  // Rear sight — angular
+  const rearSight = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.03, 0.02), matChrome);
+  rearSight.position.set(0, 0.10, 0.10);
+  g.add(rearSight);
+
+  // Front sight — angular
+  const frontSight = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.03, 0.02), matChrome);
+  frontSight.position.set(0, 0.10, -0.18);
+  g.add(frontSight);
+
+  // Magazine well accent
+  const magWell = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.04, 0.06), matPanel);
+  magWell.position.set(0, -0.04, 0.06);
+  g.add(magWell);
+
+  enableShadows(g);
+  return g;
+}
+
+export function makeShield(): THREE.Group {
+  const g = new THREE.Group();
+
+  // Main shield face — large, angular, armored plate
+  const mainPlate = new THREE.Mesh(new THREE.BoxGeometry(0.70, 0.90, 0.05), matBlue);
+  g.add(mainPlate);
+
+  // Outer frame — chrome border
+  const frameTop = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.04, 0.06), matChrome);
+  frameTop.position.y = 0.45;
+  g.add(frameTop);
+
+  const frameBot = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.04, 0.06), matChrome);
+  frameBot.position.y = -0.45;
+  g.add(frameBot);
+
+  for (const side of [-1, 1]) {
+    const frameSide = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.90, 0.06), matChrome);
+    frameSide.position.x = side * 0.35;
+    g.add(frameSide);
+  }
+
+  // Central boss — angular raised section with reactor glow
+  const boss = new THREE.Mesh(new THREE.BoxGeometry(0.20, 0.20, 0.06), matDark);
+  boss.position.z = 0.04;
+  g.add(boss);
+
+  const bossCore = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 6), matGlow);
+  bossCore.position.z = 0.08;
+  g.add(bossCore);
+
+  const bossRing = new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.008, 4, 8), matChrome);
+  bossRing.position.z = 0.08;
+  g.add(bossRing);
+
+  // Angular reinforcement strips
+  for (const yOff of [-0.30, -0.15, 0.15, 0.30]) {
+    const strip = new THREE.Mesh(new THREE.BoxGeometry(0.64, 0.03, 0.02), matPanel);
+    strip.position.set(0, yOff, 0.03);
+    g.add(strip);
+  }
+
+  // Vertical reinforcement
+  for (const xOff of [-0.22, 0.22]) {
+    const vStrip = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.84, 0.02), matPanel);
+    vStrip.position.set(xOff, 0, 0.03);
+    g.add(vStrip);
+  }
+
+  // Corner rivets — chrome spheres
+  for (const sx of [-1, 1]) {
+    for (const sy of [-1, 1]) {
+      const rivet = new THREE.Mesh(new THREE.SphereGeometry(0.018, 6, 4), matChrome);
+      rivet.position.set(sx * 0.30, sy * 0.38, 0.04);
+      g.add(rivet);
+    }
+  }
+
+  // Edge glow — orange accent along top and bottom
+  const glowTop = new THREE.Mesh(new THREE.BoxGeometry(0.60, 0.008, 0.008), matGlow);
+  glowTop.position.set(0, 0.42, 0.035);
+  g.add(glowTop);
+
+  const glowBot = new THREE.Mesh(new THREE.BoxGeometry(0.60, 0.008, 0.008), matGlow);
+  glowBot.position.set(0, -0.42, 0.035);
+  g.add(glowBot);
+
+  // Side glow accents — orange
+  for (const side of [-1, 1]) {
+    const sideGlow = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.80, 0.008), matGlow);
+    sideGlow.position.set(side * 0.32, 0, 0.035);
+    g.add(sideGlow);
+  }
+
+  // Back handle (grip attached to arm)
+  const handleMain = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.22, 0.04), matHandle);
+  handleMain.position.set(0, 0, -0.05);
+  g.add(handleMain);
+
+  // Handle chrome wraps
+  for (let i = 0; i < 3; i++) {
+    const wrap = new THREE.Mesh(new THREE.TorusGeometry(0.04, 0.006, 4, 8), matChrome);
+    wrap.position.set(0, -0.08 + i * 0.08, -0.05);
+    wrap.rotation.x = Math.PI / 2;
+    g.add(wrap);
+  }
+
+  // Back brace
+  const brace = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.06, 0.04), matDark);
+  brace.position.set(0, 0.20, -0.05);
+  g.add(brace);
+
+  enableShadows(g);
+  return g;
+}
+
 // ============================================================================
 // Body segment builders (third-person mecha body)
 // ============================================================================

@@ -7,6 +7,7 @@
 import { useEffect, useRef } from 'react';
 import { useGameStore } from '../game/GameState';
 import { ElevenLabs } from '../audio/ElevenLabsService';
+import { resetStun } from '../combat/ClashEvent';
 
 export function CombatCommentator() {
   const phase = useGameStore((s) => s.phase);
@@ -32,6 +33,7 @@ export function CombatCommentator() {
       lowHealthDone.current = false;
       timeWarningDone.current = false;
       comboDone.current = false;
+      resetStun();
     }
   }, [phase]);
 

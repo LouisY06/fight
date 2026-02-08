@@ -7,7 +7,8 @@ import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { onHitEvent, type HitEventData } from './HitEvent';
-import { playSwordHit, playSwordBlock } from '../audio/SoundManager';
+import { onClashEvent } from './ClashEvent';
+import { playSwordHit, playSwordBlock, playSwordClash } from '../audio/SoundManager';
 import { useDamageIndicatorStore } from '../ui/DamageIndicator';
 import { ElevenLabs } from '../audio/ElevenLabsService';
 
@@ -34,6 +35,17 @@ let nextBurstId = 0;
  */
 export function HitEffectManager() {
   const [bursts, setBursts] = useState<SparkBurst[]>([]);
+
+  // Clash event listener — plays clash SFX + announcer
+  useEffect(() => {
+    const unsubClash = onClashEvent(() => {
+      // Procedural clash sound (always plays)
+      playSwordClash();
+      // ElevenLabs announcer voice line
+      ElevenLabs.announceSwordClash();
+    });
+    return unsubClash;
+  }, []);
 
   useEffect(() => {
     const unsub = onHitEvent((data: HitEventData) => {

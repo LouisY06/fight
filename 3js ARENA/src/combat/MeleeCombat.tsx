@@ -16,6 +16,7 @@ import { cvBridge } from '../cv/cvBridge';
 import { swordHilt, swordTip, swordSpeed, keyboardSwingActive } from './SwordState';
 import { botSwordHilt, botSwordTip, botSwordActive } from './OpponentSwordState';
 import { fireHitEvent } from './HitEvent';
+import { fireClashEvent, applyPlayerStun, isPlayerStunned } from './ClashEvent';
 import { playSwordHit } from '../audio/SoundManager';
 import { gameSocket } from '../networking/socket';
 import { useScreenShakeStore } from '../game/useScreenShake';
@@ -26,8 +27,9 @@ const OPPONENT_CAPSULE_BOT = 0.2;   // bottom of capsule axis (y offset from gro
 const OPPONENT_CAPSULE_TOP = 2.1;   // top of capsule axis
 
 // Player body (camera) capsule for bot hits
-const PLAYER_CAPSULE_BOT = 0.5;
-const PLAYER_CAPSULE_TOP = 2.0;
+// Camera is at eye-level (~y=1.7), so offsets go DOWN to feet and UP to head top
+const PLAYER_CAPSULE_BOT = -1.5;  // feet: camera.y - 1.5 ≈ 0.2
+const PLAYER_CAPSULE_TOP = 0.3;   // head: camera.y + 0.3 ≈ 2.0
 
 // Sword must be moving at least this fast to deal damage (world units/sec)
 // This prevents "resting sword on opponent" from dealing damage
@@ -100,10 +102,17 @@ function closestDistSegmentSegment(
 // Component
 // ---------------------------------------------------------------------------
 
+// Temp vectors for clash detection
+const _clashOnPlayer = new THREE.Vector3();
+const _clashOnBot = new THREE.Vector3();
+const _clashMidpoint = new THREE.Vector3();
+
 export function MeleeCombat() {
   const { camera, scene } = useThree();
   const cvEnabled = cvBridge.cvEnabled;
   const lastHitTime = useRef(0);
+  const lastClashTime = useRef(0);
+  const CLASH_COOLDOWN_MS = 1500; // prevent rapid re-clashes
 
   useFrame(() => {
     const phase = useGameStore.getState().phase;
@@ -111,12 +120,15 @@ export function MeleeCombat() {
 
     const now = Date.now();
 
+    // If player is stunned from a sword clash, skip all attack logic
+    const stunned = isPlayerStunned();
+
     // Player sword vs opponents — only active when swinging, not when running into them
     // Keyboard mode: require click (keyboardSwingActive)
     // CV mode: sword speed from arm swing (swordSpeed)
     const isActive =
       keyboardSwingActive || (cvEnabled && swordSpeed > MIN_SWING_SPEED);
-    if (isActive && now - lastHitTime.current >= GAME_CONFIG.attackCooldownMs) {
+    if (!stunned && isActive && now - lastHitTime.current >= GAME_CONFIG.attackCooldownMs) {
       // Check against all opponents
     scene.traverse((obj) => {
       if (!obj.userData?.isOpponent) return;
@@ -198,6 +210,32 @@ export function MeleeCombat() {
         dealDamage('player1', amount);
         fireHitEvent({ point: _hitPoint.clone(), amount: effectiveAmount, isBlocked });
         useScreenShakeStore.getState().trigger(0.5, 200);
+      }
+    }
+
+    // -----------------------------------------------------------------------
+    // Sword-to-sword clash detection (both swords active → stun)
+    // -----------------------------------------------------------------------
+    if (
+      !stunned &&
+      isActive &&
+      botSwordActive &&
+      now - lastClashTime.current >= CLASH_COOLDOWN_MS
+    ) {
+      const clashDist = closestDistSegmentSegment(
+        swordHilt, swordTip,
+        botSwordHilt, botSwordTip,
+        _clashOnPlayer, _clashOnBot
+      );
+
+      if (clashDist <= GAME_CONFIG.swordClashRadius) {
+        lastClashTime.current = now;
+        lastHitTime.current = now; // also reset hit cooldown
+
+        _clashMidpoint.addVectors(_clashOnPlayer, _clashOnBot).multiplyScalar(0.5);
+        applyPlayerStun();
+        fireClashEvent({ point: _clashMidpoint.clone() });
+        useScreenShakeStore.getState().trigger(0.7, 300); // strong shake for clash
       }
     }
   });

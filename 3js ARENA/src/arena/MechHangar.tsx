@@ -6,7 +6,7 @@ import { useMemo } from 'react';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 
-const HANGAR_GLB_URL = '/assets/mech_hangar.glb';
+const HANGAR_GLB_URL = '/assets/worlds/hangar/mech_hangar.glb';
 
 export interface MechHangarProps {
   position?: [number, number, number];

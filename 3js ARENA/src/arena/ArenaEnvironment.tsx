@@ -1,22 +1,32 @@
 // =============================================================================
-// ArenaEnvironment.tsx — Skybox / environment map from pre-generated images
-// Falls back to a procedural color sky if the image file doesn't exist yet.
+// ArenaEnvironment.tsx — Skybox / environment map + procedural sky fallback
 // =============================================================================
 
-import { useState, useEffect, useLayoutEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useThree } from '@react-three/fiber';
-import { Environment } from '@react-three/drei';
+import { Environment, Stars } from '@react-three/drei';
 import * as THREE from 'three';
 
 interface ArenaEnvironmentProps {
   skyboxPath: string;
   fogColor?: string;
+  /** Top color for gradient sky when no skybox image exists */
+  skyTop?: string;
+  /** Bottom/horizon color for gradient sky */
+  skyBottom?: string;
+  /** Show stars (good for night/space themes) */
+  stars?: boolean;
 }
 
-export function ArenaEnvironment({ skyboxPath, fogColor = '#0a0a0a' }: ArenaEnvironmentProps) {
+export function ArenaEnvironment({
+  skyboxPath,
+  fogColor = '#0a0a0a',
+  skyTop,
+  skyBottom,
+  stars = false,
+}: ArenaEnvironmentProps) {
   const [imageExists, setImageExists] = useState<boolean | null>(null);
 
-  // Check if the skybox image actually exists before trying to load it
   useEffect(() => {
     const img = new Image();
     img.onload = () => setImageExists(true);
@@ -25,35 +35,61 @@ export function ArenaEnvironment({ skyboxPath, fogColor = '#0a0a0a' }: ArenaEnvi
   }, [skyboxPath]);
 
   // Still checking
-  if (imageExists === null) return <FallbackSky color={fogColor} />;
+  if (imageExists === null) {
+    return <GradientSky topColor={skyTop || fogColor} bottomColor={skyBottom || fogColor} stars={stars} />;
+  }
 
   // Image exists — use it
   if (imageExists) {
     return (
-      <Environment
-        files={skyboxPath}
-        background
-        backgroundBlurriness={0.05}
-      />
+      <>
+        <Environment files={skyboxPath} background backgroundBlurriness={0.05} />
+        {stars && <Stars radius={80} depth={50} count={2000} factor={4} fade speed={1} />}
+      </>
     );
   }
 
-  // Image doesn't exist — use procedural fallback (no remote HDR; avoids CSP/fetch errors)
-  return <FallbackSky color={fogColor} />;
+  // No skybox image — procedural gradient sky
+  return <GradientSky topColor={skyTop || fogColor} bottomColor={skyBottom || fogColor} stars={stars} />;
 }
 
 /**
- * Procedural gradient sky fallback when no skybox image is available.
+ * Procedural gradient sky dome + optional stars.
  */
-function FallbackSky({ color }: { color: string }) {
+function GradientSky({
+  topColor,
+  bottomColor,
+  stars = false,
+}: {
+  topColor: string;
+  bottomColor: string;
+  stars?: boolean;
+}) {
   const { scene } = useThree();
 
-  useLayoutEffect(() => {
-    scene.background = new THREE.Color(color);
+  // Create a gradient texture for the sky
+  const texture = useMemo(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 2;
+    canvas.height = 256;
+    const ctx = canvas.getContext('2d')!;
+    const gradient = ctx.createLinearGradient(0, 0, 0, 256);
+    gradient.addColorStop(0, topColor);
+    gradient.addColorStop(0.5, bottomColor);
+    gradient.addColorStop(1, bottomColor);
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, 2, 256);
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.mapping = THREE.EquirectangularReflectionMapping;
+    return tex;
+  }, [topColor, bottomColor]);
+
+  useEffect(() => {
+    scene.background = texture;
     return () => {
       scene.background = null;
     };
-  }, [scene, color]);
+  }, [scene, texture]);
 
-  return null;
+  return stars ? <Stars radius={80} depth={50} count={3000} factor={4} fade speed={1} /> : null;
 }

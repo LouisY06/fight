@@ -8,9 +8,11 @@ import { useRef, useEffect, useState } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from '../game/GameState';
+import { useWeaponStore } from '../game/WeaponState';
 import { cvBridge } from '../cv/cvBridge';
 import { fireSwing } from '../combat/SwingEvent';
 import { updateSwordTransform, setKeyboardSwingActive } from '../combat/SwordState';
+import { isPlayerStunned } from '../combat/ClashEvent';
 
 // Sword resting position: lower-right of screen, blade angled up-left
 const IDLE_OFFSET = new THREE.Vector3(0.55, -0.5, -0.5);
@@ -21,6 +23,7 @@ export function ViewmodelSword() {
   const { camera } = useThree();
   const groupRef = useRef<THREE.Group>(null!);
   const phase = useGameStore((s) => s.phase);
+  const activeWeapon = useWeaponStore((s) => s.activeWeapon);
   const cvEnabled = cvBridge.cvEnabled;
   const cvInputRef = cvBridge.cvInputRef;
 
@@ -29,10 +32,11 @@ export function ViewmodelSword() {
   const [, setIsSwinging] = useState(false);
   const swingNotified = useRef(false);
 
-  // Left-click to swing while pointer is locked (keyboard mode only)
+  // Left-click to swing while pointer is locked (keyboard mode only, sword active)
   useEffect(() => {
+    if (activeWeapon !== 'sword') return;
     const onMouseDown = (e: MouseEvent) => {
-      if (e.button === 0 && document.pointerLockElement && !cvEnabled) {
+      if (e.button === 0 && document.pointerLockElement && !cvEnabled && !isPlayerStunned()) {
         if (swingTime.current < 0) {
           swingTime.current = 0;
           swingNotified.current = false;
@@ -42,10 +46,16 @@ export function ViewmodelSword() {
     };
     window.addEventListener('mousedown', onMouseDown);
     return () => window.removeEventListener('mousedown', onMouseDown);
-  }, [cvEnabled]);
+  }, [cvEnabled, activeWeapon]);
 
   useFrame((_, delta) => {
     if (!groupRef.current) return;
+
+    // Hide when another weapon is active
+    if (activeWeapon !== 'sword') {
+      groupRef.current.visible = false;
+      return;
+    }
 
     const isGameplay =
       phase === 'playing' ||
@@ -88,6 +98,15 @@ export function ViewmodelSword() {
     let rotX = 0;
     let rotY = 0.3;
     let rotZ = 0.4;
+
+    // Stun vibration — sword shakes while stunned
+    if (isPlayerStunned()) {
+      const stunShake = Math.sin(Date.now() * 0.05) * 0.015;
+      const stunShake2 = Math.cos(Date.now() * 0.07) * 0.01;
+      offset.x += stunShake;
+      offset.y += stunShake2;
+      rotZ += Math.sin(Date.now() * 0.04) * 0.05;
+    }
 
     if (swingTime.current >= 0) {
       const t = swingTime.current / SWING_DURATION;

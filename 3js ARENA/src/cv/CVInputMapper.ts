@@ -26,11 +26,19 @@ void _LEFT_ELBOW;
 void _LEFT_WRIST;
 
 // ---- Head look tuning ----
-const HEAD_YAW_SCALE = 8.0;   // radians per unit of normalized displacement
-const HEAD_PITCH_SCALE = 6.0;
-const HEAD_SMOOTH = 0.12;      // lower = smoother (was 0.25)
+const HEAD_YAW_SCALE = 12.0;   // radians per unit of normalized displacement (raised from 8)
+const HEAD_PITCH_SCALE = 9.0;  // (raised from 6)
+const HEAD_SMOOTH = 0.15;      // lower = smoother (was 0.12)
 const HEAD_YAW_MAX = Math.PI * 0.75;  // ±135°
 const HEAD_PITCH_MAX = Math.PI * 0.4;  // ±72°
+
+/**
+ * Mutable sensitivity config — UI sliders write to this object.
+ * 1.0 = default, 0.5 = half sensitivity, 2.0 = double.
+ */
+export const headSensitivityConfig = {
+  multiplier: 1.0,
+};
 
 // ---- Movement tuning ----
 const POSITION_SCALE_X = 12.0;
@@ -168,9 +176,10 @@ export class CVInputMapper {
     // The webcam PiP is mirrored (scaleX(-1)), so the user perceives directions
     // as in a mirror. MediaPipe raw X must be negated to match what they see.
     // Negate: user "turns left" in mirror = raw nose.x decreases → we want +yaw.
-    const rawYaw = -(noseRelX - this.neutralNoseRelX) * HEAD_YAW_SCALE;
+    const sens = headSensitivityConfig.multiplier;
+    const rawYaw = -(noseRelX - this.neutralNoseRelX) * HEAD_YAW_SCALE * sens;
     // Look UP → nose moves UP → noseRelY decreases (0=top, 1=bottom)
-    const rawPitch = -(noseRelY - this.neutralNoseRelY) * HEAD_PITCH_SCALE;
+    const rawPitch = -(noseRelY - this.neutralNoseRelY) * HEAD_PITCH_SCALE * sens;
 
     const clampedYaw = Math.max(-HEAD_YAW_MAX, Math.min(HEAD_YAW_MAX, rawYaw));
     const clampedPitch = Math.max(-HEAD_PITCH_MAX, Math.min(HEAD_PITCH_MAX, rawPitch));

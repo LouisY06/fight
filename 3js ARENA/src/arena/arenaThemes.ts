@@ -1,12 +1,12 @@
 // =============================================================================
-// arenaThemes.ts — Arena theme registry
+// arenaThemes.ts — Arena theme registry (one per Kenney world kit + hangar)
 // =============================================================================
 
 export interface ArenaTheme {
   id: string;
   name: string;
-  skybox: string; // path to equirectangular image
-  platformTexture: string; // path to floor texture set
+  skybox: string;
+  platformTexture: string;
   ambientLight: { color: string; intensity: number };
   spotLights: Array<{
     color: string;
@@ -14,28 +14,19 @@ export interface ArenaTheme {
     position: [number, number, number];
   }>;
   fog: { color: string; near: number; far: number };
-  particleColor: string; // floating ambient particles
-  ambientSound: string; // background audio loop
+  particleColor: string;
+  ambientSound: string;
+  /** Gradient sky fallback when no skybox image exists */
+  skyGradient: { top: string; bottom: string };
+  /** Show stars in the sky */
+  stars: boolean;
 }
 
 export const ARENA_THEMES: ArenaTheme[] = [
-  {
-    id: 'volcanic',
-    name: 'Volcanic Arena',
-    skybox: '/assets/environments/volcanic-arena.jpg',
-    platformTexture: '/assets/textures/stone-floor',
-    ambientLight: { color: '#ff4400', intensity: 0.3 },
-    spotLights: [
-      { color: '#ff6600', intensity: 2, position: [0, 15, 0] },
-      { color: '#ff2200', intensity: 1, position: [-5, 10, 5] },
-    ],
-    fog: { color: '#1a0500', near: 10, far: 50 },
-    particleColor: '#ff4400',
-    ambientSound: '/assets/audio/crowd-ambience.mp3',
-  },
+  // ---- CYBERPUNK CITY (night) ----
   {
     id: 'cyberpunk',
-    name: 'Cyberpunk Pit',
+    name: 'Cyberpunk City',
     skybox: '/assets/environments/cyberpunk-pit.jpg',
     platformTexture: '/assets/textures/metal-grate',
     ambientLight: { color: '#6600ff', intensity: 0.25 },
@@ -43,38 +34,14 @@ export const ARENA_THEMES: ArenaTheme[] = [
       { color: '#00ffff', intensity: 2.5, position: [0, 12, 0] },
       { color: '#ff00ff', intensity: 1.5, position: [5, 8, -5] },
     ],
-    fog: { color: '#0a0015', near: 12, far: 55 },
+    fog: { color: '#06001a', near: 25, far: 70 },
     particleColor: '#00ffff',
     ambientSound: '/assets/audio/crowd-ambience.mp3',
+    skyGradient: { top: '#050018', bottom: '#1a0040' },
+    stars: true,
   },
-  {
-    id: 'underwater',
-    name: 'Underwater Colosseum',
-    skybox: '/assets/environments/underwater-colosseum.jpg',
-    platformTexture: '/assets/textures/stone-floor',
-    ambientLight: { color: '#004466', intensity: 0.35 },
-    spotLights: [
-      { color: '#00ccff', intensity: 1.8, position: [0, 15, 0] },
-      { color: '#00ff88', intensity: 0.8, position: [4, 10, 4] },
-    ],
-    fog: { color: '#001a2e', near: 8, far: 40 },
-    particleColor: '#00ffaa',
-    ambientSound: '/assets/audio/crowd-ambience.mp3',
-  },
-  {
-    id: 'ancient-temple',
-    name: 'Ancient Temple',
-    skybox: '/assets/environments/ancient-temple.jpg',
-    platformTexture: '/assets/textures/stone-floor',
-    ambientLight: { color: '#ffcc66', intensity: 0.3 },
-    spotLights: [
-      { color: '#ffaa33', intensity: 2, position: [0, 14, 0] },
-      { color: '#ff6600', intensity: 1, position: [-4, 8, -4] },
-    ],
-    fog: { color: '#1a1200', near: 10, far: 50 },
-    particleColor: '#ffcc44',
-    ambientSound: '/assets/audio/crowd-ambience.mp3',
-  },
+
+  // ---- SPACE STATION (indoor docking bay — no visible sky) ----
   {
     id: 'space-station',
     name: 'Space Station',
@@ -85,52 +52,83 @@ export const ARENA_THEMES: ArenaTheme[] = [
       { color: '#ffffff', intensity: 2, position: [0, 12, 0] },
       { color: '#4488ff', intensity: 1.2, position: [3, 10, -3] },
     ],
-    fog: { color: '#000510', near: 15, far: 60 },
+    fog: { color: '#05050a', near: 20, far: 55 },
     particleColor: '#4488ff',
     ambientSound: '/assets/audio/crowd-ambience.mp3',
+    skyGradient: { top: '#020204', bottom: '#08080e' },
+    stars: false,
   },
+
+  // ---- MEDIEVAL VILLAGE (dusk / sunset) ----
   {
-    id: 'frozen-tundra',
-    name: 'Frozen Tundra',
-    skybox: '/assets/environments/frozen-tundra.jpg',
+    id: 'medieval',
+    name: 'Medieval Village',
+    skybox: '/assets/environments/ancient-temple.jpg',
     platformTexture: '/assets/textures/stone-floor',
-    ambientLight: { color: '#88ccff', intensity: 0.35 },
+    ambientLight: { color: '#ffcc66', intensity: 0.3 },
     spotLights: [
-      { color: '#ccddff', intensity: 1.8, position: [0, 14, 0] },
-      { color: '#44aaff', intensity: 1, position: [-5, 8, 3] },
+      { color: '#ffaa33', intensity: 2, position: [0, 14, 0] },
+      { color: '#ff6600', intensity: 1, position: [-4, 8, -4] },
     ],
-    fog: { color: '#0a1520', near: 10, far: 45 },
-    particleColor: '#aaddff',
+    fog: { color: '#1a1008', near: 20, far: 65 },
+    particleColor: '#ffcc44',
     ambientSound: '/assets/audio/crowd-ambience.mp3',
+    skyGradient: { top: '#0a1530', bottom: '#cc6622' },
+    stars: false,
   },
+
+  // ---- CASTLE SIEGE (daytime) ----
   {
-    id: 'neon-cage',
-    name: 'Neon Cage',
-    skybox: '/assets/environments/neon-cage.jpg',
-    platformTexture: '/assets/textures/metal-grate',
-    ambientLight: { color: '#ff00aa', intensity: 0.2 },
-    spotLights: [
-      { color: '#ff0088', intensity: 2.5, position: [0, 12, 0] },
-      { color: '#00ffcc', intensity: 1.5, position: [4, 8, 4] },
-      { color: '#8800ff', intensity: 1, position: [-4, 8, -4] },
-    ],
-    fog: { color: '#05000a', near: 12, far: 50 },
-    particleColor: '#ff44cc',
-    ambientSound: '/assets/audio/crowd-ambience.mp3',
-  },
-  {
-    id: 'desert-ruins',
-    name: 'Desert Ruins',
+    id: 'castle',
+    name: 'Castle Siege',
     skybox: '/assets/environments/desert-ruins.jpg',
     platformTexture: '/assets/textures/stone-floor',
-    ambientLight: { color: '#ffaa44', intensity: 0.4 },
+    ambientLight: { color: '#ffdd88', intensity: 0.45 },
     spotLights: [
-      { color: '#ffcc88', intensity: 1.8, position: [0, 15, 0] },
-      { color: '#ff8844', intensity: 0.8, position: [5, 10, -3] },
+      { color: '#ffffee', intensity: 2, position: [0, 18, 0] },
+      { color: '#ffcc88', intensity: 1, position: [5, 10, -3] },
     ],
-    fog: { color: '#1a1005', near: 10, far: 55 },
+    fog: { color: '#c8d8e8', near: 30, far: 80 },
     particleColor: '#ffaa33',
     ambientSound: '/assets/audio/crowd-ambience.mp3',
+    skyGradient: { top: '#3366aa', bottom: '#88aacc' },
+    stars: false,
+  },
+
+  // ---- GRAVEYARD (foggy night) ----
+  {
+    id: 'graveyard',
+    name: 'Graveyard',
+    skybox: '/assets/environments/frozen-tundra.jpg',
+    platformTexture: '/assets/textures/stone-floor',
+    ambientLight: { color: '#445566', intensity: 0.2 },
+    spotLights: [
+      { color: '#88aacc', intensity: 1.5, position: [0, 14, 0] },
+      { color: '#446688', intensity: 0.8, position: [-5, 8, 3] },
+    ],
+    fog: { color: '#0a0a12', near: 15, far: 50 },
+    particleColor: '#6688aa',
+    ambientSound: '/assets/audio/crowd-ambience.mp3',
+    skyGradient: { top: '#0a0a15', bottom: '#1a1a28' },
+    stars: true,
+  },
+
+  // ---- MECH HANGAR (industrial interior) ----
+  {
+    id: 'hangar',
+    name: 'Mech Hangar',
+    skybox: '/assets/environments/volcanic-arena.jpg',
+    platformTexture: '/assets/textures/metal-grate',
+    ambientLight: { color: '#ffaa66', intensity: 0.3 },
+    spotLights: [
+      { color: '#ffffff', intensity: 2, position: [0, 15, 0] },
+      { color: '#ffaa44', intensity: 1, position: [-5, 10, 5] },
+    ],
+    fog: { color: '#0a0805', near: 20, far: 60 },
+    particleColor: '#ffaa44',
+    ambientSound: '/assets/audio/crowd-ambience.mp3',
+    skyGradient: { top: '#080605', bottom: '#1a1510' },
+    stars: false,
   },
 ];
 
