@@ -1,6 +1,7 @@
 // =============================================================================
 // BulletManager.tsx — Visible bullet projectiles for the gun weapon
 // Manages spawning, movement, capsule collision, damage, and rendering.
+// Positions are updated imperatively in useFrame (no React re-render lag).
 // =============================================================================
 
 import { useRef, useState, useCallback } from 'react';
@@ -28,6 +29,7 @@ const _capsuleTop = new THREE.Vector3();
 const _closestOnRay = new THREE.Vector3();
 const _closestOnCapsule = new THREE.Vector3();
 const _hitPoint = new THREE.Vector3();
+const _prevPos = new THREE.Vector3();
 
 interface Bullet {
   id: number;
@@ -102,11 +104,12 @@ function closestDistSegmentSegment(
 
 export function BulletManager() {
   const { scene } = useThree();
-  const [bullets, setBullets] = useState<Bullet[]>([]);
+  // Bullet data lives in a ref — mutated imperatively, no re-render per frame
   const bulletsRef = useRef<Bullet[]>([]);
-
-  // Keep ref in sync with state
-  bulletsRef.current = bullets;
+  // Map from bullet ID → Three.js group for imperative position updates
+  const groupRefs = useRef<Map<number, THREE.Group>>(new Map());
+  // Version counter — triggers re-render ONLY when bullets are added/removed
+  const [, setVersion] = useState(0);
 
   const spawn = useCallback((origin: THREE.Vector3, direction: THREE.Vector3) => {
     const bullet: Bullet = {
@@ -115,12 +118,14 @@ export function BulletManager() {
       direction: direction.clone().normalize(),
       age: 0,
     };
-    setBullets((prev) => {
-      const next = [...prev, bullet];
-      // Cap at MAX_BULLETS — remove oldest
-      if (next.length > MAX_BULLETS) next.shift();
-      return next;
-    });
+    const bullets = bulletsRef.current;
+    bullets.push(bullet);
+    // Cap at MAX_BULLETS — remove oldest
+    if (bullets.length > MAX_BULLETS) {
+      const removed = bullets.shift()!;
+      groupRefs.current.delete(removed.id);
+    }
+    setVersion((v) => v + 1); // re-render to add the new mesh
   }, []);
 
   // Register spawn function for external callers
@@ -129,18 +134,26 @@ export function BulletManager() {
   useFrame((_, delta) => {
     const phase = useGameStore.getState().phase;
     if (phase !== 'playing') {
-      if (bulletsRef.current.length > 0) setBullets([]);
+      if (bulletsRef.current.length > 0) {
+        bulletsRef.current = [];
+        groupRefs.current.clear();
+        setVersion((v) => v + 1);
+      }
       return;
     }
 
     const toRemove = new Set<number>();
 
     for (const bullet of bulletsRef.current) {
-      const prevPos = bullet.position.clone();
+      _prevPos.copy(bullet.position);
 
       // Advance
       bullet.position.addScaledVector(bullet.direction, BULLET_SPEED * delta);
       bullet.age += delta;
+
+      // Update mesh position imperatively — no React re-render needed
+      const group = groupRefs.current.get(bullet.id);
+      if (group) group.position.copy(bullet.position);
 
       // Expire
       if (bullet.age > MAX_LIFETIME) {
@@ -160,7 +173,7 @@ export function BulletManager() {
         _capsuleTop.set(_oppPos.x, _oppPos.y + OPPONENT_CAPSULE_TOP, _oppPos.z);
 
         const dist = closestDistSegmentSegment(
-          prevPos, bullet.position,
+          _prevPos, bullet.position,
           _capsuleBot, _capsuleTop,
           _closestOnRay, _closestOnCapsule
         );
@@ -191,15 +204,26 @@ export function BulletManager() {
       });
     }
 
+    // Remove expired/hit bullets — only re-render when count changes
     if (toRemove.size > 0) {
-      setBullets((prev) => prev.filter((b) => !toRemove.has(b.id)));
+      for (const id of toRemove) groupRefs.current.delete(id);
+      bulletsRef.current = bulletsRef.current.filter((b) => !toRemove.has(b.id));
+      setVersion((v) => v + 1);
     }
   });
 
   return (
     <>
-      {bullets.map((b) => (
-        <group key={b.id} position={[b.position.x, b.position.y, b.position.z]}>
+      {bulletsRef.current.map((b) => (
+        <group
+          key={b.id}
+          ref={(node) => {
+            if (node) {
+              groupRefs.current.set(b.id, node);
+              node.position.copy(b.position);
+            }
+          }}
+        >
           <mesh>
             <sphereGeometry args={[0.05, 6, 6]} />
             <meshStandardMaterial
@@ -208,7 +232,7 @@ export function BulletManager() {
               emissiveIntensity={2}
             />
           </mesh>
-          <pointLight color="#ff4400" intensity={1.5} distance={3} />
+          {/* Removed per-bullet pointLight — dynamic lights are expensive */}
         </group>
       ))}
     </>
