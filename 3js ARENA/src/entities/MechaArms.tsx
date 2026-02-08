@@ -320,10 +320,13 @@ export function MechaArms() {
       <primitive object={rForearm} />
       <primitive object={rHand} />
 
-      {/* Detailed armored limbs */}
-      <primitive object={upperArm} />
-      <primitive object={forearm} />
-      <primitive object={hand} />
+      {/* ---- Left arm ---- */}
+      <primitive object={lShoulderJoint} />
+      <primitive object={lElbowJoint} />
+      <primitive object={lWristJoint} />
+      <primitive object={lUpperArm} />
+      <primitive object={lForearm} />
+      <primitive object={lHand} />
 
       {/* Greatsword — visible when sword is active */}
       <group ref={swordGroupRef} scale={0.65}>
