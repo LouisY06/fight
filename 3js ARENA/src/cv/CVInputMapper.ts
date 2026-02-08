@@ -51,8 +51,8 @@ const WRIST_SMOOTH = 0.2;      // lower = smoother (was 0.4)
 const ROTATION_SMOOTH = 0.15;   // lower = smoother (was 0.35)
 
 // ---- Swing tuning ----
-const SWING_VELOCITY_THRESHOLD = 2.5;  // raised: needs a deliberate swing (was 1.2)
-const SWING_COOLDOWN_MS = 600;         // longer cooldown between swings (was 500)
+const SWING_VELOCITY_THRESHOLD = 1.6;  // moderate: responsive to arm swings without false triggers
+const SWING_COOLDOWN_MS = 400;         // shorter cooldown for snappier feel
 
 // Block detection removed — left hand is on keyboard for WASD.
 
