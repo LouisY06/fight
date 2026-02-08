@@ -145,7 +145,7 @@ export function SpellHUD() {
           bottom: '28px',
           right: '24px',
           display: 'flex',
-          gap: '6px',
+          gap: '8px',
           alignItems: 'flex-end',
           pointerEvents: 'none',
           zIndex: 55,
@@ -167,16 +167,16 @@ export function SpellHUD() {
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                gap: '4px',
-                width: '64px',
+                gap: '5px',
+                width: '80px',
               }}
             >
               {/* Spell card */}
               <div
                 style={{
                   position: 'relative',
-                  width: '56px',
-                  height: '56px',
+                  width: '72px',
+                  height: '72px',
                   borderRadius: '6px',
                   background: isReady
                     ? `linear-gradient(135deg, ${config.color}18, ${config.color}08)`
@@ -211,7 +211,7 @@ export function SpellHUD() {
 
                 {/* Icon */}
                 <div style={{ position: 'relative', zIndex: 1, opacity: isReady ? 1 : 0.35 }}>
-                  <IconComponent color={isReady ? config.color : '#666'} size={22} />
+                  <IconComponent color={isReady ? config.color : '#666'} size={30} />
                 </div>
 
                 {/* Cooldown timer */}
@@ -220,11 +220,11 @@ export function SpellHUD() {
                     style={{
                       position: 'relative',
                       zIndex: 1,
-                      fontSize: '10px',
+                      fontSize: '13px',
                       fontFamily: FONT_BODY,
                       fontWeight: 600,
                       color: '#999',
-                      marginTop: '1px',
+                      marginTop: '2px',
                     }}
                   >
                     {cdSeconds.toFixed(1)}s
@@ -242,16 +242,16 @@ export function SpellHUD() {
               >
                 <span
                   style={{
-                    fontSize: '10px',
+                    fontSize: '13px',
                     fontFamily: FONT_HEADING,
                     fontWeight: 700,
                     color: isReady ? '#fff' : '#444',
                     background: isReady ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.03)',
-                    padding: '1px 5px',
+                    padding: '2px 7px',
                     borderRadius: '3px',
                     border: `1px solid ${isReady ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)'}`,
                     letterSpacing: '0.5px',
-                    lineHeight: '14px',
+                    lineHeight: '16px',
                   }}
                 >
                   {SPELL_KEYS[type]}
@@ -261,7 +261,7 @@ export function SpellHUD() {
               {/* Spell name */}
               <span
                 style={{
-                  fontSize: '8px',
+                  fontSize: '10px',
                   fontFamily: FONT_BODY,
                   fontWeight: 600,
                   color: isReady ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.2)',

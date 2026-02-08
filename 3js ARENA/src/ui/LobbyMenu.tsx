@@ -6,12 +6,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { useGameStore } from '../game/GameState';
 import { useNetwork } from '../networking/NetworkProvider';
-import { ARENA_THEMES } from '../arena/arenaThemes';
-import { randomPick } from '../utils/random';
+import { MapSelector } from './MapSelector';
 import { COLORS, FONTS, CLIP } from './theme';
 import { MechButton } from './MainMenu';
 
-type LobbyView = 'choose' | 'create' | 'join' | 'searching' | 'waiting';
+type LobbyView = 'choose' | 'create' | 'join' | 'searching' | 'waiting' | 'map_select' | 'map_select_waiting';
 
 export function LobbyMenu() {
   const phase = useGameStore((s) => s.phase);
@@ -45,7 +44,9 @@ export function LobbyMenu() {
     }
   }, [view]);
 
-  // When opponent connects, auto-start the game (host picks theme)
+  // When opponent connects, randomly decide which player picks the map.
+  // Use roomId to deterministically agree on the picker (both clients
+  // compute the same result from the shared room code).
   useEffect(() => {
     if (opponentConnected && roomId && playerSlot) {
       setMultiplayerInfo({
@@ -54,13 +55,19 @@ export function LobbyMenu() {
         playerSlot,
       });
 
-      if (playerSlot === 'player1') {
-        const theme = randomPick(ARENA_THEMES);
-        sendGameStart(theme.id);
-        startGame(theme.id);
+      // Deterministic coin flip based on roomId
+      const pickerIsP1 = roomId.charCodeAt(0) % 2 === 0;
+      const isMapPicker = pickerIsP1
+        ? playerSlot === 'player1'
+        : playerSlot === 'player2';
+
+      if (isMapPicker) {
+        setView('map_select');
+      } else {
+        setView('map_select_waiting');
       }
     }
-  }, [opponentConnected, roomId, playerSlot, setMultiplayerInfo, sendGameStart, startGame]);
+  }, [opponentConnected, roomId, playerSlot, setMultiplayerInfo]);
 
   if (phase !== 'lobby' && phase !== 'waiting') return null;
 
@@ -87,6 +94,11 @@ export function LobbyMenu() {
       setView('waiting');
       joinRoom(joinCode.trim().toUpperCase());
     }
+  };
+
+  const handleMapSelected = (themeId: string) => {
+    sendGameStart(themeId);
+    startGame(themeId);
   };
 
   const handleCopyCode = () => {
@@ -167,6 +179,8 @@ export function LobbyMenu() {
         {view === 'join' && 'JOIN ROOM'}
         {view === 'searching' && 'SCANNING'}
         {view === 'waiting' && 'STANDBY'}
+        {view === 'map_select' && 'SELECT ARENA'}
+        {view === 'map_select_waiting' && 'STANDBY'}
       </h2>
 
       {/* Warning stripe */}
@@ -322,9 +336,35 @@ export function LobbyMenu() {
         </>
       )}
 
+      {/* ---- Map selection (this player picks) ---- */}
+      {view === 'map_select' && (
+        <MapSelector
+          mode="practice"
+          onSelect={handleMapSelected}
+          onCancel={handleBack}
+        />
+      )}
+
+      {/* ---- Waiting for opponent to select map ---- */}
+      {view === 'map_select_waiting' && (
+        <>
+          <div style={{ fontSize: '13px', color: COLORS.amber, fontFamily: FONTS.mono, letterSpacing: '2px' }}>
+            OPPONENT IS SELECTING ARENA...
+          </div>
+          <Spinner />
+          <div style={{ fontSize: '11px', color: COLORS.textDim, fontFamily: FONTS.mono, letterSpacing: '1px', marginTop: '8px' }}>
+            // STANDBY FOR DEPLOYMENT
+          </div>
+        </>
+      )}
+
       {/* Back button */}
-      <div style={{ height: '4px' }} />
-      <MechButton onClick={handleBack} variant="secondary">BACK</MechButton>
+      {view !== 'map_select' && (
+        <>
+          <div style={{ height: '4px' }} />
+          <MechButton onClick={handleBack} variant="secondary">BACK</MechButton>
+        </>
+      )}
     </div>
   );
 }

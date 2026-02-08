@@ -10,8 +10,8 @@ import { poseTracker } from './PoseTracker';
 
 const FONT_HEADING = "'Orbitron', 'Rajdhani', sans-serif";
 
-const PIP_WIDTH = 160;
-const PIP_HEIGHT = 120;
+const PIP_WIDTH = 240;
+const PIP_HEIGHT = 180;
 
 export function WebcamView() {
   const { cvEnabled, isTracking } = useCVContext();
@@ -94,25 +94,25 @@ export function WebcamView() {
         <div
           style={{
             position: 'absolute',
-            top: '6px',
-            left: '8px',
+            top: '8px',
+            left: '10px',
             display: 'flex',
             alignItems: 'center',
-            gap: '4px',
+            gap: '6px',
           }}
         >
           <div
             style={{
-              width: '5px',
-              height: '5px',
+              width: '7px',
+              height: '7px',
               borderRadius: '50%',
               background: isTracking ? '#44cc66' : '#cc4444',
-              boxShadow: isTracking ? '0 0 4px #44cc66' : '0 0 4px #cc4444',
+              boxShadow: isTracking ? '0 0 6px #44cc66' : '0 0 6px #cc4444',
             }}
           />
           <span
             style={{
-              fontSize: '8px',
+              fontSize: '10px',
               fontFamily: FONT_HEADING,
               fontWeight: 600,
               color: isTracking ? 'rgba(68,204,102,0.7)' : 'rgba(204,68,68,0.7)',

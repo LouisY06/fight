@@ -68,17 +68,29 @@ export function MainMenu() {
           display: 'flex',
           flexDirection: 'row',
           alignItems: 'stretch',
-          background: `linear-gradient(180deg, ${COLORS.bgDeep} 0%, ${COLORS.bgDark} 50%, ${COLORS.bgDeep} 100%)`,
+          background: 'transparent',
           zIndex: 200,
         }}
       >
-        {/* Noise overlay */}
+        {/* Dark vignette overlay — lets the 3D hangar show through while keeping text readable */}
         <div
           style={{
             position: 'absolute',
             inset: 0,
-            opacity: 0.03,
-            background: 'repeating-conic-gradient(#fff 0% 25%, transparent 0% 50%) 0 0 / 3px 3px',
+            background: 'radial-gradient(ellipse at 60% 50%, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.65) 50%, rgba(0,0,0,0.85) 100%)',
+            pointerEvents: 'none',
+          }}
+        />
+
+        {/* Left-side gradient for menu readability */}
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            bottom: 0,
+            left: 0,
+            width: '55%',
+            background: 'linear-gradient(90deg, rgba(10,12,16,0.88) 0%, rgba(10,12,16,0.6) 70%, transparent 100%)',
             pointerEvents: 'none',
           }}
         />
@@ -88,7 +100,7 @@ export function MainMenu() {
           style={{
             position: 'absolute',
             inset: 0,
-            background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.06) 2px, rgba(0,0,0,0.06) 4px)',
+            background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.04) 2px, rgba(0,0,0,0.04) 4px)',
             pointerEvents: 'none',
           }}
         />
@@ -127,7 +139,7 @@ export function MainMenu() {
               fontFamily: FONTS.heading,
               textTransform: 'uppercase',
               letterSpacing: '8px',
-              textShadow: `0 0 30px ${COLORS.amberGlow}, 0 0 60px rgba(255, 140, 0, 0.1)`,
+                textShadow: `0 0 30px ${COLORS.amberGlow}, 0 0 60px rgba(255, 140, 0, 0.2), 0 2px 20px rgba(0,0,0,0.8)`,
               marginBottom: '4px',
               textAlign: 'center',
               lineHeight: 1.0,
@@ -197,7 +209,7 @@ export function MainMenu() {
                 letterSpacing: '3px',
                 textAlign: 'center',
                 color: COLORS.textPrimary,
-                background: 'rgba(255, 140, 0, 0.04)',
+                background: 'rgba(10, 12, 16, 0.7)',
                 border: `1px solid ${COLORS.borderDefault}`,
                 clipPath: CLIP.button,
                 outline: 'none',
@@ -252,8 +264,9 @@ export function MainMenu() {
               gap: '12px',
               padding: '10px 20px',
               background: cvEnabled
-                ? 'rgba(0, 204, 102, 0.06)'
-                : 'rgba(255, 255, 255, 0.02)',
+                ? 'rgba(0, 204, 102, 0.1)'
+                : 'rgba(10, 12, 16, 0.6)',
+              backdropFilter: 'blur(4px)',
               border: cvEnabled
                 ? `1px solid ${COLORS.greenDim}`
                 : `1px solid ${COLORS.borderFaint}`,
@@ -295,6 +308,8 @@ export function MainMenu() {
           <div
             style={{
               padding: '10px 16px',
+              background: 'rgba(10, 12, 16, 0.5)',
+              backdropFilter: 'blur(4px)',
               border: `1px solid ${COLORS.borderFaint}`,
               clipPath: CLIP.button,
               animation: 'fadeInUp 0.5s 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
@@ -350,10 +365,12 @@ export function MainMenu() {
             alignItems: 'center',
             justifyContent: 'flex-end',
             paddingBottom: '48px',
-            background: 'rgba(13, 15, 19, 0.6)',
-            border: `1px solid ${COLORS.borderDefault}`,
+            background: 'rgba(10, 12, 16, 0.45)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            border: `1px solid rgba(255, 140, 0, 0.15)`,
             clipPath: CLIP.panelLarge,
-            boxShadow: `0 0 40px ${COLORS.amberGlow}`,
+            boxShadow: `0 0 40px ${COLORS.amberGlow}, inset 0 0 60px rgba(0,0,0,0.3)`,
           }}
         >
           {/* Corner brackets */}

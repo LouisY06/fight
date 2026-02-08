@@ -29,7 +29,7 @@ export function WeaponSelector() {
     <div
       style={{
         position: 'absolute',
-        bottom: '20px',
+        bottom: '24px',
         left: '50%',
         transform: 'translateX(-50%)',
         display: 'flex',
@@ -100,7 +100,7 @@ export function WeaponSelector() {
               marginTop: '2px',
             }}
           >
-            ARMED
+            SWORD
           </div>
 
           {/* Active indicator bar */}

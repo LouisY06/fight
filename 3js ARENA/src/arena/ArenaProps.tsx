@@ -993,12 +993,22 @@ function HangarWorld() {
       {/* Concrete industrial floor */}
       <Ground color="#2a2a2a" metalness={0.4} roughness={0.6} size={100} />
 
-      {/* The actual hangar model — centered behind the arena */}
+      {/* The actual hangar model — pushed far enough back so the arena
+          platform sits in the open yard in front of the building,
+          not inside the structure. */}
       <M
         path={`${BASE}/hangar/mech_hangar.glb`}
-        position={[0, 0, R + 6]}
+        position={[0, 0, R + 24]}
         rotation={[0, Math.PI, 0]}
-        scale={3}
+        scale={4}
+      />
+
+      {/* Second hangar on the opposite side for symmetry */}
+      <M
+        path={`${BASE}/hangar/mech_hangar.glb`}
+        position={[0, 0, -(R + 24)]}
+        rotation={[0, 0, 0]}
+        scale={4}
       />
 
       {/* Overhead industrial lights */}
@@ -1024,6 +1034,10 @@ function HangarWorld() {
           position={[x, 0.5, z]}
         />
       ))}
+
+      {/* Distant hangar bay lights */}
+      <pointLight color="#ffcc88" intensity={3} distance={30} decay={2} position={[0, 12, R + 20]} />
+      <pointLight color="#ffcc88" intensity={3} distance={30} decay={2} position={[0, 12, -(R + 20)]} />
     </group>
   );
 }
