@@ -342,6 +342,7 @@ export function MainMenu() {
             width: '42%',
             minWidth: 320,
             maxWidth: 480,
+            zIndex: 3,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',

@@ -19,6 +19,12 @@ const IDLE_OFFSET = new THREE.Vector3(0.55, -0.5, -0.5);
 const SWORD_SCALE = 0.65;
 const SWING_DURATION = 0.25; // seconds — snappy (keyboard mode only)
 
+// Pre-allocated temp objects (avoid per-frame GC pressure)
+const _offset = new THREE.Vector3();
+const _worldOffset = new THREE.Vector3();
+const _localQuat = new THREE.Quaternion();
+const _localEuler = new THREE.Euler();
+
 export function ViewmodelSword() {
   const { camera } = useThree();
   const groupRef = useRef<THREE.Group>(null!);
@@ -51,9 +57,15 @@ export function ViewmodelSword() {
   useFrame((_, delta) => {
     if (!groupRef.current) return;
 
-    // Hide when another weapon is active
+    // Hide when another weapon is active — also reset swing state
     if (activeWeapon !== 'sword') {
       groupRef.current.visible = false;
+      // Reset swing state so keyboardSwingActive doesn't stay stuck true
+      if (swingTime.current >= 0) {
+        swingTime.current = -1;
+        setKeyboardSwingActive(false);
+        setIsSwinging(false);
+      }
       return;
     }
 
@@ -94,27 +106,28 @@ export function ViewmodelSword() {
       }
     }
 
-    const offset = IDLE_OFFSET.clone();
+    _offset.copy(IDLE_OFFSET);
     let rotX = 0;
     let rotY = 0.3;
     let rotZ = 0.4;
 
     // Stun vibration — sword shakes while stunned
     if (isPlayerStunned()) {
-      const stunShake = Math.sin(Date.now() * 0.05) * 0.015;
-      const stunShake2 = Math.cos(Date.now() * 0.07) * 0.01;
-      offset.x += stunShake;
-      offset.y += stunShake2;
-      rotZ += Math.sin(Date.now() * 0.04) * 0.05;
+      const now = Date.now();
+      const stunShake = Math.sin(now * 0.05) * 0.015;
+      const stunShake2 = Math.cos(now * 0.07) * 0.01;
+      _offset.x += stunShake;
+      _offset.y += stunShake2;
+      rotZ += Math.sin(now * 0.04) * 0.05;
     }
 
     if (swingTime.current >= 0) {
       const t = swingTime.current / SWING_DURATION;
       const ease = 1 - Math.pow(1 - t, 3);
 
-      offset.x += -ease * 0.7;
-      offset.y += -ease * 0.15 + Math.sin(t * Math.PI) * 0.15;
-      offset.z += -Math.sin(t * Math.PI) * 0.2;
+      _offset.x += -ease * 0.7;
+      _offset.y += -ease * 0.15 + Math.sin(t * Math.PI) * 0.15;
+      _offset.z += -Math.sin(t * Math.PI) * 0.2;
 
       rotX += ease * 0.3;
       rotY += -ease * 1.8;
@@ -122,17 +135,16 @@ export function ViewmodelSword() {
     } else {
       // Idle bob
       const time = Date.now() * 0.001;
-      offset.x += Math.sin(time * 1.5) * 0.003;
-      offset.y += Math.sin(time * 2.0) * 0.005;
+      _offset.x += Math.sin(time * 1.5) * 0.003;
+      _offset.y += Math.sin(time * 2.0) * 0.005;
     }
 
-    const worldOffset = offset.applyQuaternion(camera.quaternion);
-    groupRef.current.position.copy(camera.position).add(worldOffset);
+    _worldOffset.copy(_offset).applyQuaternion(camera.quaternion);
+    groupRef.current.position.copy(camera.position).add(_worldOffset);
 
-    const localQuat = new THREE.Quaternion().setFromEuler(
-      new THREE.Euler(rotX, rotY, rotZ)
-    );
-    groupRef.current.quaternion.copy(camera.quaternion).multiply(localQuat);
+    _localEuler.set(rotX, rotY, rotZ);
+    _localQuat.setFromEuler(_localEuler);
+    groupRef.current.quaternion.copy(camera.quaternion).multiply(_localQuat);
 
     // Publish world-space sword line for collision detection
     updateSwordTransform(groupRef.current);

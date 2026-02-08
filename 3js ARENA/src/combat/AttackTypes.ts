@@ -32,7 +32,7 @@ export const ATTACK_CONFIGS: Record<string, AttackConfig> = {
   },
   gunShot: {
     type: 'shoot',
-    damage: 25,
+    damage: 10,
     cooldownMs: 500,
     canBlock: false,
     isRanged: true,

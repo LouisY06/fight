@@ -3,7 +3,7 @@
 // Bloom intensity spikes during countdown for impact; MotionBlur not in package.
 // =============================================================================
 
-import { useRef, useMemo } from 'react';
+import { useRef, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
@@ -106,8 +106,11 @@ function FogSetup({
 }) {
   const { scene } = useThree();
 
-  useMemo(() => {
+  useEffect(() => {
     scene.fog = new THREE.Fog(color, near, far);
+    return () => {
+      scene.fog = null;
+    };
   }, [scene, color, near, far]);
 
   return null;

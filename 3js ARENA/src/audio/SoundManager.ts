@@ -1,15 +1,47 @@
 // =============================================================================
 // SoundManager.ts — Web Audio API synthesized game sounds
 // No external audio files — all sounds are generated procedurally.
+// Integrates with SettingsStore for volume control.
 // =============================================================================
 
+import { useSettingsStore } from '../game/SettingsStore';
+
 let ctx: AudioContext | null = null;
+let masterGain: GainNode | null = null;
+
+// Cached WaveShaper curve for KO distortion (expensive to compute)
+let koCurve: Float32Array | null = null;
 
 function getCtx(): AudioContext {
-  if (!ctx) ctx = new AudioContext();
+  if (!ctx) {
+    ctx = new AudioContext();
+    masterGain = ctx.createGain();
+    masterGain.connect(ctx.destination);
+  }
   // Resume if suspended (browser autoplay policy)
   if (ctx.state === 'suspended') ctx.resume();
+  // Update master gain from settings
+  const { sfxVolume, masterVolume } = useSettingsStore.getState();
+  if (masterGain) masterGain.gain.value = sfxVolume * masterVolume;
   return ctx;
+}
+
+/** Get the master output node (gain-controlled) */
+function getOutput(): AudioNode {
+  getCtx(); // ensure initialized
+  return masterGain ?? ctx!.destination;
+}
+
+function getKOCurve(): Float32Array {
+  if (koCurve) return koCurve;
+  const k = 20;
+  const n = 44100;
+  koCurve = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const x = (i * 2) / n - 1;
+    koCurve[i] = ((3 + k) * x * 20 * (Math.PI / 180)) / (Math.PI + k * Math.abs(x));
+  }
+  return koCurve;
 }
 
 // ---------------------------------------------------------------------------
@@ -43,25 +75,25 @@ export function playSwordHit(): void {
   noiseGain.gain.setValueAtTime(0.6, now);
   noiseGain.gain.exponentialRampToValueAtTime(0.001, now + noiseDuration);
 
-  noise.connect(bp).connect(noiseGain).connect(ac.destination);
+  const out = getOutput();
+  noise.connect(bp).connect(noiseGain).connect(out);
   noise.start(now);
   noise.stop(now + noiseDuration);
 
   // --- Metallic ring (resonant sine) ---
   const ring = ac.createOscillator();
   ring.type = 'sine';
-  ring.frequency.setValueAtTime(1800 + Math.random() * 600, now); // randomize slightly
+  ring.frequency.setValueAtTime(1800 + Math.random() * 600, now);
 
   const ringGain = ac.createGain();
   ringGain.gain.setValueAtTime(0.15, now);
   ringGain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
 
-  // High-pass to keep it thin / metallic
   const hp = ac.createBiquadFilter();
   hp.type = 'highpass';
   hp.frequency.setValueAtTime(800, now);
 
-  ring.connect(hp).connect(ringGain).connect(ac.destination);
+  ring.connect(hp).connect(ringGain).connect(out);
   ring.start(now);
   ring.stop(now + 0.25);
 
@@ -75,7 +107,7 @@ export function playSwordHit(): void {
   thudGain.gain.setValueAtTime(0.3, now);
   thudGain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
 
-  thud.connect(thudGain).connect(ac.destination);
+  thud.connect(thudGain).connect(out);
   thud.start(now);
   thud.stop(now + 0.08);
 }
@@ -107,7 +139,7 @@ export function playSwordBlock(): void {
   noiseGain.gain.setValueAtTime(0.4, now);
   noiseGain.gain.exponentialRampToValueAtTime(0.001, now + noiseDuration);
 
-  noise.connect(bp).connect(noiseGain).connect(ac.destination);
+  noise.connect(bp).connect(noiseGain).connect(getOutput());
   noise.start(now);
   noise.stop(now + noiseDuration);
 }
@@ -142,7 +174,7 @@ export function playSwordSwing(): void {
   gain.gain.linearRampToValueAtTime(0.15, now + duration * 0.2);
   gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
 
-  src.connect(bp).connect(gain).connect(ac.destination);
+  src.connect(bp).connect(gain).connect(getOutput());
   src.start(now);
   src.stop(now + duration);
 }
@@ -176,7 +208,8 @@ export function playSwordClash(): void {
   noiseGain.gain.setValueAtTime(0.7, now);
   noiseGain.gain.exponentialRampToValueAtTime(0.001, now + noiseDuration);
 
-  noise.connect(bp).connect(noiseGain).connect(ac.destination);
+  const out = getOutput();
+  noise.connect(bp).connect(noiseGain).connect(out);
   noise.start(now);
   noise.stop(now + noiseDuration);
 
@@ -193,7 +226,7 @@ export function playSwordClash(): void {
   hp.type = 'highpass';
   hp.frequency.setValueAtTime(1200, now);
 
-  ring.connect(hp).connect(ringGain).connect(ac.destination);
+  ring.connect(hp).connect(ringGain).connect(out);
   ring.start(now);
   ring.stop(now + 0.5);
 
@@ -206,7 +239,7 @@ export function playSwordClash(): void {
   ring2Gain.gain.setValueAtTime(0.08, now);
   ring2Gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
 
-  ring2.connect(ring2Gain).connect(ac.destination);
+  ring2.connect(ring2Gain).connect(out);
   ring2.start(now);
   ring2.stop(now + 0.35);
 
@@ -220,7 +253,7 @@ export function playSwordClash(): void {
   thudGain.gain.setValueAtTime(0.5, now);
   thudGain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
 
-  thud.connect(thudGain).connect(ac.destination);
+  thud.connect(thudGain).connect(out);
   thud.start(now);
   thud.stop(now + 0.15);
 }
@@ -242,18 +275,11 @@ export function playKO(): void {
   gain.gain.setValueAtTime(0.5, now);
   gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
 
-  // Distortion for punch
+  // Distortion for punch (cached curve)
   const ws = ac.createWaveShaper();
-  const k = 20;
-  const n = 44100;
-  const curve = new Float32Array(n);
-  for (let i = 0; i < n; i++) {
-    const x = (i * 2) / n - 1;
-    curve[i] = ((3 + k) * x * 20 * (Math.PI / 180)) / (Math.PI + k * Math.abs(x));
-  }
-  ws.curve = curve;
+  ws.curve = getKOCurve();
 
-  osc.connect(ws).connect(gain).connect(ac.destination);
+  osc.connect(ws).connect(gain).connect(getOutput());
   osc.start(now);
   osc.stop(now + 0.6);
 }
