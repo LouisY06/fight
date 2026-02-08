@@ -455,88 +455,173 @@ export function makeSword(): THREE.Group {
 export function makeGun(): THREE.Group {
   const g = new THREE.Group();
 
-  // Main receiver — angular, chunky sci-fi pistol
-  const receiver = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.14, 0.44), matDark);
-  receiver.position.set(0, 0, -0.06);
+  // ---- Heavy Blaster: chunky sci-fi assault cannon ----
+
+  // Main receiver — big angular body
+  const receiver = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.18, 0.60), matDark);
+  receiver.position.set(0, 0, -0.04);
   g.add(receiver);
 
-  // Top rail — chrome strip
-  const topRail = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.02, 0.36), matChrome);
-  topRail.position.set(0, 0.08, -0.04);
-  g.add(topRail);
+  // Receiver top bevel
+  const topBevel = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.04, 0.55), matBlue);
+  topBevel.position.set(0, 0.10, -0.04);
+  g.add(topBevel);
 
-  // Barrel — forward-extending cylinder
-  const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.038, 0.35, 10), matBlue);
-  barrel.position.set(0, 0.02, -0.40);
-  barrel.rotation.x = Math.PI / 2;
-  g.add(barrel);
+  // Receiver bottom plate
+  const bottomPlate = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.03, 0.45), matPanel);
+  bottomPlate.position.set(0, -0.10, -0.04);
+  g.add(bottomPlate);
 
-  // Barrel shroud — angular armor casing around barrel
-  const shroud = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.09, 0.25), matBlue);
-  shroud.position.set(0, 0.02, -0.30);
-  g.add(shroud);
+  // ---- Twin barrels — two cylinders side by side ----
+  for (const side of [-0.03, 0.03]) {
+    const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.035, 0.50, 10), matChrome);
+    barrel.position.set(side, 0.02, -0.52);
+    barrel.rotation.x = Math.PI / 2;
+    g.add(barrel);
 
-  const shroudInset = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.22), matPanel);
-  shroudInset.position.set(0, 0.02, -0.30);
-  g.add(shroudInset);
-
-  // Muzzle — chrome ring at barrel tip
-  const muzzle = new THREE.Mesh(new THREE.TorusGeometry(0.04, 0.008, 4, 8), matChrome);
-  muzzle.position.set(0, 0.02, -0.58);
-  g.add(muzzle);
-
-  // Muzzle glow insert
-  const muzzleGlow = new THREE.Mesh(new THREE.SphereGeometry(0.025, 6, 4), matGlow);
-  muzzleGlow.position.set(0, 0.02, -0.58);
-  g.add(muzzleGlow);
-
-  // Grip
-  const grip = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.22, 0.08), matHandle);
-  grip.position.set(0, -0.15, 0.06);
-  grip.rotation.x = 0.15;
-  g.add(grip);
-
-  // Grip chrome wraps
-  for (let i = 0; i < 3; i++) {
-    const wrap = new THREE.Mesh(new THREE.BoxGeometry(0.075, 0.012, 0.085), matChrome);
-    wrap.position.set(0, -0.08 - i * 0.06, 0.06);
-    wrap.rotation.x = 0.15;
-    g.add(wrap);
+    // Barrel inner bore (dark)
+    const bore = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.06, 8), matPanel);
+    bore.position.set(side, 0.02, -0.78);
+    bore.rotation.x = Math.PI / 2;
+    g.add(bore);
   }
 
-  // Trigger guard
-  const triggerGuard = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.02, 0.12), matDark);
-  triggerGuard.position.set(0, -0.04, 0);
-  g.add(triggerGuard);
+  // Barrel shroud — heavy angular casing
+  const shroud = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.12, 0.38), matBlue);
+  shroud.position.set(0, 0.02, -0.42);
+  g.add(shroud);
 
-  // Side energy accent strips — orange glow
-  for (const side of [-1, 1]) {
-    const strip = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.05, 0.25), matGlow);
-    strip.position.set(side * 0.052, 0, -0.10);
-    g.add(strip);
-
-    // Energy nodes
-    for (let i = 0; i < 3; i++) {
-      const node = new THREE.Mesh(new THREE.SphereGeometry(0.008, 4, 4), matGlow);
-      node.position.set(side * 0.054, 0, -0.02 - i * 0.10);
-      g.add(node);
+  // Shroud vents (cut-out look)
+  for (let i = 0; i < 4; i++) {
+    for (const side of [-1, 1]) {
+      const vent = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.04, 0.035), matPanel);
+      vent.position.set(side * 0.072, 0.02, -0.30 - i * 0.07);
+      g.add(vent);
     }
   }
 
-  // Rear sight — angular
-  const rearSight = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.03, 0.02), matChrome);
-  rearSight.position.set(0, 0.10, 0.10);
-  g.add(rearSight);
+  // Shroud inset panel (recessed center)
+  const shroudInset = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.08, 0.34), matPanel);
+  shroudInset.position.set(0, 0.02, -0.42);
+  g.add(shroudInset);
 
-  // Front sight — angular
-  const frontSight = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.03, 0.02), matChrome);
-  frontSight.position.set(0, 0.10, -0.18);
-  g.add(frontSight);
+  // Muzzle brake — chrome ring at barrel tip
+  const muzzle = new THREE.Mesh(new THREE.TorusGeometry(0.055, 0.012, 6, 8), matChrome);
+  muzzle.position.set(0, 0.02, -0.76);
+  g.add(muzzle);
 
-  // Magazine well accent
-  const magWell = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.04, 0.06), matPanel);
-  magWell.position.set(0, -0.04, 0.06);
-  g.add(magWell);
+  // Muzzle glow core
+  const muzzleGlow = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 6), matGlow);
+  muzzleGlow.position.set(0, 0.02, -0.76);
+  g.add(muzzleGlow);
+
+  // ---- Top rail — full-length picatinny ----
+  const topRail = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.025, 0.55), matChrome);
+  topRail.position.set(0, 0.13, -0.06);
+  g.add(topRail);
+
+  // Rail notches
+  for (let i = 0; i < 8; i++) {
+    const notch = new THREE.Mesh(new THREE.BoxGeometry(0.082, 0.008, 0.012), matPanel);
+    notch.position.set(0, 0.145, 0.16 - i * 0.065);
+    g.add(notch);
+  }
+
+  // ---- Holographic sight ----
+  const sightBase = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.04, 0.06), matDark);
+  sightBase.position.set(0, 0.16, 0.02);
+  g.add(sightBase);
+
+  const sightFrame = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.06, 0.005), matChrome);
+  sightFrame.position.set(0, 0.20, -0.01);
+  g.add(sightFrame);
+
+  const sightReticle = new THREE.Mesh(
+    new THREE.RingGeometry(0.008, 0.014, 6),
+    new THREE.MeshStandardMaterial({ color: ENERGY_CORE, emissive: ENERGY_CORE, emissiveIntensity: 2.5, side: THREE.DoubleSide })
+  );
+  sightReticle.position.set(0, 0.20, -0.008);
+  g.add(sightReticle);
+
+  // ---- Grip — angled, armored ----
+  const grip = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.26, 0.10), matHandle);
+  grip.position.set(0, -0.20, 0.08);
+  grip.rotation.x = 0.18;
+  g.add(grip);
+
+  // Grip armor plate
+  const gripPlate = new THREE.Mesh(new THREE.BoxGeometry(0.095, 0.06, 0.105), matDark);
+  gripPlate.position.set(0, -0.10, 0.07);
+  gripPlate.rotation.x = 0.18;
+  g.add(gripPlate);
+
+  // Grip chrome wraps
+  for (let i = 0; i < 4; i++) {
+    const wrap = new THREE.Mesh(new THREE.BoxGeometry(0.095, 0.014, 0.105), matChrome);
+    wrap.position.set(0, -0.12 - i * 0.05, 0.075 + i * 0.008);
+    wrap.rotation.x = 0.18;
+    g.add(wrap);
+  }
+
+  // ---- Trigger guard — heavy ----
+  const triggerGuard = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.025, 0.14), matDark);
+  triggerGuard.position.set(0, -0.06, 0.02);
+  g.add(triggerGuard);
+
+  // ---- Side energy channels — glowing accent lines ----
+  for (const side of [-1, 1]) {
+    // Main energy strip
+    const strip = new THREE.Mesh(new THREE.BoxGeometry(0.006, 0.06, 0.40), matGlow);
+    strip.position.set(side * 0.082, 0, -0.14);
+    g.add(strip);
+
+    // Energy nodes along strip
+    for (let i = 0; i < 5; i++) {
+      const node = new THREE.Mesh(new THREE.SphereGeometry(0.010, 6, 4), matGlow);
+      node.position.set(side * 0.084, 0, 0.04 - i * 0.10);
+      g.add(node);
+    }
+
+    // Side armor panel
+    const sidePanel = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.12, 0.30), matBlue);
+    sidePanel.position.set(side * 0.09, 0, -0.10);
+    g.add(sidePanel);
+  }
+
+  // ---- Foregrip / front handle ----
+  const foregrip = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.10, 0.06), matHandle);
+  foregrip.position.set(0, -0.12, -0.22);
+  g.add(foregrip);
+
+  const foregripGuard = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.03, 0.08), matDark);
+  foregripGuard.position.set(0, -0.08, -0.22);
+  g.add(foregripGuard);
+
+  // ---- Stock / rear extension ----
+  const stock = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.10, 0.18), matDark);
+  stock.position.set(0, -0.02, 0.28);
+  g.add(stock);
+
+  const stockPad = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.03), matPanel);
+  stockPad.position.set(0, -0.02, 0.37);
+  g.add(stockPad);
+
+  // Stock energy accent
+  const stockGlow = new THREE.Mesh(new THREE.BoxGeometry(0.006, 0.08, 0.14), matGlow);
+  stockGlow.position.set(0, -0.02, 0.28);
+  g.add(stockGlow);
+
+  // ---- Magazine / power cell ----
+  const mag = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.14, 0.07), matPanel);
+  mag.position.set(0, -0.16, 0.01);
+  g.add(mag);
+
+  const magGlow = new THREE.Mesh(
+    new THREE.BoxGeometry(0.04, 0.10, 0.005),
+    new THREE.MeshStandardMaterial({ color: ENERGY_CORE, emissive: ENERGY_CORE, emissiveIntensity: 1.5 })
+  );
+  magGlow.position.set(0, -0.16, 0.045);
+  g.add(magGlow);
 
   enableShadows(g);
   return g;

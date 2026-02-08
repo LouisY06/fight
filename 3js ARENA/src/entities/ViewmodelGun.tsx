@@ -1,5 +1,5 @@
 // =============================================================================
-// ViewmodelGun.tsx — First-person gun that follows the camera
+// ViewmodelGun.tsx — First-person heavy blaster that follows the camera
 // Click to shoot: spawns a visible bullet projectile with recoil animation.
 // =============================================================================
 
@@ -12,9 +12,9 @@ import { cvBridge } from '../cv/cvBridge';
 import { useScreenShakeStore } from '../game/useScreenShake';
 import { spawnBullet } from '../combat/BulletManager';
 
-// Gun resting position: lower-right, close to center
-const IDLE_OFFSET = new THREE.Vector3(0.28, -0.3, -0.4);
-const GUN_SCALE = 0.85;
+// Gun resting position: lower-right, pushed out for bigger weapon
+const IDLE_OFFSET = new THREE.Vector3(0.32, -0.34, -0.48);
+const GUN_SCALE = 0.90;
 const FIRE_COOLDOWN = 0.5; // seconds between shots
 const RECOIL_DURATION = 0.2; // seconds
 
@@ -26,6 +26,14 @@ const _localQuat = new THREE.Quaternion();
 const _localEuler = new THREE.Euler();
 const _muzzleDir = new THREE.Vector3();
 const _muzzlePos = new THREE.Vector3();
+
+// Shared materials (matching MechaGeometry palette)
+const matDark = { color: '#2a2d33', roughness: 0.2, metalness: 0.9 };
+const matBlue = { color: '#4a4e55', roughness: 0.22, metalness: 0.75 };
+const matPanel = { color: '#1e2024', roughness: 0.18, metalness: 0.8 };
+const matChrome = { color: '#8a8d94', roughness: 0.08, metalness: 0.92 };
+const matHandle = { color: '#1a1a1a', roughness: 0.6, metalness: 0.4 };
+const matGlow = { color: '#ff4400', emissive: '#ff4400', emissiveIntensity: 1.0 };
 
 export function ViewmodelGun() {
   const { camera } = useThree();
@@ -110,12 +118,12 @@ export function ViewmodelGun() {
     let rotZ = 0;
 
     if (fireTime.current >= 0) {
-      // Recoil animation
+      // Recoil animation — heavier kick for bigger gun
       const t = fireTime.current / RECOIL_DURATION;
       const recoil = Math.sin(t * Math.PI) * 0.8;
-      _offset.z += recoil * 0.08;
-      _offset.y += recoil * 0.04;
-      rotX -= recoil * 0.15;
+      _offset.z += recoil * 0.10;
+      _offset.y += recoil * 0.05;
+      rotX -= recoil * 0.18;
     } else {
       // Idle bob
       const time = Date.now() * 0.001;
@@ -139,69 +147,207 @@ export function ViewmodelGun() {
 
   return (
     <group ref={groupRef} scale={GUN_SCALE}>
-      {/* Gun body — boxy sci-fi pistol */}
       <group>
-        {/* Main receiver */}
+        {/* ---- Main receiver body ---- */}
         <mesh castShadow>
-          <boxGeometry args={[0.06, 0.08, 0.28]} />
-          <meshStandardMaterial color="#2a2d33" roughness={0.2} metalness={0.9} />
+          <boxGeometry args={[0.16, 0.18, 0.60]} />
+          <meshStandardMaterial {...matDark} />
         </mesh>
 
-        {/* Barrel (rotated so cylinder points forward along -Z) */}
-        <mesh position={[0, 0.01, -0.22]} rotation={[Math.PI / 2, 0, 0]} castShadow>
-          <cylinderGeometry args={[0.02, 0.025, 0.2, 12]} />
-          <meshStandardMaterial color="#1a1a1e" roughness={0.15} metalness={0.95} />
+        {/* Receiver top bevel */}
+        <mesh position={[0, 0.10, 0]} castShadow>
+          <boxGeometry args={[0.14, 0.04, 0.55]} />
+          <meshStandardMaterial {...matBlue} />
         </mesh>
 
-        {/* Barrel shroud */}
-        <mesh position={[0, 0.01, -0.18]} castShadow>
-          <boxGeometry args={[0.055, 0.055, 0.14]} />
-          <meshStandardMaterial color="#3d3d48" roughness={0.25} metalness={0.85} />
+        {/* Receiver bottom plate */}
+        <mesh position={[0, -0.10, 0]} castShadow>
+          <boxGeometry args={[0.14, 0.03, 0.45]} />
+          <meshStandardMaterial {...matPanel} />
         </mesh>
 
-        {/* Top rail */}
-        <mesh position={[0, 0.05, -0.04]} castShadow>
-          <boxGeometry args={[0.035, 0.015, 0.2]} />
-          <meshStandardMaterial color="#4a4e55" roughness={0.3} metalness={0.8} />
+        {/* ---- Twin barrels ---- */}
+        {[-0.03, 0.03].map((side, i) => (
+          <group key={`barrel-${i}`}>
+            <mesh position={[side, 0.02, -0.48]} rotation={[Math.PI / 2, 0, 0]} castShadow>
+              <cylinderGeometry args={[0.028, 0.035, 0.50, 10]} />
+              <meshStandardMaterial {...matChrome} />
+            </mesh>
+            <mesh position={[side, 0.02, -0.74]} rotation={[Math.PI / 2, 0, 0]}>
+              <cylinderGeometry args={[0.018, 0.018, 0.06, 8]} />
+              <meshStandardMaterial {...matPanel} />
+            </mesh>
+          </group>
+        ))}
+
+        {/* ---- Barrel shroud ---- */}
+        <mesh position={[0, 0.02, -0.38]} castShadow>
+          <boxGeometry args={[0.14, 0.12, 0.38]} />
+          <meshStandardMaterial {...matBlue} />
         </mesh>
 
-        {/* Grip */}
-        <mesh position={[0, -0.08, 0.04]} rotation={[0.2, 0, 0]} castShadow>
-          <boxGeometry args={[0.05, 0.12, 0.06]} />
-          <meshStandardMaterial color="#5C3317" roughness={0.85} metalness={0.15} />
+        {/* Shroud vents */}
+        {[0, 1, 2, 3].map((i) => (
+          <group key={`vent-${i}`}>
+            <mesh position={[0.072, 0.02, -0.26 - i * 0.07]}>
+              <boxGeometry args={[0.008, 0.04, 0.035]} />
+              <meshStandardMaterial {...matPanel} />
+            </mesh>
+            <mesh position={[-0.072, 0.02, -0.26 - i * 0.07]}>
+              <boxGeometry args={[0.008, 0.04, 0.035]} />
+              <meshStandardMaterial {...matPanel} />
+            </mesh>
+          </group>
+        ))}
+
+        {/* Shroud inset */}
+        <mesh position={[0, 0.02, -0.38]}>
+          <boxGeometry args={[0.10, 0.08, 0.34]} />
+          <meshStandardMaterial {...matPanel} />
         </mesh>
 
-        {/* Trigger guard */}
-        <mesh position={[0, -0.04, -0.01]} castShadow>
-          <boxGeometry args={[0.04, 0.015, 0.08]} />
-          <meshStandardMaterial color="#2a2d33" roughness={0.3} metalness={0.8} />
+        {/* ---- Muzzle brake ---- */}
+        <mesh position={[0, 0.02, -0.72]} rotation={[Math.PI / 2, 0, 0]}>
+          <torusGeometry args={[0.055, 0.012, 6, 8]} />
+          <meshStandardMaterial {...matChrome} />
         </mesh>
 
-        {/* Emissive accent strip (side) */}
-        <mesh position={[0.032, 0, -0.04]}>
-          <boxGeometry args={[0.003, 0.03, 0.15]} />
+        {/* Muzzle glow core */}
+        <mesh position={[0, 0.02, -0.72]}>
+          <sphereGeometry args={[0.035, 8, 6]} />
+          <meshStandardMaterial {...matGlow} />
+        </mesh>
+
+        {/* ---- Top rail (picatinny) ---- */}
+        <mesh position={[0, 0.13, -0.02]} castShadow>
+          <boxGeometry args={[0.08, 0.025, 0.55]} />
+          <meshStandardMaterial {...matChrome} />
+        </mesh>
+
+        {/* Rail notches */}
+        {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
+          <mesh key={`notch-${i}`} position={[0, 0.145, 0.20 - i * 0.065]}>
+            <boxGeometry args={[0.082, 0.008, 0.012]} />
+            <meshStandardMaterial {...matPanel} />
+          </mesh>
+        ))}
+
+        {/* ---- Holographic sight ---- */}
+        <mesh position={[0, 0.16, 0.06]} castShadow>
+          <boxGeometry args={[0.06, 0.04, 0.06]} />
+          <meshStandardMaterial {...matDark} />
+        </mesh>
+        <mesh position={[0, 0.20, 0.03]}>
+          <boxGeometry args={[0.05, 0.06, 0.005]} />
+          <meshStandardMaterial {...matChrome} />
+        </mesh>
+        <mesh position={[0, 0.20, 0.028]} rotation={[0, 0, 0]}>
+          <ringGeometry args={[0.008, 0.014, 6]} />
           <meshStandardMaterial
             color="#ff4400"
             emissive="#ff4400"
-            emissiveIntensity={1.2}
-          />
-        </mesh>
-        <mesh position={[-0.032, 0, -0.04]}>
-          <boxGeometry args={[0.003, 0.03, 0.15]} />
-          <meshStandardMaterial
-            color="#ff4400"
-            emissive="#ff4400"
-            emissiveIntensity={1.2}
+            emissiveIntensity={2.5}
+            side={THREE.DoubleSide}
           />
         </mesh>
 
-        {/* Muzzle flash */}
+        {/* ---- Grip ---- */}
+        <mesh position={[0, -0.20, 0.12]} rotation={[0.18, 0, 0]} castShadow>
+          <boxGeometry args={[0.09, 0.26, 0.10]} />
+          <meshStandardMaterial {...matHandle} />
+        </mesh>
+
+        {/* Grip armor plate */}
+        <mesh position={[0, -0.10, 0.11]} rotation={[0.18, 0, 0]} castShadow>
+          <boxGeometry args={[0.095, 0.06, 0.105]} />
+          <meshStandardMaterial {...matDark} />
+        </mesh>
+
+        {/* Grip chrome wraps */}
+        {[0, 1, 2, 3].map((i) => (
+          <mesh key={`gwrap-${i}`} position={[0, -0.12 - i * 0.05, 0.115 + i * 0.008]} rotation={[0.18, 0, 0]}>
+            <boxGeometry args={[0.095, 0.014, 0.105]} />
+            <meshStandardMaterial {...matChrome} />
+          </mesh>
+        ))}
+
+        {/* ---- Trigger guard ---- */}
+        <mesh position={[0, -0.06, 0.06]} castShadow>
+          <boxGeometry args={[0.08, 0.025, 0.14]} />
+          <meshStandardMaterial {...matDark} />
+        </mesh>
+
+        {/* ---- Side energy channels ---- */}
+        {[-1, 1].map((side) => (
+          <group key={`side-${side}`}>
+            {/* Energy strip */}
+            <mesh position={[side * 0.082, 0, -0.10]}>
+              <boxGeometry args={[0.006, 0.06, 0.40]} />
+              <meshStandardMaterial {...matGlow} />
+            </mesh>
+
+            {/* Energy nodes */}
+            {[0, 1, 2, 3, 4].map((i) => (
+              <mesh key={`node-${side}-${i}`} position={[side * 0.084, 0, 0.08 - i * 0.10]}>
+                <sphereGeometry args={[0.010, 6, 4]} />
+                <meshStandardMaterial {...matGlow} />
+              </mesh>
+            ))}
+
+            {/* Side armor panel */}
+            <mesh position={[side * 0.09, 0, -0.06]} castShadow>
+              <boxGeometry args={[0.02, 0.12, 0.30]} />
+              <meshStandardMaterial {...matBlue} />
+            </mesh>
+          </group>
+        ))}
+
+        {/* ---- Foregrip ---- */}
+        <mesh position={[0, -0.12, -0.18]} castShadow>
+          <boxGeometry args={[0.06, 0.10, 0.06]} />
+          <meshStandardMaterial {...matHandle} />
+        </mesh>
+        <mesh position={[0, -0.08, -0.18]} castShadow>
+          <boxGeometry args={[0.08, 0.03, 0.08]} />
+          <meshStandardMaterial {...matDark} />
+        </mesh>
+
+        {/* ---- Stock ---- */}
+        <mesh position={[0, -0.02, 0.32]} castShadow>
+          <boxGeometry args={[0.10, 0.10, 0.18]} />
+          <meshStandardMaterial {...matDark} />
+        </mesh>
+        <mesh position={[0, -0.02, 0.41]}>
+          <boxGeometry args={[0.12, 0.12, 0.03]} />
+          <meshStandardMaterial {...matPanel} />
+        </mesh>
+        {/* Stock energy accent */}
+        <mesh position={[0, -0.02, 0.32]}>
+          <boxGeometry args={[0.006, 0.08, 0.14]} />
+          <meshStandardMaterial {...matGlow} />
+        </mesh>
+
+        {/* ---- Magazine / power cell ---- */}
+        <mesh position={[0, -0.16, 0.05]} castShadow>
+          <boxGeometry args={[0.08, 0.14, 0.07]} />
+          <meshStandardMaterial {...matPanel} />
+        </mesh>
+        <mesh position={[0, -0.16, 0.085]}>
+          <boxGeometry args={[0.04, 0.10, 0.005]} />
+          <meshStandardMaterial
+            color="#ff4400"
+            emissive="#ff4400"
+            emissiveIntensity={1.5}
+          />
+        </mesh>
+
+        {/* ---- Muzzle flash ---- */}
         <mesh
           ref={muzzleFlashRef}
-          position={[0, 0.01, -0.35]}
+          position={[0, 0.02, -0.78]}
           visible={false}
         >
-          <sphereGeometry args={[0.06, 8, 8]} />
+          <sphereGeometry args={[0.08, 8, 8]} />
           <meshStandardMaterial
             color="#ffaa00"
             emissive="#ffaa00"
