@@ -138,6 +138,9 @@ export function MeleeCombat() {
     // CV mode: sword speed from arm swing (swordSpeed)
     const isActive =
       keyboardSwingActive || (cvEnabled && swordSpeed > MIN_SWING_SPEED);
+    // #region agent log
+    if (isActive) { fetch('http://127.0.0.1:7243/ingest/d3f7d08b-6cb2-4350-808e-89b409b0090c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'MeleeCombat.tsx:playerAttack',message:'Player sword isActive',data:{keyboardSwingActive,swordSpeed,cvEnabled,stunned},timestamp:Date.now(),hypothesisId:'B'})}).catch(()=>{}); }
+    // #endregion
     if (!stunned && isActive && now - lastPlayerHitTime.current >= GAME_CONFIG.attackCooldownMs) {
       // Check against all opponents
     scene.traverse((obj) => {
@@ -197,45 +200,43 @@ export function MeleeCombat() {
     });
     }
 
-    // Bot sword vs player — proximity-based hit detection (works in all modes)
-    // The bot's swing animation doesn't always reach the segment-to-capsule
-    // threshold, so we use sword-tip distance to camera as a reliable proxy.
+    // Bot sword vs player (practice mode only) — separate cooldown from player
+    // Re-read phase to prevent damage after round already ended in the same frame
+    const currentPhase = useGameStore.getState().phase;
     const { isMultiplayer, aiDifficulty } = useGameStore.getState();
-    if (!isMultiplayer) {
-      const botCooldownReady = now - lastBotHitTime.current >= GAME_CONFIG.attackCooldownMs;
+    if (!isMultiplayer && currentPhase === 'playing' && botSwordActive && now - lastBotHitTime.current >= GAME_CONFIG.attackCooldownMs) {
+      const playerPos = camera.position;
+      _playerCapsuleBot.set(playerPos.x, playerPos.y + PLAYER_CAPSULE_BOT, playerPos.z);
+      _playerCapsuleTop.set(playerPos.x, playerPos.y + PLAYER_CAPSULE_TOP, playerPos.z);
 
-      if (botSwordActive && botCooldownReady) {
-        const playerPos = camera.position;
-        _playerCapsuleBot.set(playerPos.x, playerPos.y + PLAYER_CAPSULE_BOT, playerPos.z);
-        _playerCapsuleTop.set(playerPos.x, playerPos.y + PLAYER_CAPSULE_TOP, playerPos.z);
+      const dist = closestDistSegmentSegment(
+        botSwordHilt,
+        botSwordTip,
+        _playerCapsuleBot,
+        _playerCapsuleTop,
+        _closestOnSword,
+        _closestOnCapsule
+      );
 
-        const dist = closestDistSegmentSegment(
-          botSwordHilt,
-          botSwordTip,
-          _playerCapsuleBot,
-          _playerCapsuleTop,
-          _closestOnSword,
-          _closestOnCapsule
-        );
+      if (dist <= PLAYER_HIT_RADIUS) {
+        lastBotHitTime.current = now;
+        _hitPoint.addVectors(_closestOnSword, _closestOnCapsule).multiplyScalar(0.5);
 
-        if (dist <= PLAYER_HIT_RADIUS) {
-          lastBotHitTime.current = now;
-          _hitPoint.addVectors(_closestOnSword, _closestOnCapsule).multiplyScalar(0.5);
-
-          const { player1, dealDamage } = useGameStore.getState();
-          const isBlocked = player1.isBlocking;
-          // Apply difficulty damage multiplier
-          const diffConfig = AI_DIFFICULTY[aiDifficulty];
-          const amount = GAME_CONFIG.damage.swordSlash * diffConfig.damageMultiplier;
-          const effectiveAmount = isBlocked
-            ? amount * (1 - GAME_CONFIG.blockDamageReduction)
-            : amount;
-          dealDamage('player1', amount);
-          fireHitEvent({ point: _hitPoint.clone(), amount: effectiveAmount, isBlocked });
-          useScreenShakeStore.getState().trigger(0.5, 200);
-          playSwordHit();
-          console.log(`[BotHit] dist=${dist.toFixed(2)} dmg=${effectiveAmount.toFixed(0)} p1HP=${player1.health - amount}`);
-        }
+        const { player1, dealDamage } = useGameStore.getState();
+        const isBlocked = player1.isBlocking;
+        // Apply difficulty damage multiplier
+        const diffConfig = AI_DIFFICULTY[aiDifficulty];
+        const amount = GAME_CONFIG.damage.swordSlash * diffConfig.damageMultiplier;
+        const effectiveAmount = isBlocked
+          ? amount * (1 - GAME_CONFIG.blockDamageReduction)
+          : amount;
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/d3f7d08b-6cb2-4350-808e-89b409b0090c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'MeleeCombat.tsx:botAttack',message:'Bot hits player',data:{isBlocked,amount,effectiveAmount,player1Health:player1.health,player1IsBlocking:player1.isBlocking,phase:useGameStore.getState().phase},timestamp:Date.now(),hypothesisId:'A,C,D'})}).catch(()=>{});
+        // #endregion
+        dealDamage('player1', amount);
+        fireHitEvent({ point: _hitPoint.clone(), amount: effectiveAmount, isBlocked });
+        useScreenShakeStore.getState().trigger(0.5, 200);
+        playSwordHit();
       }
     }
 
@@ -243,6 +244,7 @@ export function MeleeCombat() {
     // Sword-to-sword clash detection (both swords active → stun)
     // -----------------------------------------------------------------------
     if (
+      currentPhase === 'playing' &&
       !stunned &&
       isActive &&
       botSwordActive &&

@@ -2,7 +2,7 @@
 // WeaponTrail.tsx — Sword swing trail / muzzle flash particle effect
 // =============================================================================
 
-import { useRef, useMemo } from 'react';
+import { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 
@@ -10,6 +10,10 @@ interface WeaponTrailProps {
   color: string;
   length?: number;
 }
+
+// Pre-allocated temp objects
+const _worldPos = new THREE.Vector3();
+const _up = new THREE.Vector3(0, 0.3, 0);
 
 /**
  * Simple ribbon trail that follows the weapon during attacks.
@@ -46,30 +50,35 @@ export function WeaponTrail({ color, length = 10 }: WeaponTrailProps) {
     return geo;
   }, [length]);
 
+  // Dispose geometry on unmount
+  useEffect(() => {
+    return () => {
+      geometry.dispose();
+    };
+  }, [geometry]);
+
   useFrame(() => {
     if (!meshRef.current) return;
 
-    const worldPos = new THREE.Vector3();
-    meshRef.current.parent?.getWorldPosition(worldPos);
+    meshRef.current.parent?.getWorldPosition(_worldPos);
 
-    positionsRef.current.unshift(worldPos.clone());
+    positionsRef.current.unshift(_worldPos.clone());
     if (positionsRef.current.length > length) {
       positionsRef.current.length = length;
     }
 
     const positions = geometry.attributes.position as THREE.BufferAttribute;
     const arr = positions.array as Float32Array;
-    const up = new THREE.Vector3(0, 0.3, 0);
 
     for (let i = 0; i < length; i++) {
-      const pos = positionsRef.current[i] ?? positionsRef.current[positionsRef.current.length - 1] ?? new THREE.Vector3();
+      const pos = positionsRef.current[i] ?? positionsRef.current[positionsRef.current.length - 1];
       if (!pos) continue;
-      arr[i * 6] = pos.x - up.x;
-      arr[i * 6 + 1] = pos.y - up.y;
-      arr[i * 6 + 2] = pos.z - up.z;
-      arr[i * 6 + 3] = pos.x + up.x;
-      arr[i * 6 + 4] = pos.y + up.y;
-      arr[i * 6 + 5] = pos.z + up.z;
+      arr[i * 6] = pos.x - _up.x;
+      arr[i * 6 + 1] = pos.y - _up.y;
+      arr[i * 6 + 2] = pos.z - _up.z;
+      arr[i * 6 + 3] = pos.x + _up.x;
+      arr[i * 6 + 4] = pos.y + _up.y;
+      arr[i * 6 + 5] = pos.z + _up.z;
     }
     positions.needsUpdate = true;
   });

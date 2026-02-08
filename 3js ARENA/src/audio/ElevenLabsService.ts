@@ -17,11 +17,39 @@ function getApiKey(): string {
 }
 
 // ---------------------------------------------------------------------------
-// Audio cache
+// Audio cache (bounded: evict oldest when full)
 // ---------------------------------------------------------------------------
 
+const MAX_CACHE_SIZE = 30;
 const audioCache = new Map<string, HTMLAudioElement>();
+const blobUrls = new Map<string, string>(); // track blob URLs for revocation
 const pendingRequests = new Map<string, Promise<HTMLAudioElement | null>>();
+
+function cacheAudio(key: string, audio: HTMLAudioElement, blobUrl: string): void {
+  // Evict oldest entry if cache is full
+  if (audioCache.size >= MAX_CACHE_SIZE) {
+    const firstKey = audioCache.keys().next().value;
+    if (firstKey !== undefined) {
+      const oldUrl = blobUrls.get(firstKey);
+      if (oldUrl) URL.revokeObjectURL(oldUrl);
+      blobUrls.delete(firstKey);
+      audioCache.delete(firstKey);
+    }
+  }
+  audioCache.set(key, audio);
+  blobUrls.set(key, blobUrl);
+}
+
+/** Abort-capable fetch with timeout */
+async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs = 15000): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Priority voice queue — prevents overlap
@@ -86,16 +114,16 @@ async function generateTTS(text: string): Promise<HTMLAudioElement | null> {
   if (!apiKey || apiKey === 'your_elevenlabs_api_key_here') return null;
 
   try {
-    const response = await fetch(`${API_BASE}/text-to-speech/${ANNOUNCER_VOICE_ID}`, {
+    const response = await fetchWithTimeout(`${API_BASE}/text-to-speech/${ANNOUNCER_VOICE_ID}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'xi-api-key': apiKey },
       body: JSON.stringify({
         text,
         model_id: TTS_MODEL,
         voice_settings: {
-          stability: 0.75,          // Consistent voice
-          similarity_boost: 0.9,    // Stays true to the voice
-          style: 0.6,              // Moderate style = natural dramatic delivery
+          stability: 0.75,
+          similarity_boost: 0.9,
+          style: 0.6,
           use_speaker_boost: true,
         },
       }),
@@ -109,9 +137,15 @@ async function generateTTS(text: string): Promise<HTMLAudioElement | null> {
     const blob = await response.blob();
     const url = URL.createObjectURL(blob);
     const audio = new Audio(url);
+    // Store blob URL reference so it can be revoked later
+    (audio as any).__blobUrl = url;
     return audio;
   } catch (err) {
-    console.error('[ElevenLabs] TTS error:', err);
+    if ((err as Error).name === 'AbortError') {
+      console.warn('[ElevenLabs] TTS request timed out');
+    } else {
+      console.error('[ElevenLabs] TTS error:', err);
+    }
     return null;
   }
 }
@@ -128,7 +162,7 @@ async function generateSoundEffect(prompt: string, durationSeconds?: number): Pr
     const body: Record<string, unknown> = { text: prompt };
     if (durationSeconds) body.duration_seconds = durationSeconds;
 
-    const response = await fetch(`${API_BASE}/sound-generation`, {
+    const response = await fetchWithTimeout(`${API_BASE}/sound-generation`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'xi-api-key': apiKey },
       body: JSON.stringify(body),
@@ -141,9 +175,15 @@ async function generateSoundEffect(prompt: string, durationSeconds?: number): Pr
 
     const blob = await response.blob();
     const url = URL.createObjectURL(blob);
-    return new Audio(url);
+    const audio = new Audio(url);
+    (audio as any).__blobUrl = url;
+    return audio;
   } catch (err) {
-    console.error('[ElevenLabs] SFX error:', err);
+    if ((err as Error).name === 'AbortError') {
+      console.warn('[ElevenLabs] SFX request timed out');
+    } else {
+      console.error('[ElevenLabs] SFX error:', err);
+    }
     return null;
   }
 }
@@ -163,9 +203,15 @@ async function getOrGenerate(
   if (pending) return pending;
 
   const promise = gen().then((audio) => {
-    if (audio) audioCache.set(key, audio);
+    if (audio) {
+      const blobUrl = (audio as any).__blobUrl ?? '';
+      cacheAudio(key, audio, blobUrl);
+    }
     pendingRequests.delete(key);
     return audio;
+  }).catch(() => {
+    pendingRequests.delete(key);
+    return null;
   });
 
   pendingRequests.set(key, promise);

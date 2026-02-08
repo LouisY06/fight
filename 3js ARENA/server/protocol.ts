@@ -33,6 +33,8 @@ export interface DamageEventMsg {
   type: 'damage_event';
   target: 'player1' | 'player2';
   amount: number;
+  /** Authoritative post-damage health from the attacker */
+  newHealth?: number;
 }
 
 export interface GameStartMsg {
@@ -50,6 +52,13 @@ export interface SetUsernameMsg {
   username: string;
 }
 
+export interface SpellCastMsg {
+  type: 'spell_cast';
+  spellType: string;
+  origin: [number, number, number];
+  direction: [number, number, number];
+}
+
 export type ClientMessage =
   | CreateRoomMsg
   | JoinRoomMsg
@@ -59,7 +68,8 @@ export type ClientMessage =
   | DamageEventMsg
   | GameStartMsg
   | RoundEndMsg
-  | SetUsernameMsg;
+  | SetUsernameMsg
+  | SpellCastMsg;
 
 // ---- Server -> Client messages ----
 
@@ -107,6 +117,14 @@ export interface RelayedDamageEventMsg {
   type: 'opponent_damage';
   target: 'player1' | 'player2';
   amount: number;
+  newHealth?: number;
+}
+
+export interface RelayedSpellCastMsg {
+  type: 'opponent_spell_cast';
+  spellType: string;
+  origin: [number, number, number];
+  direction: [number, number, number];
 }
 
 export interface RelayedGameStartMsg {
@@ -135,4 +153,5 @@ export type ServerMessage =
   | RelayedDamageEventMsg
   | RelayedGameStartMsg
   | RelayedRoundEndMsg
-  | OpponentUsernameMsg;
+  | OpponentUsernameMsg
+  | RelayedSpellCastMsg;

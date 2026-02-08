@@ -132,6 +132,20 @@ wss.on('connection', (ws: WebSocket) => {
             type: 'opponent_damage',
             target: msg.target,
             amount: msg.amount,
+            newHealth: (msg as any).newHealth,
+          });
+        }
+        break;
+      }
+
+      case 'spell_cast': {
+        const opponent = getOpponent(ws);
+        if (opponent) {
+          send(opponent, {
+            type: 'opponent_spell_cast',
+            spellType: msg.spellType,
+            origin: msg.origin,
+            direction: msg.direction,
           });
         }
         break;

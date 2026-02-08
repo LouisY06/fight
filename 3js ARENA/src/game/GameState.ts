@@ -166,6 +166,11 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   endRound: (winner) => {
     const state = get();
+    // Guard: only end round if we're in a valid phase (prevents double-call corruption)
+    if (state.phase !== 'playing' && state.phase !== 'countdown') return;
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/d3f7d08b-6cb2-4350-808e-89b409b0090c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'GameState.ts:endRound',message:'endRound called',data:{winner,currentPhase:state.phase,p1Health:state.player1.health,p2Health:state.player2.health,p1Rounds:state.player1.roundsWon,p2Rounds:state.player2.roundsWon},timestamp:Date.now(),hypothesisId:'D,E'})}).catch(()=>{});
+    // #endregion
     const p1Wins =
       state.player1.roundsWon + (winner === 'player1' ? 1 : 0);
     const p2Wins =
@@ -204,11 +209,16 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   dealDamage: (target, amount) => {
     const state = get();
+    // Guard: only deal damage during active gameplay
+    if (state.phase !== 'playing' && state.phase !== 'countdown') return;
     const player = state[target];
     const effectiveAmount = player.isBlocking
       ? amount * (1 - GAME_CONFIG.blockDamageReduction)
       : amount;
     const newHealth = Math.max(0, player.health - effectiveAmount);
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/d3f7d08b-6cb2-4350-808e-89b409b0090c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'GameState.ts:dealDamage',message:'dealDamage called',data:{target,amount,isBlocking:player.isBlocking,effectiveAmount,oldHealth:player.health,newHealth,phase:state.phase},timestamp:Date.now(),hypothesisId:'C,D'})}).catch(()=>{});
+    // #endregion
 
     set({
       [target]: { ...player, health: newHealth },
@@ -217,6 +227,9 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
 
     if (newHealth <= 0) {
+      // #region agent log
+      fetch('http://127.0.0.1:7243/ingest/d3f7d08b-6cb2-4350-808e-89b409b0090c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'GameState.ts:dealDamage->endRound',message:'Health reached 0, calling endRound',data:{target,newHealth,phase:get().phase},timestamp:Date.now(),hypothesisId:'D,E'})}).catch(()=>{});
+      // #endregion
       const winner = target === 'player1' ? 'player2' : 'player1';
       get().endRound(winner);
     }
@@ -243,6 +256,9 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   setPlayerBlocking: (player, blocking) => {
     const state = get();
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/d3f7d08b-6cb2-4350-808e-89b409b0090c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'GameState.ts:setPlayerBlocking',message:'setPlayerBlocking called',data:{player,blocking,prevBlocking:state[player].isBlocking},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
     set({ [player]: { ...state[player], isBlocking: blocking } });
   },
 

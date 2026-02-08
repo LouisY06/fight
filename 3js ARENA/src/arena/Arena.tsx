@@ -3,8 +3,6 @@
 // =============================================================================
 
 import { Suspense, useEffect } from 'react';
-import { useThree } from '@react-three/fiber';
-import * as THREE from 'three';
 import { ArenaEnvironment } from './ArenaEnvironment';
 import { ArenaPlatform } from './ArenaPlatform';
 import { ArenaLighting } from './ArenaLighting';
@@ -21,7 +19,6 @@ interface ArenaComponentProps {
 function ArenaInner({ theme }: ArenaComponentProps) {
   const phase = useGameStore((s) => s.phase);
   const setPhase = useGameStore((s) => s.setPhase);
-  const { scene } = useThree();
 
   // Arena loaded → start intro
   useEffect(() => {
@@ -30,13 +27,7 @@ function ArenaInner({ theme }: ArenaComponentProps) {
     }
   }, [phase, setPhase]);
 
-  // Apply scene fog for atmospheric depth
-  useEffect(() => {
-    scene.fog = new THREE.Fog(theme.fog.color, theme.fog.near, theme.fog.far);
-    return () => {
-      scene.fog = null;
-    };
-  }, [scene, theme.fog]);
+  // Fog is handled by ArenaEffects.FogSetup with proper lifecycle
 
   return (
     <group>

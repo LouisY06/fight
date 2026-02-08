@@ -38,6 +38,9 @@ export function ViewmodelShield() {
         setIsBlocking(true);
         const slot = playerSlot ?? 'player1';
         setPlayerBlocking(slot, true);
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/d3f7d08b-6cb2-4350-808e-89b409b0090c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ViewmodelShield.tsx:mouseDown',message:'Shield BLOCK ON',data:{slot,button:e.button,pointerLocked:!!document.pointerLockElement},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
       }
     };
     const onMouseUp = (e: MouseEvent) => {
@@ -45,6 +48,9 @@ export function ViewmodelShield() {
         setIsBlocking(false);
         const slot = playerSlot ?? 'player1';
         setPlayerBlocking(slot, false);
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/d3f7d08b-6cb2-4350-808e-89b409b0090c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ViewmodelShield.tsx:mouseUp',message:'Shield BLOCK OFF',data:{slot,button:e.button},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
       }
     };
 

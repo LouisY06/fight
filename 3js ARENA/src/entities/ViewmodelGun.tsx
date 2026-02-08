@@ -18,8 +18,14 @@ const GUN_SCALE = 0.85;
 const FIRE_COOLDOWN = 0.5; // seconds between shots
 const RECOIL_DURATION = 0.2; // seconds
 
-// Temp vectors
+// Pre-allocated temp objects (avoid per-frame GC pressure)
 const _dir = new THREE.Vector3();
+const _offset = new THREE.Vector3();
+const _worldOffset = new THREE.Vector3();
+const _localQuat = new THREE.Quaternion();
+const _localEuler = new THREE.Euler();
+const _muzzleDir = new THREE.Vector3();
+const _muzzlePos = new THREE.Vector3();
 
 export function ViewmodelGun() {
   const { camera } = useThree();
@@ -49,9 +55,9 @@ export function ViewmodelGun() {
           setForceRender((n) => n + 1);
 
           // Spawn visible bullet from gun muzzle
-          const dir = camera.getWorldDirection(_dir).clone();
-          const muzzlePos = camera.position.clone().addScaledVector(dir, 0.5);
-          spawnBullet(muzzlePos, dir);
+          camera.getWorldDirection(_muzzleDir);
+          _muzzlePos.copy(camera.position).addScaledVector(_muzzleDir, 0.5);
+          spawnBullet(_muzzlePos.clone(), _muzzleDir.clone());
 
           // Screen shake on fire
           useScreenShakeStore.getState().trigger(0.15, 80);
@@ -98,7 +104,7 @@ export function ViewmodelGun() {
       }
     }
 
-    const offset = IDLE_OFFSET.clone();
+    _offset.copy(IDLE_OFFSET);
     let rotX = 0;
     let rotY = 0.2;
     let rotZ = 0;
@@ -107,23 +113,22 @@ export function ViewmodelGun() {
       // Recoil animation
       const t = fireTime.current / RECOIL_DURATION;
       const recoil = Math.sin(t * Math.PI) * 0.8;
-      offset.z += recoil * 0.08;
-      offset.y += recoil * 0.04;
+      _offset.z += recoil * 0.08;
+      _offset.y += recoil * 0.04;
       rotX -= recoil * 0.15;
     } else {
       // Idle bob
       const time = Date.now() * 0.001;
-      offset.x += Math.sin(time * 1.5) * 0.003;
-      offset.y += Math.sin(time * 2.0) * 0.005;
+      _offset.x += Math.sin(time * 1.5) * 0.003;
+      _offset.y += Math.sin(time * 2.0) * 0.005;
     }
 
-    const worldOffset = offset.applyQuaternion(camera.quaternion);
-    groupRef.current.position.copy(camera.position).add(worldOffset);
+    _worldOffset.copy(_offset).applyQuaternion(camera.quaternion);
+    groupRef.current.position.copy(camera.position).add(_worldOffset);
 
-    const localQuat = new THREE.Quaternion().setFromEuler(
-      new THREE.Euler(rotX, rotY, rotZ)
-    );
-    groupRef.current.quaternion.copy(camera.quaternion).multiply(localQuat);
+    _localEuler.set(rotX, rotY, rotZ);
+    _localQuat.setFromEuler(_localEuler);
+    groupRef.current.quaternion.copy(camera.quaternion).multiply(_localQuat);
 
     // Muzzle flash
     if (muzzleFlashRef.current) {

@@ -2,7 +2,7 @@
 // App.tsx — Root component: game state machine (first-person 1v1 arena)
 // =============================================================================
 
-import { Suspense, useEffect } from 'react';
+import { Suspense, useEffect, Component, type ReactNode } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { Physics } from '@react-three/rapier';
 import * as THREE from 'three';
@@ -45,6 +45,74 @@ import { GameOverScreen } from './ui/GameOverScreen';
 import { ArenaLoadingOverlay } from './ui/ArenaLoadingOverlay';
 import { SpellHUD } from './ui/SpellHUD';
 import { RoundAnnouncer } from './ui/RoundAnnouncer';
+
+// ---------------------------------------------------------------------------
+// Error boundary for Three.js / Canvas crashes
+// ---------------------------------------------------------------------------
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+
+class CanvasErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryState> {
+  state: ErrorBoundaryState = { hasError: false, error: null };
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error('[CanvasErrorBoundary]', error, info.componentStack);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: '#0a0c10',
+            color: '#ff8c00',
+            fontFamily: "'Share Tech Mono', monospace",
+            gap: '16px',
+            padding: '40px',
+            textAlign: 'center',
+          }}
+        >
+          <div style={{ fontSize: '24px', letterSpacing: '4px' }}>// RENDER ERROR</div>
+          <div style={{ fontSize: '13px', color: '#888', maxWidth: '500px', wordBreak: 'break-word' }}>
+            {this.state.error?.message ?? 'Unknown error'}
+          </div>
+          <button
+            onClick={() => {
+              this.setState({ hasError: false, error: null });
+              window.location.reload();
+            }}
+            style={{
+              padding: '10px 32px',
+              fontSize: '14px',
+              fontFamily: "'Share Tech Mono', monospace",
+              color: '#ff8c00',
+              background: 'rgba(255, 140, 0, 0.08)',
+              border: '1px solid rgba(255, 140, 0, 0.3)',
+              cursor: 'pointer',
+              letterSpacing: '2px',
+            }}
+          >
+            RELOAD
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 function App() {
   return (
@@ -106,8 +174,9 @@ function GameApp() {
         overflow: 'hidden',
       }}
     >
-      {/* 3D Canvas — only mount when game starts */}
+      {/* 3D Canvas — wrapped in error boundary for crash recovery */}
       {showCanvas && (
+      <CanvasErrorBoundary>
       <Canvas
         shadows
         camera={{
@@ -183,6 +252,7 @@ function GameApp() {
           )}
         </Suspense>
       </Canvas>
+      </CanvasErrorBoundary>
       )}
 
       {/* UI Overlays — above Canvas when present, or full screen during menu */}
