@@ -1,26 +1,20 @@
 // =============================================================================
 // MenuCharacterPreview.tsx — 3D mech preview on main menu (lightweight Canvas)
+// Interactive orbit: click + drag to spin the mech 360°
 // =============================================================================
 
 import { useRef } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
-import * as THREE from 'three';
+import { Canvas } from '@react-three/fiber';
+import { OrbitControls } from '@react-three/drei';
 import { MechaEntity } from '../entities/MechaEntity';
 import { RiggedMechEntity } from '../riggedMechs/RiggedMechEntity';
 import { useMechaCustomizationStore } from '../game/MechaCustomizationStore';
 
 function MenuMech() {
-  const groupRef = useRef<THREE.Group>(null!);
   const { accentColor, segmentScales, avatarType, selectedPlayerMechId } = useMechaCustomizationStore();
 
-  useFrame((state) => {
-    if (groupRef.current) {
-      groupRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.3) * 0.15;
-    }
-  });
-
   return (
-    <group ref={groupRef} position={[0, -1.0, 0]} scale={0.9}>
+    <group position={[0, -1.0, 0]} scale={0.9}>
       {avatarType === 'classic' ? (
         <MechaEntity
           color={accentColor}
@@ -57,12 +51,19 @@ function MenuLighting() {
 }
 
 export function MenuCharacterPreview() {
+  const containerRef = useRef<HTMLDivElement>(null!);
+
   return (
     <div
+      ref={containerRef}
       style={{
         position: 'absolute',
         inset: 0,
-        pointerEvents: 'none',
+        cursor: 'grab',
+      }}
+      onPointerDown={(e) => {
+        // Prevent the menu from swallowing drag events
+        e.stopPropagation();
       }}
     >
       <Canvas
@@ -82,6 +83,19 @@ export function MenuCharacterPreview() {
       >
         <MenuLighting />
         <MenuMech />
+
+        {/* Interactive orbit — drag to spin, auto-rotates when idle */}
+        <OrbitControls
+          enableZoom={false}
+          enablePan={false}
+          autoRotate
+          autoRotateSpeed={1.5}
+          target={[0, 0.2, 0]}
+          minPolarAngle={Math.PI / 3}       // limit looking from above
+          maxPolarAngle={Math.PI / 1.8}     // limit looking from below
+          dampingFactor={0.08}
+          enableDamping
+        />
       </Canvas>
     </div>
   );

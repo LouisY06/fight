@@ -16,10 +16,19 @@ export default defineConfig({
         entry: 'electron/main.ts',
       },
       {
-        // Preload script
+        // Preload script — must be CJS for Electron's sandboxed preload
         entry: 'electron/preload.ts',
         onstart(args) {
           args.reload();
+        },
+        vite: {
+          build: {
+            rollupOptions: {
+              output: {
+                format: 'cjs',
+              },
+            },
+          },
         },
       },
     ]),

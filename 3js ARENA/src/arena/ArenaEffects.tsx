@@ -1,6 +1,6 @@
 // =============================================================================
 // ArenaEffects.tsx — Fog, ambient particles, post-processing
-// Bloom intensity spikes during countdown for impact; MotionBlur not in package.
+// Bloom intensity spikes during countdown for impact and during sword swings.
 // =============================================================================
 
 import { useRef, useEffect, useMemo } from 'react';
@@ -8,6 +8,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
 import { useGameStore } from '../game/GameState';
+import { isGlobalSwingActive } from '../combat/SwingState';
 import type { ArenaTheme } from './arenaThemes';
 
 interface ArenaEffectsProps {
@@ -119,18 +120,77 @@ function FogSetup({
 // ---------------------------------------------------------------------------
 // Post-processing: Bloom + Vignette (Bloom spikes during intro/countdown)
 // ---------------------------------------------------------------------------
+// NOTE: We do NOT pass a `ref` to <Bloom> because React 19 treats `ref` as a
+// regular prop. The library's `wrapEffect` helper calls JSON.stringify(props)
+// for memoisation, and the BloomEffect instance has circular internal refs
+// (KawaseBlurPass → Resolution → resizable → KawaseBlurPass) which crash
+// JSON.stringify.  Instead we grab the EffectComposer instance via its own
+// forwardRef and locate the BloomEffect through its pass list.
+// ---------------------------------------------------------------------------
 
 function PostProcessing() {
   const phase = useGameStore((s) => s.phase);
   const isIntroOrCountdown = phase === 'intro' || phase === 'countdown';
-  const bloomIntensity = isIntroOrCountdown ? 1.5 : 0.7;
-  const luminanceThreshold = isIntroOrCountdown ? 1 : 0.4;
+
+  // Ref to the raw postprocessing EffectComposer (exposed via forwardRef)
+  const composerRef = useRef<any>(null);
+  // Cached BloomEffect — found once, reused every frame
+  const bloomCache = useRef<any>(null);
+  const smoothBloom = useRef(0.7);
+  const smoothThreshold = useRef(0.4);
+
+  useFrame((_, delta) => {
+    // Lazily locate the BloomEffect inside the composer's passes
+    if (!bloomCache.current && composerRef.current) {
+      for (const pass of composerRef.current.passes) {
+        if (pass.effects) {
+          for (const effect of pass.effects) {
+            if (effect.name === 'BloomEffect') {
+              bloomCache.current = effect;
+              break;
+            }
+          }
+        }
+        if (bloomCache.current) break;
+      }
+    }
+
+    if (!bloomCache.current) return;
+    const bloom = bloomCache.current;
+
+    const swinging = isGlobalSwingActive();
+    let targetIntensity: number;
+    let targetThreshold: number;
+
+    if (isIntroOrCountdown) {
+      targetIntensity = 1.5;
+      targetThreshold = 1.0;
+    } else if (swinging) {
+      // Bloom spike during sword swing — makes the neon glow pop
+      targetIntensity = 1.8;
+      targetThreshold = 0.25;
+    } else {
+      targetIntensity = 0.7;
+      targetThreshold = 0.4;
+    }
+
+    // Smooth transition (fast attack, slower release)
+    const speed = targetIntensity > smoothBloom.current ? 12 : 4;
+    smoothBloom.current += (targetIntensity - smoothBloom.current) * Math.min(1, delta * speed);
+    smoothThreshold.current += (targetThreshold - smoothThreshold.current) * Math.min(1, delta * speed);
+
+    // Write directly to the effect's uniforms / material
+    bloom.intensity = smoothBloom.current;
+    if (bloom.luminanceMaterial) {
+      bloom.luminanceMaterial.threshold = smoothThreshold.current;
+    }
+  });
 
   return (
-    <EffectComposer>
+    <EffectComposer ref={composerRef}>
       <Bloom
-        intensity={bloomIntensity}
-        luminanceThreshold={luminanceThreshold}
+        intensity={0.7}
+        luminanceThreshold={0.4}
         luminanceSmoothing={0.9}
         mipmapBlur
       />

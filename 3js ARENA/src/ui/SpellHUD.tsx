@@ -13,7 +13,7 @@ import { isVoiceAvailable, isVoiceActive } from '../audio/VoiceCommands';
 const SPELL_ORDER: SpellType[] = ['fireball', 'laser', 'ice_blast', 'forcefield'];
 
 const SPELL_KEYS: Record<SpellType, string> = {
-  fireball: 'Q',
+  fireball: 'T',
   laser: 'E',
   ice_blast: 'R',
   forcefield: 'F',

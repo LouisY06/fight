@@ -21,6 +21,8 @@ const defaultCvInput: CVGameInput = {
   swordRotZ: 0.4,
   isSwinging: false,
   isBlocking: false,
+  leftArmRaised: false,
+  leftFistClosed: false,
   isTracking: false,
 };
 

@@ -27,7 +27,6 @@ import { MeleeCombat } from './combat/MeleeCombat';
 import { HitEffectManager } from './combat/HitEffectManager';
 import { SpellEffects } from './combat/SpellEffects';
 import { SpellCaster } from './combat/SpellCaster';
-
 import { CVProvider } from './cv/CVProvider';
 import { CVSync } from './cv/CVSync';
 import { WebcamView } from './cv/WebcamView';
@@ -41,6 +40,7 @@ import { GameOverScreen } from './ui/GameOverScreen';
 import { ArenaLoadingOverlay } from './ui/ArenaLoadingOverlay';
 import { SpellHUD } from './ui/SpellHUD';
 import { RoundAnnouncer } from './ui/RoundAnnouncer';
+import { SwordSelector } from './ui/SwordSelector';
 
 // ---------------------------------------------------------------------------
 // Error boundary for Three.js / Canvas crashes
@@ -255,6 +255,7 @@ function GameApp() {
         <SpellHUD />
         {/* RoundAnnouncer rendered outside HUD so it's visible during intro + countdown */}
         <RoundAnnouncer />
+        <SwordSelector />
         <PauseMenu />
         <GameOverScreen />
         <WebcamView />

@@ -8,7 +8,14 @@ import { useRef, useMemo, type MutableRefObject } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from '../game/GameState';
-import { makeSword } from '../avatars/MechaGeometry';
+import { makeSword, makeCryoKatana, makePlasmaBlade } from '../avatars/MechaGeometry';
+import { useSwordStore, type SwordId } from '../game/SwordSelection';
+
+const SWORD_BUILDERS: Record<SwordId, () => THREE.Group> = {
+  energy_greatsword: makeSword,
+  mecha_sword: makeCryoKatana,
+  mecha_textured: makePlasmaBlade,
+};
 
 // ---- Shared animation constants ----
 const WALK_SPEED = 5;
@@ -259,14 +266,16 @@ function ArmorPlate({
   );
 }
 
-// Sword helper
+// Sword helper — reads selected sword from the store
 function SwordAttachment({
   swordRef,
-  swordMesh,
 }: {
   swordRef?: MutableRefObject<THREE.Group | null>;
-  swordMesh: THREE.Group;
 }) {
+  const selectedId = useSwordStore((s) => s.selectedSwordId);
+  const builder = SWORD_BUILDERS[selectedId] ?? makeSword;
+  const swordMesh = useMemo(() => builder(), [builder]);
+
   return (
     <group
       ref={(node) => {
@@ -301,7 +310,6 @@ export function VanguardMech(props: ProceduralMechProps) {
     isSwinging = false, isWalking = false, isWalkingRef, swordRef,
   } = props;
   const refs = useMechRefs();
-  const swordMesh = useMemo(() => makeSword(), []);
   useMechAnimation(refs, { isSwinging, isWalking, isWalkingRef });
   const mat = { metalness: 0.85, roughness: 0.18 };
 
@@ -497,7 +505,7 @@ export function VanguardMech(props: ProceduralMechProps) {
                     <meshStandardMaterial color={V_SECONDARY} {...mat} />
                   </mesh>
                 ))}
-                <SwordAttachment swordRef={swordRef} swordMesh={swordMesh} />
+                <SwordAttachment swordRef={swordRef} />
               </group>
             </group>
           </group>
@@ -571,7 +579,6 @@ export function SentinelMech(props: ProceduralMechProps) {
     isSwinging = false, isWalking = false, isWalkingRef, swordRef,
   } = props;
   const refs = useMechRefs();
-  const swordMesh = useMemo(() => makeSword(), []);
   useMechAnimation(refs, { isSwinging, isWalking, isWalkingRef });
   const mat = { metalness: 0.88, roughness: 0.15 };
 
@@ -709,7 +716,7 @@ export function SentinelMech(props: ProceduralMechProps) {
                         <meshStandardMaterial color={S_PRIMARY} {...mat} />
                       </mesh>
                     ))}
-                    {isRight && <SwordAttachment swordRef={swordRef} swordMesh={swordMesh} />}
+                    {isRight && <SwordAttachment swordRef={swordRef} />}
                   </group>
                 </group>
               </group>
@@ -782,7 +789,6 @@ export function EnforcerMech(props: ProceduralMechProps) {
     isSwinging = false, isWalking = false, isWalkingRef, swordRef,
   } = props;
   const refs = useMechRefs();
-  const swordMesh = useMemo(() => makeSword(), []);
   useMechAnimation(refs, { isSwinging, isWalking, isWalkingRef });
   const mat = { metalness: 0.82, roughness: 0.2 };
 
@@ -933,7 +939,7 @@ export function EnforcerMech(props: ProceduralMechProps) {
                         <meshStandardMaterial color={E_PRIMARY} {...mat} />
                       </mesh>
                     ))}
-                    {isRight && <SwordAttachment swordRef={swordRef} swordMesh={swordMesh} />}
+                    {isRight && <SwordAttachment swordRef={swordRef} />}
                   </group>
                 </group>
               </group>
@@ -1021,7 +1027,6 @@ export function SpectreMech(props: ProceduralMechProps) {
     isSwinging = false, isWalking = false, isWalkingRef, swordRef,
   } = props;
   const refs = useMechRefs();
-  const swordMesh = useMemo(() => makeSword(), []);
   useMechAnimation(refs, { isSwinging, isWalking, isWalkingRef });
   const mat = { metalness: 0.8, roughness: 0.22 };
 
@@ -1179,7 +1184,7 @@ export function SpectreMech(props: ProceduralMechProps) {
                         <meshStandardMaterial color={SP_PRIMARY} {...mat} />
                       </mesh>
                     ))}
-                    {isRight && <SwordAttachment swordRef={swordRef} swordMesh={swordMesh} />}
+                    {isRight && <SwordAttachment swordRef={swordRef} />}
                   </group>
                 </group>
               </group>
@@ -1267,7 +1272,6 @@ export function WardenMech(props: ProceduralMechProps) {
     isSwinging = false, isWalking = false, isWalkingRef, swordRef,
   } = props;
   const refs = useMechRefs();
-  const swordMesh = useMemo(() => makeSword(), []);
   useMechAnimation(refs, { isSwinging, isWalking, isWalkingRef });
   const mat = { metalness: 0.82, roughness: 0.22 };
 
@@ -1489,7 +1493,7 @@ export function WardenMech(props: ProceduralMechProps) {
                     <meshStandardMaterial color={W_PRIMARY} {...mat} />
                   </mesh>
                 ))}
-                <SwordAttachment swordRef={swordRef} swordMesh={swordMesh} />
+                <SwordAttachment swordRef={swordRef} />
               </group>
             </group>
           </group>

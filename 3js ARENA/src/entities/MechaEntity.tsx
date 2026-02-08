@@ -10,7 +10,14 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from '../game/GameState';
 import { usePlayerTexture } from './usePlayerTexture';
-import { makeSword } from '../avatars/MechaGeometry';
+import { makeSword, makeCryoKatana, makePlasmaBlade } from '../avatars/MechaGeometry';
+import { useSwordStore, type SwordId } from '../game/SwordSelection';
+
+const SWORD_BUILDERS: Record<SwordId, () => THREE.Group> = {
+  energy_greatsword: makeSword,
+  mecha_sword: makeCryoKatana,
+  mecha_textured: makePlasmaBlade,
+};
 
 export interface MechaEntityProps {
   color?: string;
@@ -133,8 +140,10 @@ export function MechaEntity({
   const visorRef = useRef<THREE.Mesh>(null!);
   const internalSwordRef = useRef<THREE.Group>(null!);
 
-  // Build sword geometry once (shared materials from MechaGeometry)
-  const swordMesh = useMemo(() => makeSword(), []);
+  // Build sword geometry based on selected sword
+  const selectedSwordId = useSwordStore((s) => s.selectedSwordId);
+  const swordBuilder = SWORD_BUILDERS[selectedSwordId] ?? makeSword;
+  const swordMesh = useMemo(() => swordBuilder(), [swordBuilder]);
 
   // Animation pivot refs
   const torsoRef = useRef<THREE.Group>(null!);

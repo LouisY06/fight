@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { useGameStore } from '../game/GameState';
 import { useNetwork } from '../networking/NetworkProvider';
 import { useCVContext } from '../cv/CVProvider';
+import { useSwordStore } from '../game/SwordSelection';
 import { MenuCharacterPreview } from './MenuCharacterPreview';
 import { CustomizationPanel } from './CustomizationPanel';
 import { MapSelector } from './MapSelector';
@@ -33,6 +34,7 @@ export function MainMenu() {
   const [showMapSelector, setShowMapSelector] = useState(false);
   const [showDifficultyPicker, setShowDifficultyPicker] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const openSwordSelector = useSwordStore((s) => s.openSelector);
 
   if (phase !== 'menu') return null;
 
@@ -380,9 +382,14 @@ export function MainMenu() {
             <MenuCharacterPreview />
           </div>
 
-          <MechButton onClick={() => setShowCustomize(true)} variant="secondary">
-            CONFIGURE UNIT
-          </MechButton>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <MechButton onClick={() => setShowCustomize(true)} variant="secondary" style={{ minWidth: '140px', padding: '12px 24px' }}>
+              CONFIGURE UNIT
+            </MechButton>
+            <MechButton onClick={openSwordSelector} variant="secondary" style={{ minWidth: '140px', padding: '12px 24px' }}>
+              SELECT BLADE
+            </MechButton>
+          </div>
         </div>
 
         {showCustomize && (

@@ -452,176 +452,262 @@ export function makeSword(): THREE.Group {
   return g;
 }
 
-export function makeGun(): THREE.Group {
+// ============================================================================
+// Cryo Katana — curved single-edge blade with ice-blue energy channels
+// ============================================================================
+
+export function makeCryoKatana(): THREE.Group {
   const g = new THREE.Group();
 
-  // ---- Heavy Blaster: chunky sci-fi assault cannon ----
+  const matIceBlade = new THREE.MeshStandardMaterial({ color: 0xc8d8e8, metalness: 0.94, roughness: 0.03 });
+  const matIceEdge  = new THREE.MeshStandardMaterial({ color: 0xe4eef6, metalness: 0.96, roughness: 0.02 });
+  const matIceGlow  = new THREE.MeshStandardMaterial({ color: 0x00ccff, emissive: 0x00ccff, emissiveIntensity: 1.2 });
+  const matIceGuard = new THREE.MeshStandardMaterial({ color: 0x3a4856, metalness: 0.82, roughness: 0.14, emissive: 0x0066aa, emissiveIntensity: 0.2 });
+  const matIceGrip  = new THREE.MeshStandardMaterial({ color: 0x141820, roughness: 0.55, metalness: 0.35 });
+  const matIceWrap  = new THREE.MeshStandardMaterial({ color: 0x00aadd, emissive: 0x005588, emissiveIntensity: 0.4 });
 
-  // Main receiver — big angular body
-  const receiver = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.18, 0.60), matDark);
-  receiver.position.set(0, 0, -0.04);
-  g.add(receiver);
+  // === BLADE — curved katana, single-edge ===
 
-  // Receiver top bevel
-  const topBevel = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.04, 0.55), matBlue);
-  topBevel.position.set(0, 0.10, -0.04);
-  g.add(topBevel);
+  const segCount = 8;
+  const segH = 0.36;
+  for (let i = 0; i < segCount; i++) {
+    const t = i / segCount;
+    const w = 0.14 - t * 0.06;
+    const xCurve = Math.pow(t, 1.3) * 0.10;
 
-  // Receiver bottom plate
-  const bottomPlate = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.03, 0.45), matPanel);
-  bottomPlate.position.set(0, -0.10, -0.04);
-  g.add(bottomPlate);
+    // Main blade segment
+    const seg = new THREE.Mesh(new THREE.BoxGeometry(w, segH + 0.01, 0.016), matIceBlade);
+    seg.position.set(xCurve, 0.30 + i * segH, 0);
+    seg.rotation.z = t * 0.04;
+    g.add(seg);
 
-  // ---- Twin barrels — two cylinders side by side ----
-  for (const side of [-0.03, 0.03]) {
-    const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.035, 0.50, 10), matChrome);
-    barrel.position.set(side, 0.02, -0.52);
-    barrel.rotation.x = Math.PI / 2;
-    g.add(barrel);
+    // Sharp leading edge
+    const edge = new THREE.Mesh(new THREE.BoxGeometry(0.012, segH, 0.020), matIceEdge);
+    edge.position.set(xCurve + w / 2 + 0.004, 0.30 + i * segH, 0);
+    g.add(edge);
 
-    // Barrel inner bore (dark)
-    const bore = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.06, 8), matPanel);
-    bore.position.set(side, 0.02, -0.78);
-    bore.rotation.x = Math.PI / 2;
-    g.add(bore);
-  }
-
-  // Barrel shroud — heavy angular casing
-  const shroud = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.12, 0.38), matBlue);
-  shroud.position.set(0, 0.02, -0.42);
-  g.add(shroud);
-
-  // Shroud vents (cut-out look)
-  for (let i = 0; i < 4; i++) {
-    for (const side of [-1, 1]) {
-      const vent = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.04, 0.035), matPanel);
-      vent.position.set(side * 0.072, 0.02, -0.30 - i * 0.07);
-      g.add(vent);
+    // Energy channel along spine
+    if (i < segCount - 1) {
+      const ch = new THREE.Mesh(new THREE.BoxGeometry(0.018, segH * 0.7, 0.007), matIceGlow);
+      ch.position.set(xCurve - w / 2 + 0.025, 0.30 + i * segH, 0.010);
+      g.add(ch);
     }
   }
 
-  // Shroud inset panel (recessed center)
-  const shroudInset = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.08, 0.34), matPanel);
-  shroudInset.position.set(0, 0.02, -0.42);
-  g.add(shroudInset);
+  // Kissaki (tip)
+  const tip = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.30, 4), matIceBlade);
+  tip.position.set(0.14, 3.22, 0);
+  tip.rotation.set(0, Math.PI / 4, -0.06);
+  g.add(tip);
 
-  // Muzzle brake — chrome ring at barrel tip
-  const muzzle = new THREE.Mesh(new THREE.TorusGeometry(0.055, 0.012, 6, 8), matChrome);
-  muzzle.position.set(0, 0.02, -0.76);
-  g.add(muzzle);
+  const tipGlow = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.18, 4), matIceGlow);
+  tipGlow.position.set(0.14, 3.25, 0);
+  tipGlow.rotation.y = Math.PI / 4;
+  g.add(tipGlow);
 
-  // Muzzle glow core
-  const muzzleGlow = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 6), matGlow);
-  muzzleGlow.position.set(0, 0.02, -0.76);
-  g.add(muzzleGlow);
-
-  // ---- Top rail — full-length picatinny ----
-  const topRail = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.025, 0.55), matChrome);
-  topRail.position.set(0, 0.13, -0.06);
-  g.add(topRail);
-
-  // Rail notches
-  for (let i = 0; i < 8; i++) {
-    const notch = new THREE.Mesh(new THREE.BoxGeometry(0.082, 0.008, 0.012), matPanel);
-    notch.position.set(0, 0.145, 0.16 - i * 0.065);
-    g.add(notch);
+  // Energy nodes (octahedrons along blade)
+  for (let i = 0; i < 6; i++) {
+    const node = new THREE.Mesh(new THREE.OctahedronGeometry(0.014, 0), matIceGlow);
+    node.position.set(-0.02 + Math.pow(i / 6, 1.3) * 0.08, 0.50 + i * 0.45, 0.010);
+    g.add(node);
   }
 
-  // ---- Holographic sight ----
-  const sightBase = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.04, 0.06), matDark);
-  sightBase.position.set(0, 0.16, 0.02);
-  g.add(sightBase);
+  // Back spine ridge
+  const spine = new THREE.Mesh(new THREE.BoxGeometry(0.04, 2.5, 0.022), matDark);
+  spine.position.set(0.02, 1.55, -0.014);
+  g.add(spine);
 
-  const sightFrame = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.06, 0.005), matChrome);
-  sightFrame.position.set(0, 0.20, -0.01);
-  g.add(sightFrame);
+  // === TSUBA (circular guard) ===
 
-  const sightReticle = new THREE.Mesh(
-    new THREE.RingGeometry(0.008, 0.014, 6),
-    new THREE.MeshStandardMaterial({ color: ENERGY_CORE, emissive: ENERGY_CORE, emissiveIntensity: 2.5, side: THREE.DoubleSide })
-  );
-  sightReticle.position.set(0, 0.20, -0.008);
-  g.add(sightReticle);
+  const tsuba = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.022, 16), matIceGuard);
+  tsuba.position.y = 0.08;
+  g.add(tsuba);
 
-  // ---- Grip — angled, armored ----
-  const grip = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.26, 0.10), matHandle);
-  grip.position.set(0, -0.20, 0.08);
-  grip.rotation.x = 0.18;
-  g.add(grip);
+  const tsubaRing = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.006, 6, 16), matIceGlow);
+  tsubaRing.position.y = 0.08;
+  tsubaRing.rotation.x = Math.PI / 2;
+  g.add(tsubaRing);
 
-  // Grip armor plate
-  const gripPlate = new THREE.Mesh(new THREE.BoxGeometry(0.095, 0.06, 0.105), matDark);
-  gripPlate.position.set(0, -0.10, 0.07);
-  gripPlate.rotation.x = 0.18;
-  g.add(gripPlate);
+  const tsubaTrim = new THREE.Mesh(new THREE.TorusGeometry(0.155, 0.005, 4, 16), matChrome);
+  tsubaTrim.position.y = 0.08;
+  tsubaTrim.rotation.x = Math.PI / 2;
+  g.add(tsubaTrim);
 
-  // Grip chrome wraps
+  // Decorative cutouts (diamond accents around guard)
   for (let i = 0; i < 4; i++) {
-    const wrap = new THREE.Mesh(new THREE.BoxGeometry(0.095, 0.014, 0.105), matChrome);
-    wrap.position.set(0, -0.12 - i * 0.05, 0.075 + i * 0.008);
-    wrap.rotation.x = 0.18;
+    const angle = (i / 4) * Math.PI * 2;
+    const dec = new THREE.Mesh(new THREE.BoxGeometry(0.020, 0.005, 0.020), matIceGlow);
+    dec.position.set(Math.cos(angle) * 0.09, 0.08, Math.sin(angle) * 0.09);
+    dec.rotation.y = angle + Math.PI / 4;
+    g.add(dec);
+  }
+
+  // === HANDLE — wrapped tsuka ===
+
+  const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.022, 0.38, 8), matIceGrip);
+  handle.position.y = -0.12;
+  g.add(handle);
+
+  for (let i = 0; i < 8; i++) {
+    const wrap = new THREE.Mesh(
+      new THREE.TorusGeometry(0.030, 0.004, 4, 8),
+      i % 2 === 0 ? matIceWrap : matChrome,
+    );
+    wrap.position.y = -0.28 + i * 0.04;
+    wrap.rotation.x = Math.PI / 2;
     g.add(wrap);
   }
 
-  // ---- Trigger guard — heavy ----
-  const triggerGuard = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.025, 0.14), matDark);
-  triggerGuard.position.set(0, -0.06, 0.02);
-  g.add(triggerGuard);
+  // Kashira (pommel cap)
+  const kashira = new THREE.Mesh(new THREE.CylinderGeometry(0.030, 0.035, 0.04, 8), matIceGuard);
+  kashira.position.y = -0.33;
+  g.add(kashira);
 
-  // ---- Side energy channels — glowing accent lines ----
+  const kashiraGlow = new THREE.Mesh(new THREE.SphereGeometry(0.016, 6, 4), matIceGlow);
+  kashiraGlow.position.y = -0.35;
+  g.add(kashiraGlow);
+
+  enableShadows(g);
+  return g;
+}
+
+// ============================================================================
+// Plasma Rapier — forked twin-prong blade with purple plasma conduits
+// ============================================================================
+
+export function makePlasmaBlade(): THREE.Group {
+  const g = new THREE.Group();
+
+  const matPBlade  = new THREE.MeshStandardMaterial({ color: 0x8a7c98, metalness: 0.88, roughness: 0.08 });
+  const matPCore   = new THREE.MeshStandardMaterial({ color: 0x4a3860, metalness: 0.70, roughness: 0.15 });
+  const matPGlow   = new THREE.MeshStandardMaterial({ color: 0xff00ff, emissive: 0xff00ff, emissiveIntensity: 1.4 });
+  const matPGuard  = new THREE.MeshStandardMaterial({ color: 0x2a2038, metalness: 0.85, roughness: 0.12, emissive: 0x880088, emissiveIntensity: 0.2 });
+  const matPGrip   = new THREE.MeshStandardMaterial({ color: 0x18121e, roughness: 0.50, metalness: 0.40 });
+
+  // === BLADE — thin rapier with forked tip ===
+
+  // Central blade shaft
+  const blade = new THREE.Mesh(new THREE.BoxGeometry(0.08, 2.8, 0.014), matPBlade);
+  blade.position.y = 1.55;
+  g.add(blade);
+
+  // Sharp bevelled edges
   for (const side of [-1, 1]) {
-    // Main energy strip
-    const strip = new THREE.Mesh(new THREE.BoxGeometry(0.006, 0.06, 0.40), matGlow);
-    strip.position.set(side * 0.082, 0, -0.14);
-    g.add(strip);
-
-    // Energy nodes along strip
-    for (let i = 0; i < 5; i++) {
-      const node = new THREE.Mesh(new THREE.SphereGeometry(0.010, 6, 4), matGlow);
-      node.position.set(side * 0.084, 0, 0.04 - i * 0.10);
-      g.add(node);
-    }
-
-    // Side armor panel
-    const sidePanel = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.12, 0.30), matBlue);
-    sidePanel.position.set(side * 0.09, 0, -0.10);
-    g.add(sidePanel);
+    const bevel = new THREE.Mesh(new THREE.BoxGeometry(0.015, 2.6, 0.018), matBevel);
+    bevel.position.set(side * 0.045, 1.55, 0);
+    g.add(bevel);
   }
 
-  // ---- Foregrip / front handle ----
-  const foregrip = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.10, 0.06), matHandle);
-  foregrip.position.set(0, -0.12, -0.22);
-  g.add(foregrip);
+  // Central plasma conduits (front + back)
+  const conduit = new THREE.Mesh(new THREE.BoxGeometry(0.022, 2.4, 0.006), matPGlow);
+  conduit.position.set(0, 1.40, 0.010);
+  g.add(conduit);
 
-  const foregripGuard = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.03, 0.08), matDark);
-  foregripGuard.position.set(0, -0.08, -0.22);
-  g.add(foregripGuard);
+  const conduitBack = new THREE.Mesh(new THREE.BoxGeometry(0.022, 2.4, 0.006), matPGlow);
+  conduitBack.position.set(0, 1.40, -0.010);
+  g.add(conduitBack);
 
-  // ---- Stock / rear extension ----
-  const stock = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.10, 0.18), matDark);
-  stock.position.set(0, -0.02, 0.28);
-  g.add(stock);
+  // Forked tip — two prongs that split
+  for (const side of [-1, 1]) {
+    const prong = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.50, 0.012), matPBlade);
+    prong.position.set(side * 0.04, 3.15, 0);
+    prong.rotation.z = side * -0.08;
+    g.add(prong);
 
-  const stockPad = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.03), matPanel);
-  stockPad.position.set(0, -0.02, 0.37);
-  g.add(stockPad);
+    const prongTip = new THREE.Mesh(new THREE.ConeGeometry(0.018, 0.20, 4), matPBlade);
+    prongTip.position.set(side * 0.06, 3.48, 0);
+    prongTip.rotation.y = Math.PI / 4;
+    g.add(prongTip);
 
-  // Stock energy accent
-  const stockGlow = new THREE.Mesh(new THREE.BoxGeometry(0.006, 0.08, 0.14), matGlow);
-  stockGlow.position.set(0, -0.02, 0.28);
-  g.add(stockGlow);
+    const prongGlow = new THREE.Mesh(new THREE.ConeGeometry(0.008, 0.12, 4), matPGlow);
+    prongGlow.position.set(side * 0.06, 3.50, 0);
+    prongGlow.rotation.y = Math.PI / 4;
+    g.add(prongGlow);
+  }
 
-  // ---- Magazine / power cell ----
-  const mag = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.14, 0.07), matPanel);
-  mag.position.set(0, -0.16, 0.01);
-  g.add(mag);
+  // Bridge between fork prongs
+  const bridge = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.03, 0.010), matPGlow);
+  bridge.position.set(0, 3.00, 0);
+  g.add(bridge);
 
-  const magGlow = new THREE.Mesh(
-    new THREE.BoxGeometry(0.04, 0.10, 0.005),
-    new THREE.MeshStandardMaterial({ color: ENERGY_CORE, emissive: ENERGY_CORE, emissiveIntensity: 1.5 })
-  );
-  magGlow.position.set(0, -0.16, 0.045);
-  g.add(magGlow);
+  // Plasma nodes along blade
+  for (let i = 0; i < 8; i++) {
+    const node = new THREE.Mesh(new THREE.SphereGeometry(0.012, 6, 4), matPGlow);
+    node.position.set(0, 0.40 + i * 0.34, 0.010);
+    g.add(node);
+  }
+
+  // Spine ridge
+  const spine = new THREE.Mesh(new THREE.BoxGeometry(0.035, 2.4, 0.025), matPCore);
+  spine.position.set(0, 1.45, -0.014);
+  g.add(spine);
+
+  // === GUARD — angular basket guard ===
+
+  const guardBar = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.05, 0.05), matPGuard);
+  guardBar.position.y = 0.08;
+  g.add(guardBar);
+
+  // Swept wings
+  for (const side of [-1, 1]) {
+    const wing = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.06, 0.04), matPGuard);
+    wing.position.set(side * 0.26, 0.11, -0.02);
+    wing.rotation.z = side * -0.5;
+    wing.rotation.x = -0.15;
+    g.add(wing);
+
+    const wingGlow = new THREE.Mesh(new THREE.SphereGeometry(0.015, 6, 4), matPGlow);
+    wingGlow.position.set(side * 0.32, 0.14, -0.02);
+    g.add(wingGlow);
+
+    // Basket loops
+    const loop = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.006, 6, 8), matChrome);
+    loop.position.set(side * 0.12, 0.04, 0.02);
+    loop.rotation.y = Math.PI / 2;
+    g.add(loop);
+  }
+
+  // Guard trim
+  const guardTrim = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.012, 0.055), matChrome);
+  guardTrim.position.y = 0.05;
+  g.add(guardTrim);
+
+  // Central gem
+  const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.032, 0), matPGlow);
+  gem.position.set(0, 0.08, 0.035);
+  g.add(gem);
+
+  // === HANDLE — wrapped with plasma conduits ===
+
+  const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.024, 0.40, 8), matPGrip);
+  handle.position.y = -0.14;
+  g.add(handle);
+
+  for (let i = 0; i < 6; i++) {
+    const wrap = new THREE.Mesh(
+      new THREE.TorusGeometry(0.032, 0.005, 4, 8),
+      i % 3 === 0 ? matPGlow : matChrome,
+    );
+    wrap.position.y = -0.30 + i * 0.05;
+    wrap.rotation.x = Math.PI / 2;
+    g.add(wrap);
+  }
+
+  // Angular pommel with plasma core
+  const pommel = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.06), matPGuard);
+  pommel.position.y = -0.37;
+  pommel.rotation.y = Math.PI / 4;
+  g.add(pommel);
+
+  const pommelCore = new THREE.Mesh(new THREE.SphereGeometry(0.020, 6, 4), matPGlow);
+  pommelCore.position.y = -0.37;
+  g.add(pommelCore);
+
+  // Pommel spike
+  const pommelSpike = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.06, 4), matChrome);
+  pommelSpike.position.y = -0.43;
+  pommelSpike.rotation.x = Math.PI;
+  g.add(pommelSpike);
 
   enableShadows(g);
   return g;

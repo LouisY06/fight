@@ -24,6 +24,12 @@ process.env.VITE_PUBLIC = app.isPackaged
   ? process.env.DIST
   : path.join(process.env.DIST, '../public');
 
+// GPU / hardware-acceleration flags — MUST be set before app.whenReady()
+app.commandLine.appendSwitch('enable-gpu-rasterization');
+app.commandLine.appendSwitch('enable-zero-copy');
+app.commandLine.appendSwitch('ignore-gpu-blocklist');
+app.commandLine.appendSwitch('disable-gpu-sandbox');
+
 let win: BrowserWindow | null;
 
 // Vite dev server URL from env
@@ -46,11 +52,6 @@ function createWindow() {
     autoHideMenuBar: true,
     backgroundColor: '#000000',
   });
-
-  // Enable hardware acceleration
-  app.commandLine.appendSwitch('enable-gpu-rasterization');
-  app.commandLine.appendSwitch('enable-zero-copy');
-  app.commandLine.appendSwitch('ignore-gpu-blocklist');
 
   if (VITE_DEV_SERVER_URL) {
     win.loadURL(VITE_DEV_SERVER_URL);

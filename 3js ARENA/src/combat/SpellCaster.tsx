@@ -1,7 +1,8 @@
 // =============================================================================
 // SpellCaster.tsx — Connects voice commands + keyboard to the spell system
 // Starts/stops voice recognition based on game phase, casts spells from voice.
-// Keyboard: Q = Fireball, E = Laser Beam, R = Ice Blast
+// Keyboard: E = Laser Beam, R = Ice Blast, F = Forcefield
+// (Q is now weapon toggle — see WeaponState.ts)
 // =============================================================================
 
 import { useEffect, useCallback, useRef } from 'react';
@@ -12,9 +13,9 @@ import { useSpellStore, fireSpellCast, clearDebuffs, clearForceFields, activateF
 import { startVoiceListening, stopVoiceListening, onVoiceSpell, isVoiceAvailable } from '../audio/VoiceCommands';
 import { gameSocket } from '../networking/socket';
 
-/** Key → spell mapping */
+/** Key → spell mapping (Q is now weapon toggle, moved fireball to voice-only + T) */
 const KEY_SPELL_MAP: Record<string, SpellType> = {
-  q: 'fireball',
+  t: 'fireball',
   e: 'laser',
   r: 'ice_blast',
   f: 'forcefield',

@@ -8,7 +8,6 @@ import { useRef, useEffect, useState } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from '../game/GameState';
-import { useWeaponStore } from '../game/WeaponState';
 import { cvBridge } from '../cv/cvBridge';
 
 // Shield resting position: lower-right (same side as the mecha arm)
@@ -23,14 +22,14 @@ export function ViewmodelShield() {
   const phase = useGameStore((s) => s.phase);
   const setPlayerBlocking = useGameStore((s) => s.setPlayerBlocking);
   const playerSlot = useGameStore((s) => s.playerSlot);
-  const activeWeapon = useWeaponStore((s) => s.activeWeapon);
 
   const [isBlocking, setIsBlocking] = useState(false);
   const blockLerp = useRef(0);
 
-  // Block on left-click or right-click while pointer is locked
+  // Block on right-click while pointer is locked
+  // NOTE: Shield is currently unused (sword is the only weapon).
+  // Keeping this for potential future use.
   useEffect(() => {
-    if (activeWeapon !== 'shield') return;
 
     const onMouseDown = (e: MouseEvent) => {
       // Both left (0) and right (2) clicks activate block for shield
@@ -38,9 +37,6 @@ export function ViewmodelShield() {
         setIsBlocking(true);
         const slot = playerSlot ?? 'player1';
         setPlayerBlocking(slot, true);
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/d3f7d08b-6cb2-4350-808e-89b409b0090c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ViewmodelShield.tsx:mouseDown',message:'Shield BLOCK ON',data:{slot,button:e.button,pointerLocked:!!document.pointerLockElement},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
       }
     };
     const onMouseUp = (e: MouseEvent) => {
@@ -48,9 +44,6 @@ export function ViewmodelShield() {
         setIsBlocking(false);
         const slot = playerSlot ?? 'player1';
         setPlayerBlocking(slot, false);
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/d3f7d08b-6cb2-4350-808e-89b409b0090c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ViewmodelShield.tsx:mouseUp',message:'Shield BLOCK OFF',data:{slot,button:e.button},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
       }
     };
 
@@ -63,18 +56,13 @@ export function ViewmodelShield() {
       const slot = playerSlot ?? 'player1';
       setPlayerBlocking(slot, false);
     };
-  }, [activeWeapon, playerSlot, setPlayerBlocking]);
+  }, [playerSlot, setPlayerBlocking]);
 
   const cvEnabled = cvBridge.cvEnabled;
   const cvInputRef = cvBridge.cvInputRef;
 
   useFrame((_, delta) => {
     if (!groupRef.current) return;
-    if (activeWeapon !== 'shield') {
-      groupRef.current.visible = false;
-      return;
-    }
-
     const isGameplay =
       phase === 'playing' ||
       phase === 'countdown' ||

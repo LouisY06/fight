@@ -5,18 +5,20 @@
 // Geometry builders and materials live in MechaGeometry.ts (shared with MechaEntity).
 // =============================================================================
 
-import { useRef, useMemo } from 'react';
+import { useRef, useMemo, useState } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { cvBridge } from '../cv/cvBridge';
 import { useGameStore } from '../game/GameState';
 import { fireSwing } from '../combat/SwingEvent';
 import { updateSwordTransform } from '../combat/SwordState';
+import { setSwingProgress } from '../combat/SwingState';
 import {
-  makeUpperArm, makeForearm, makeHand, makeJoint, makeSword,
+  makeUpperArm, makeForearm, makeHand, makeJoint,
 } from '../avatars/MechaGeometry';
 import { updateDashSpell, getDashState, getDashCharge } from '../combat/DashSpell';
 import { activateForceField, isForceFieldActive, useSpellStore, SPELL_CONFIGS } from '../combat/SpellSystem';
+import { SwordModel } from './SwordModel';
 
 // ============================================================================
 // Cockpit anchors & tracking constants
@@ -131,7 +133,6 @@ export function MechaArms() {
   const rShoulderJoint = useMemo(() => makeJoint(0.08), []);
   const rElbowJoint = useMemo(() => makeJoint(0.06), []);
   const rWristJoint = useMemo(() => makeJoint(0.05), []);
-  const sword = useMemo(() => makeSword(), []);
 
   // ---- Left arm geometry (no sword) ----
   const lUpperArm = useMemo(() => makeUpperArm(), []);
@@ -163,6 +164,7 @@ export function MechaArms() {
   });
 
   const prevCvSwinging = useRef(false);
+  const [cvSwinging, setCvSwinging] = useState(false);
   const prevPalmExtended = useRef(false);
 
   const dims = useMemo(
@@ -191,9 +193,15 @@ export function MechaArms() {
     const cvInput = cvInputRef.current;
     const worldLandmarks = worldLandmarksRef.current;
 
-    // Fire swing callback on rising edge
+    // Fire sword swing on rising edge
     if (cvInput.isSwinging && !prevCvSwinging.current) {
       fireSwing();
+      setSwingProgress(0.5); // peak of swing
+      setCvSwinging(true);
+    }
+    if (!cvInput.isSwinging && prevCvSwinging.current) {
+      setSwingProgress(0); // swing ended
+      setCvSwinging(false);
     }
     prevCvSwinging.current = cvInput.isSwinging;
 
@@ -301,7 +309,7 @@ export function MechaArms() {
 
     const weaponPosAlpha = la(SMOOTH_SWORD_POS);
 
-    // --- Sword (always visible — sole weapon) ---
+    // --- Sword always visible ---
     if (swordGroupRef.current) {
       swordGroupRef.current.visible = true;
       swordGroupRef.current.position.lerp(s.rHand, weaponPosAlpha);
@@ -398,9 +406,9 @@ export function MechaArms() {
       <primitive object={lForearm} />
       <primitive object={lHand} />
 
-      {/* Sword — always active, driven by CV hand tracking */}
+      {/* Sword */}
       <group ref={swordGroupRef} scale={0.85}>
-        <primitive object={sword} />
+        <SwordModel isSwinging={cvSwinging} />
       </group>
     </group>
   );
