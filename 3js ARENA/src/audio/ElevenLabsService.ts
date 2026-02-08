@@ -27,8 +27,8 @@ const pendingRequests = new Map<string, Promise<HTMLAudioElement | null>>();
 // Priority voice queue — prevents overlap
 // ---------------------------------------------------------------------------
 
-const Priority = { CRITICAL: 3, HIGH: 2, LOW: 1 } as const;
-type PriorityLevel = (typeof Priority)[keyof typeof Priority];
+export const Priority = { CRITICAL: 3, HIGH: 2, LOW: 1 } as const;
+export type PriorityLevel = (typeof Priority)[keyof typeof Priority];
 
 let currentVoice: HTMLAudioElement | null = null;
 let currentPriority: PriorityLevel = 0 as PriorityLevel;
@@ -251,6 +251,14 @@ export const ElevenLabs = {
   async announceTimeWarning(): Promise<void> {
     const audio = await getOrGenerate('time-warning', () => generateTTS('Time is running out!'));
     playVoice(audio, Priority.LOW, 0.85);
+  },
+
+  // === DYNAMIC — speak arbitrary Gemini-generated text (not cached) ===
+
+  async speakDynamic(text: string, priority: PriorityLevel = Priority.HIGH): Promise<void> {
+    // Check if we can play (respects priority queue)
+    const audio = await generateTTS(text);
+    playVoice(audio, priority, 0.9);
   },
 
   // === SFX — play independently, no queue ===

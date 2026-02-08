@@ -16,7 +16,7 @@ export default defineConfig({
         entry: 'electron/main.ts',
       },
       {
-        // Preload script (shared by both game and map generator)
+        // Preload script
         entry: 'electron/preload.ts',
         onstart(args) {
           args.reload();
@@ -25,12 +25,10 @@ export default defineConfig({
     ]),
     renderer(),
   ],
-  // Multi-page app: game + map generator
   build: {
     rollupOptions: {
       input: {
         main: 'index.html',
-        'map-generator': 'map-generator.html',
       },
       output: {
         manualChunks: {
